@@ -121,9 +121,9 @@
             const ipResponse = await fetch(ipUrl);
             const ipData = await ipResponse.json();
 
-            // 检查IP定位API的返回结果是否成功。
-            if (ipData.status !== '1' || !ipData.adcode) {
-                throw new Error('无法根据IP确定您的位置。您可以手动输入城市查询。');
+            // 检查IP定位API的返回结果是否成功，并确保adcode是一个有效的、非空的字符串。
+            if (ipData.status !== '1' || !ipData.adcode || ipData.adcode.length === 0) {
+                throw new Error('根据IP自动定位失败。此功能目前仅支持IPv4网络，且部分海外IP可能无法识别。请您手动输入城市进行查询。');
             }
 
             // 2. 如果成功获取城市信息，则将其填充到输入框中，方便用户确认或修改。
