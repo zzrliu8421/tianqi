@@ -1,0 +1,240 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>天气查询</title>
+    <style>
+        /* --- 基本页面样式 (暗色主题) --- */
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+            background-color: #282c34; /* 更柔和的深蓝灰色背景 */
+            color: #e0e0e0; /* 默认文字颜色改为浅灰色 */
+        }
+
+        /* --- 主容器样式 (暗色主题) --- */
+        .container {
+            background: #3c4049; /* 稍亮的容器背景 */
+            padding: 2rem;
+            border-radius: 8px;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.5); /* 调整阴影以适应暗色背景 */
+            width: 100%;
+            max-width: 400px;
+            text-align: center;
+        }
+        h1 {
+            color: #ffffff; /* 标题使用纯白色，更突出 */
+        }
+        .input-group {
+            margin-bottom: 1.5rem;
+            text-align: left;
+        }
+
+        .input-group label {
+            display: block;
+            margin-bottom: 0.5rem;
+            color: #e0e0e0; /* 标签文字颜色 */
+            font-weight: 600;
+        }
+
+        input[type="text"] {
+            width: calc(100% - 22px);
+            padding: 10px;
+            border: 1px solid #6b7280; /* 调整边框颜色 */
+            border-radius: 4px;
+            background-color: #4a4f5a; /* 调整输入框背景色 */
+            color: #e0e0e0; /* 输入文字颜色 */
+        }
+        button {
+            width: 100%;
+            padding: 10px;
+            background-color: #007bff; /* 蓝色按钮与暗色背景对比度良好 */
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 1rem;
+            transition: background-color 0.2s ease-in-out; /* 添加平滑的过渡效果 */
+        }
+        button:hover {
+            background-color: #0069d9; /* 悬停时使用稍亮一点的蓝色 */
+        }
+        #weather-result {
+            margin-top: 1.5rem;
+            text-align: left;
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <!-- 主标题 -->
+    <h1>中国大陆天气查询</h1>
+    
+    <!-- 城市输入组 -->
+    <div class="input-group">
+        <label for="city">城市</label>
+        <input type="text" id="city" placeholder="例如：南阳">
+    </div>
+    
+    <!-- API Key 输入组 -->
+    <div class="input-group">
+        <label for="token">高德 API Key（选填）</label>
+        <input type="text" id="token" placeholder="不填将使用默认Key">
+    </div>
+    
+    <!-- 查询按钮 -->
+    <button onclick="getWeather()">查询天气</button>
+    
+    <!-- 天气结果显示区域 -->
+    <div id="weather-result"></div>
+</div>
+
+<script>
+    // --- Global Settings ---
+    // 您的默认高德API Key。
+    const defaultToken = '6229696a9b897ab00aa27743aa3ece0f';
+
+    // --- Event Listeners ---
+    // 页面加载完成后，自动根据IP获取天气。
+    document.addEventListener('DOMContentLoaded', getWeatherByIP);
+
+
+    // --- Core Functions ---
+
+    /**
+     * 异步函数：根据IP地址自动获取天气。
+     * 在页面加载时自动执行。
+     */
+    async function getWeatherByIP() {
+        const weatherResult = document.getElementById('weather-result');
+        weatherResult.innerHTML = '正在根据您的位置获取天气...';
+
+        try {
+            // 1. 调用高德IP定位API，这会根据请求的IP地址返回大致的地理位置。
+            const ipUrl = `https://restapi.amap.com/v3/ip?key=${defaultToken}`;
+            const ipResponse = await fetch(ipUrl);
+            const ipData = await ipResponse.json();
+
+            // 检查IP定位API的返回结果是否成功。
+            if (ipData.status !== '1' || !ipData.adcode) {
+                throw new Error('无法根据IP确定您的位置。您可以手动输入城市查询。');
+            }
+
+            // 2. 如果成功获取城市信息，则将其填充到输入框中，方便用户确认或修改。
+            if (ipData.city && typeof ipData.city === 'string') {
+                 document.getElementById('city').value = ipData.city;
+            }
+           
+            // 3. 使用从IP定位获取到的adcode来调用天气查询函数。
+            await fetchAndDisplayWeather(ipData.adcode, defaultToken);
+
+            // 4. 在天气结果的顶部添加一条提示信息。
+            const notification = '<p style="font-size: 0.8em; color: #999;">*以下根据您的IP位置自动查询</p>';
+            weatherResult.innerHTML = notification + weatherResult.innerHTML;
+
+        } catch (error) {
+            // 如果过程中出现任何错误，则显示错误信息。
+            displayError(error.message);
+        }
+    }
+
+
+    /**
+     * 异步函数：处理用户手动输入的城市查询。
+     * 当用户点击“查询天气”按钮时被调用。
+     */
+    async function getWeather() {
+        const city = document.getElementById('city').value;
+        const userToken = document.getElementById('token').value;
+        
+        const weatherResult = document.getElementById('weather-result');
+        weatherResult.innerHTML = '正在查询...';
+
+        // 优先使用用户在输入框中提供的Token，如果为空，则使用默认Token。
+        const token = userToken || defaultToken;
+
+        // 验证用户是否输入了城市。
+        if (!city) {
+            displayError('请输入城市名称。');
+            return;
+        }
+
+        try {
+            // 1. 调用地理编码API，将用户输入的城市名称转换为高德所需的adcode。
+            const geoUrl = `https://restapi.amap.com/v3/geocode/geo?address=${encodeURIComponent(city)}&key=${token}`;
+            const geoResponse = await fetch(geoUrl);
+            const geoData = await geoResponse.json();
+
+            // 检查地理编码是否成功。
+            if (geoData.status !== '1' || geoData.geocodes.length === 0) {
+                throw new Error('找不到该城市，请检查城市名称是否正确。');
+            }
+
+            const adcode = geoData.geocodes[0].adcode;
+
+            // 2. 使用获取到的adcode来调用天气查询函数。
+            await fetchAndDisplayWeather(adcode, token);
+
+        } catch (error) {
+            displayError(error.message);
+        }
+    }
+
+
+    // --- Helper Functions (辅助函数) ---
+
+    /**
+     * 辅助函数：根据adcode获取天气信息并将其显示在页面上。
+     * 这是一个被复用的核心逻辑。
+     * @param {string} adcode - 城市的adcode。
+     * @param {string} token - 用于API调用的高德Key。
+     */
+    async function fetchAndDisplayWeather(adcode, token) {
+        const weatherUrl = `https://restapi.amap.com/v3/weather/weatherInfo?city=${adcode}&key=${token}`;
+        const weatherResponse = await fetch(weatherUrl);
+        const weatherData = await weatherResponse.json();
+
+        if (weatherData.status !== '1' || weatherData.lives.length === 0) {
+            throw new Error('获取天气信息失败。');
+        }
+
+        const weather = weatherData.lives[0];
+        displayWeatherResult(weather);
+    }
+
+    /**
+     * 辅助函数：将最终的天气数据显示在HTML页面上。
+     * @param {object} weather - 从API获取的包含天气信息的对象。
+     */
+    function displayWeatherResult(weather) {
+        const weatherResult = document.getElementById('weather-result');
+        weatherResult.innerHTML = `
+            <h3>${weather.province} ${weather.city}</h3>
+            <p><strong>天气：</strong>${weather.weather}</p>
+            <p><strong>温度：</strong>${weather.temperature}℃</p>
+            <p><strong>风向：</strong>${weather.winddirection}</p>
+            <p><strong>风力：</strong>${weather.windpower} 级</p>
+            <p><strong>空气湿度：</strong>${weather.humidity}%</p>
+            <p><strong>发布时间：</strong>${weather.reporttime}</p>
+        `;
+    }
+
+    /**
+     * 辅助函数：在页面上显示格式化的错误信息。
+     * @param {string} message - 要显示的错误消息文本。
+     */
+    function displayError(message) {
+        const weatherResult = document.getElementById('weather-result');
+        // 将错误信息以亮红色字体显示，以在暗色背景下更醒目。
+        weatherResult.innerHTML = `<p style="color: #ff5c5c;">查询失败：${message}</p>`;
+    }
+</script>
+
+</body>
+</html>
