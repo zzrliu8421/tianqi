@@ -1,7 +1,0 @@
-{
-  "name": "vite-react-template",
-  "entry": "./src/index.js",
-  "assets": {
-    "directory": "./public"
-  }
-}
