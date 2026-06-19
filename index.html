@@ -1,0 +1,4004 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <meta name="theme-color" content="#0b0f19">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <title>SkyWeather · 云际天气</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        /* =====================================================
+           设计令牌 Design Tokens
+           ===================================================== */
+        :root {
+            --white: #ffffff;
+            --black: #0b0f19;
+
+            --bg-base: #0b0f19;
+            --bg-surface: #111827;
+            --bg-elevated: #1a2332;
+
+            --glass-1: rgba(255, 255, 255, 0.06);
+            --glass-2: rgba(255, 255, 255, 0.10);
+            --glass-3: rgba(255, 255, 255, 0.14);
+            --glass-4: rgba(255, 255, 255, 0.20);
+
+            --border-1: rgba(255, 255, 255, 0.08);
+            --border-2: rgba(255, 255, 255, 0.12);
+            --border-3: rgba(255, 255, 255, 0.18);
+
+            --text-primary: #f8fafc;
+            --text-secondary: rgba(248, 250, 252, 0.72);
+            --text-tertiary: rgba(248, 250, 252, 0.50);
+            --text-muted: rgba(248, 250, 252, 0.32);
+
+            --accent: #38bdf8;
+            --accent-2: #818cf8;
+            --accent-glow: rgba(56, 189, 248, 0.35);
+            --accent-gradient: linear-gradient(135deg, #38bdf8 0%, #818cf8 100%);
+
+            --success: #34d399;
+            --warning: #fbbf24;
+            --danger: #f87171;
+
+            --r-2xs: 6px;
+            --r-xs: 8px;
+            --r-sm: 12px;
+            --r-md: 16px;
+            --r-lg: 20px;
+            --r-xl: 24px;
+            --r-2xl: 28px;
+            --r-pill: 9999px;
+
+            --space-1: 4px;
+            --space-2: 8px;
+            --space-3: 12px;
+            --space-4: 16px;
+            --space-5: 20px;
+            --space-6: 24px;
+            --space-8: 32px;
+            --space-10: 40px;
+            --space-12: 48px;
+
+            --ease: cubic-bezier(0.4, 0, 0.2, 1);
+            --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+            --ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
+            --ease-bounce: cubic-bezier(0.68, -0.55, 0.265, 1.55);
+            --dur-fast: 0.15s;
+            --dur-normal: 0.25s;
+            --dur-slow: 0.4s;
+            --dur-enter: 0.6s;
+
+            --font-sans: "Inter", -apple-system, BlinkMacSystemFont, "PingFang SC", "Microsoft YaHei", "Noto Sans SC", "Source Han Sans SC", "WenQuanYi Micro Hei", system-ui, sans-serif;
+            --font-mono: ui-monospace, "SF Mono", Consolas, "Microsoft YaHei", monospace;
+
+            --fs-xs: 0.75rem;
+            --fs-sm: 0.875rem;
+            --fs-base: 1rem;
+            --fs-lg: 1.125rem;
+            --fs-xl: 1.25rem;
+            --fs-2xl: 1.5rem;
+            --fs-3xl: clamp(1.75rem, 4vw, 2.25rem);
+            --fs-display: clamp(3rem, 9vw, 5.5rem);
+
+            --content-max: 1100px;
+            --safe-top: env(safe-area-inset-top, 0px);
+            --safe-bottom: env(safe-area-inset-bottom, 0px);
+            --overlay-bg: rgba(17, 24, 39, 0.98);
+            --overlay-bg-light: rgba(17, 24, 39, 0.95);
+        }
+
+        /* 天气主题 */
+        .theme-sunny {
+            --bg-base: #0f172a;
+            --bg-surface: #1e293b;
+            --bg-elevated: #334155;
+            --accent: #fbbf24;
+            --accent-2: #f97316;
+            --accent-glow: rgba(251, 191, 36, 0.40);
+            --accent-gradient: linear-gradient(135deg, #fbbf24 0%, #f97316 100%);
+        }
+        .theme-cloudy {
+            --bg-base: #0f172a;
+            --bg-surface: #1e293b;
+            --bg-elevated: #334155;
+            --accent: #94a3b8;
+            --accent-2: #cbd5e1;
+            --accent-glow: rgba(148, 163, 184, 0.35);
+            --accent-gradient: linear-gradient(135deg, #94a3b8 0%, #cbd5e1 100%);
+        }
+        .theme-rain {
+            --bg-base: #0b1220;
+            --bg-surface: #162032;
+            --bg-elevated: #243049;
+            --accent: #60a5fa;
+            --accent-2: #38bdf8;
+            --accent-glow: rgba(96, 165, 250, 0.40);
+            --accent-gradient: linear-gradient(135deg, #60a5fa 0%, #38bdf8 100%);
+        }
+        .theme-snow {
+            --bg-base: #1e293b;
+            --bg-surface: #334155;
+            --bg-elevated: #475569;
+            --text-primary: #f1f5f9;
+            --text-secondary: rgba(241, 245, 249, 0.75);
+            --text-tertiary: rgba(241, 245, 249, 0.55);
+            --text-muted: rgba(241, 245, 249, 0.35);
+            --glass-1: rgba(255, 255, 255, 0.10);
+            --glass-2: rgba(255, 255, 255, 0.16);
+            --glass-3: rgba(255, 255, 255, 0.22);
+            --glass-4: rgba(255, 255, 255, 0.30);
+            --border-1: rgba(255, 255, 255, 0.12);
+            --border-2: rgba(255, 255, 255, 0.18);
+            --border-3: rgba(255, 255, 255, 0.26);
+            --accent: #e2e8f0;
+            --accent-2: #ffffff;
+            --accent-glow: rgba(226, 232, 240, 0.45);
+            --accent-gradient: linear-gradient(135deg, #e2e8f0 0%, #ffffff 100%);
+        }
+        .theme-storm {
+            --bg-base: #050510;
+            --bg-surface: #0f0f1a;
+            --bg-elevated: #1a1a2e;
+            --accent: #a78bfa;
+            --accent-2: #c4b5fd;
+            --accent-glow: rgba(167, 139, 250, 0.50);
+            --accent-gradient: linear-gradient(135deg, #a78bfa 0%, #c4b5fd 100%);
+        }
+        .theme-fog {
+            --bg-base: #1e293b;
+            --bg-surface: #334155;
+            --bg-elevated: #475569;
+            --text-primary: #f1f5f9;
+            --text-secondary: rgba(241, 245, 249, 0.72);
+            --text-tertiary: rgba(241, 245, 249, 0.50);
+            --text-muted: rgba(241, 245, 249, 0.30);
+            --glass-1: rgba(255, 255, 255, 0.08);
+            --glass-2: rgba(255, 255, 255, 0.14);
+            --glass-3: rgba(255, 255, 255, 0.20);
+            --border-1: rgba(255, 255, 255, 0.10);
+            --border-2: rgba(255, 255, 255, 0.16);
+            --border-3: rgba(255, 255, 255, 0.24);
+            --accent: #cbd5e1;
+            --accent-2: #e2e8f0;
+            --accent-glow: rgba(203, 213, 225, 0.35);
+            --accent-gradient: linear-gradient(135deg, #cbd5e1 0%, #e2e8f0 100%);
+        }
+        .theme-haze {
+            --bg-base: #1c1917;
+            --bg-surface: #292524;
+            --bg-elevated: #44403c;
+            --accent: #fdba74;
+            --accent-2: #fb923c;
+            --accent-glow: rgba(253, 186, 116, 0.40);
+            --accent-gradient: linear-gradient(135deg, #fdba74 0%, #fb923c 100%);
+        }
+
+        /* AQI 主题覆盖 */
+        .aqi-good { --aqi-color: #34d399; --aqi-glow: rgba(52, 211, 153, 0.35); }
+        .aqi-moderate { --aqi-color: #fbbf24; --aqi-glow: rgba(251, 191, 36, 0.35); }
+        .aqi-unhealthy-sensitive { --aqi-color: #fb923c; --aqi-glow: rgba(251, 146, 60, 0.35); }
+        .aqi-unhealthy { --aqi-color: #f87171; --aqi-glow: rgba(248, 113, 113, 0.35); }
+        .aqi-very-unhealthy { --aqi-color: #a78bfa; --aqi-glow: rgba(167, 139, 250, 0.35); }
+        .aqi-hazardous { --aqi-color: #881337; --aqi-glow: rgba(136, 19, 55, 0.35); }
+
+        *, *::before, *::after {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        html {
+            -webkit-text-size-adjust: 100%;
+            -webkit-tap-highlight-color: transparent;
+            scroll-behavior: smooth;
+        }
+
+        body {
+            font-family: var(--font-sans);
+            background:
+                radial-gradient(ellipse 80% 60% at 20% 20%, var(--bg-elevated), transparent 50%),
+                radial-gradient(ellipse 70% 50% at 80% 80%, var(--bg-surface), transparent 50%),
+                linear-gradient(180deg, var(--bg-base) 0%, var(--bg-surface) 100%);
+            background-attachment: fixed;
+            color: var(--text-primary);
+            overflow-x: hidden;
+            transition: background 1s var(--ease);
+            -webkit-font-smoothing: antialiased;
+            -moz-osx-font-smoothing: grayscale;
+            line-height: 1.5;
+        }
+
+        body::before {
+            content: '';
+            position: fixed;
+            inset: 0;
+            background:
+                radial-gradient(circle at 25% 25%, var(--accent-glow), transparent 35%),
+                radial-gradient(circle at 75% 75%, var(--accent-glow), transparent 35%);
+            opacity: 0.25;
+            pointer-events: none;
+            z-index: 0;
+            transition: opacity 1s var(--ease), background 1s var(--ease);
+        }
+
+        button, input {
+            font: inherit;
+            color: inherit;
+            background: none;
+            border: none;
+            outline: none;
+        }
+        button { cursor: pointer; }
+
+        /* Canvas */
+        #weather-canvas {
+            position: fixed;
+            inset: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: 1;
+            opacity: 0.8;
+            transition: opacity 0.6s var(--ease);
+            will-change: transform;
+        }
+        @media (prefers-reduced-motion: reduce) {
+            #weather-canvas { display: none; }
+        }
+
+        .app {
+            position: relative;
+            z-index: 2;
+            max-width: var(--content-max);
+            margin: 0 auto;
+            padding: calc(var(--space-6) + var(--safe-top)) var(--space-4) var(--space-4);
+            display: flex;
+            flex-direction: column;
+            gap: var(--space-5);
+        }
+
+        /* 顶栏 */
+        .topbar {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            opacity: 0;
+            transform: translateY(-12px);
+            animation: fadeInDown 0.7s var(--ease-out) 0.1s forwards;
+        }
+
+        .brand {
+            display: flex;
+            align-items: center;
+            gap: var(--space-2);
+            font-weight: 700;
+            font-size: var(--fs-lg);
+            letter-spacing: -0.02em;
+            color: var(--text-primary);
+        }
+
+        .brand-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: var(--accent-gradient);
+            box-shadow: 0 0 14px var(--accent-glow);
+            animation: pulse-glow 2.5s ease-in-out infinite;
+        }
+
+        .topbar-meta {
+            display: flex;
+            align-items: center;
+            gap: var(--space-3);
+        }
+
+        .badge {
+            display: inline-flex;
+            align-items: center;
+            gap: var(--space-1);
+            padding: var(--space-1) var(--space-3);
+            background: var(--glass-1);
+            border: 1px solid var(--border-1);
+            border-radius: var(--r-pill);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            font-size: var(--fs-xs);
+            color: var(--text-secondary);
+            transition: all var(--dur-normal) var(--ease);
+        }
+
+        .badge .dot {
+            width: 6px;
+            height: 6px;
+            border-radius: 50%;
+            background: var(--success);
+            box-shadow: 0 0 8px rgba(52, 211, 153, 0.5);
+            animation: pulse-glow 2s ease-in-out infinite;
+        }
+
+        .badge.ipv6 .dot {
+            background: var(--accent);
+            box-shadow: 0 0 8px var(--accent-glow);
+        }
+
+        /* 搜索 */
+        .search {
+            display: flex;
+            gap: var(--space-2);
+            position: relative;
+            z-index: 100;
+            opacity: 0;
+            transform: translateY(16px);
+            animation: fadeInUp 0.7s var(--ease-out) 0.18s forwards;
+        }
+
+        .search-box { flex: 1; position: relative; z-index: 101; }
+
+        .search-input {
+            width: 100%;
+            height: 52px;
+            padding: 0 var(--space-10) 0 3rem;
+            border: 1px solid var(--border-2);
+            border-radius: var(--r-lg);
+            background: var(--glass-2);
+            color: var(--text-primary);
+            font-size: var(--fs-base);
+            outline: none;
+            transition: all var(--dur-normal) var(--ease);
+            backdrop-filter: blur(20px) saturate(160%);
+            -webkit-backdrop-filter: blur(20px) saturate(160%);
+        }
+
+        .search-input::placeholder { color: var(--text-tertiary); }
+        .search-input:hover { background: var(--glass-3); border-color: var(--border-3); }
+        .search-input:focus {
+            border-color: var(--accent);
+            background: var(--glass-3);
+            box-shadow: 0 0 0 4px var(--accent-glow), 0 12px 32px rgba(0, 0, 0, 0.2);
+        }
+
+        .search-icon {
+            position: absolute;
+            left: 1.1rem;
+            top: 50%;
+            transform: translateY(-50%);
+            color: var(--text-tertiary);
+            transition: color var(--dur-normal) var(--ease);
+            display: flex;
+            pointer-events: none;
+        }
+        .search-input:focus ~ .search-icon { color: var(--accent); }
+
+        .search-shortcut {
+            position: absolute;
+            right: 1rem;
+            top: 50%;
+            transform: translateY(-50%);
+            padding: var(--space-1) var(--space-2);
+            background: var(--glass-3);
+            border: 1px solid var(--border-2);
+            border-radius: var(--r-xs);
+            font-size: 0.7rem;
+            color: var(--text-muted);
+            font-family: var(--font-mono);
+            transition: opacity var(--dur-normal) var(--ease);
+            pointer-events: none;
+        }
+        .search-input:focus ~ .search-shortcut { opacity: 0; }
+
+        .btn {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: var(--space-2);
+            height: 52px;
+            padding: 0 var(--space-5);
+            border-radius: var(--r-lg);
+            font-size: var(--fs-sm);
+            font-weight: 600;
+            cursor: pointer;
+            transition: all var(--dur-normal) var(--ease);
+            white-space: nowrap;
+            user-select: none;
+        }
+
+        .btn-primary {
+            background: var(--accent-gradient);
+            color: var(--white);
+            box-shadow: 0 6px 20px var(--accent-glow);
+        }
+        .btn-primary:hover { transform: translateY(-2px); box-shadow: 0 10px 28px var(--accent-glow), 0 0 0 1px rgba(255, 255, 255, 0.15) inset; }
+        .btn-primary:active { transform: translateY(0) scale(0.97); }
+
+        .btn-ghost {
+            width: 52px;
+            height: 52px;
+            padding: 0;
+            background: var(--glass-2);
+            color: var(--text-secondary);
+            border: 1px solid var(--border-2);
+        }
+        .btn-ghost:hover { background: var(--glass-3); color: var(--text-primary); transform: translateY(-2px); border-color: var(--border-3); }
+        .btn-ghost:active { transform: translateY(0) scale(0.97); }
+        .btn-ghost.spinning svg { animation: spin 0.8s linear infinite; }
+
+        /* 历史下拉 */
+        .history {
+            position: absolute;
+            top: calc(100% + var(--space-2));
+            left: 0;
+            right: 0;
+            background: var(--overlay-bg);
+            backdrop-filter: blur(40px) saturate(200%);
+            -webkit-backdrop-filter: blur(40px) saturate(200%);
+            border: 1px solid var(--border-2);
+            border-radius: var(--r-lg);
+            padding: var(--space-2);
+            z-index: 9999;
+            display: none;
+            max-height: 260px;
+            overflow-y: auto;
+            overscroll-behavior: contain;
+            box-shadow: 0 32px 80px rgba(0, 0, 0, 0.55);
+            pointer-events: auto;
+        }
+        .history.show { display: block; animation: scaleIn 0.25s var(--ease-spring); transform-origin: top center; }
+
+        .history-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: var(--space-2) var(--space-3);
+            font-size: var(--fs-xs);
+            color: var(--text-tertiary);
+        }
+
+        .history-clear {
+            color: var(--text-tertiary);
+            font-size: var(--fs-xs);
+            padding: var(--space-1) var(--space-2);
+            border-radius: var(--r-xs);
+            transition: all var(--dur-fast) var(--ease);
+        }
+        .history-clear:hover { color: var(--danger); background: rgba(248, 113, 113, 0.12); }
+
+        .history-item {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: var(--space-3);
+            border-radius: var(--r-md);
+            cursor: pointer;
+            font-size: var(--fs-sm);
+            color: var(--text-secondary);
+            transition: all var(--dur-fast) var(--ease);
+        }
+        .history-item:hover { background: var(--glass-3); color: var(--text-primary); transform: translateX(4px); }
+        .history-item .h-label { display: flex; align-items: center; gap: var(--space-2); }
+        .history-item .h-label svg { width: 16px; height: 16px; color: var(--accent); }
+        .history-item .h-remove {
+            width: 26px;
+            height: 26px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: var(--text-muted);
+            border-radius: 50%;
+            transition: all var(--dur-fast) var(--ease);
+            opacity: 0;
+        }
+        .history-item .h-remove svg { width: 14px; height: 14px; }
+        .history-item:hover .h-remove { opacity: 1; }
+        .history-item .h-remove:hover { color: var(--danger); background: rgba(248, 113, 113, 0.15); }
+
+        /* 玻璃卡片 */
+        .glass {
+            background: var(--glass-2);
+            border: 1px solid var(--border-2);
+            border-radius: var(--r-xl);
+            backdrop-filter: blur(24px) saturate(160%);
+            -webkit-backdrop-filter: blur(24px) saturate(160%);
+            box-shadow:
+                0 4px 24px rgba(0, 0, 0, 0.12),
+                inset 0 1px 0 rgba(255, 255, 255, 0.06);
+            transition: all var(--dur-slow) var(--ease);
+        }
+        @supports not (backdrop-filter: blur(1px)) {
+            .glass { background: rgba(17, 24, 39, 0.92); }
+        }
+        .glass:hover {
+            border-color: var(--border-3);
+            box-shadow:
+                0 8px 32px rgba(0, 0, 0, 0.18),
+                inset 0 1px 0 rgba(255, 255, 255, 0.08);
+        }
+        .glass-strong { background: var(--glass-3); border-color: var(--border-3); }
+
+        /* 主体网格 */
+        .main-grid {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: var(--space-5);
+            opacity: 0;
+            transform: translateY(20px);
+            animation: fadeInUp 0.7s var(--ease-out) 0.26s forwards;
+        }
+
+        /* 当前天气主卡 */
+        .current-card {
+            grid-column: 1;
+            padding: var(--space-6);
+            display: flex;
+            flex-direction: column;
+            gap: var(--space-4);
+            position: relative;
+            overflow: hidden;
+            min-width: 0;
+            align-self: start;
+        }
+        .current-card::before {
+            content: '';
+            position: absolute;
+            top: -50%;
+            right: -20%;
+            width: min(400px, 80%);
+            height: min(400px, 80%);
+            background: radial-gradient(circle, var(--accent-glow), transparent 60%);
+            opacity: 0.4;
+            pointer-events: none;
+            animation: aura-drift 12s ease-in-out infinite;
+        }
+
+        .current-head {
+            display: flex;
+            align-items: flex-start;
+            justify-content: space-between;
+            gap: var(--space-3);
+            position: relative;
+            z-index: 1;
+            min-width: 0;
+        }
+
+        .location { display: flex; flex-direction: column; gap: var(--space-1); min-width: 0; flex: 1; }
+        .location-city {
+            font-size: var(--fs-3xl);
+            font-weight: 700;
+            letter-spacing: -0.03em;
+            display: flex;
+            align-items: center;
+            gap: var(--space-2);
+            color: var(--text-primary);
+            flex-wrap: wrap;
+            row-gap: var(--space-1);
+            min-width: 0;
+        }
+        .location-city > span:first-child {
+            word-break: keep-all;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+        .location-meta {
+            font-size: var(--fs-sm);
+            color: var(--text-secondary);
+            display: flex;
+            align-items: center;
+            gap: var(--space-2);
+            flex-wrap: wrap;
+        }
+        .location-meta svg { width: 14px; height: 14px; }
+
+        .provider-badge, .ipv6-badge, .country-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 3px;
+            padding: 2px 8px;
+            background: var(--glass-3);
+            border: 1px solid var(--border-2);
+            border-radius: var(--r-pill);
+            font-size: 0.65rem;
+            font-weight: 600;
+            color: var(--text-secondary);
+            letter-spacing: 0.02em;
+            flex-shrink: 0;
+            white-space: nowrap;
+        }
+        .provider-badge svg, .ipv6-badge svg, .country-badge svg {
+            width: 10px;
+            height: 10px;
+            flex-shrink: 0;
+        }
+        .provider-badge { color: var(--accent); }
+        .ipv6-badge { color: var(--success); border-color: rgba(52, 211, 153, 0.25); }
+        .ipv6-badge .ipv6-text { display: none; }
+        .country-badge { text-transform: uppercase; }
+
+        .weather-icon-wrap {
+            position: relative;
+            width: clamp(72px, 15vw, 140px);
+            height: clamp(72px, 15vw, 140px);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+        }
+        .weather-icon-wrap::before {
+            content: '';
+            position: absolute;
+            inset: 0;
+            background: radial-gradient(circle, var(--accent-glow), transparent 65%);
+            border-radius: 50%;
+            animation: aura-pulse 4s ease-in-out infinite;
+        }
+        .weather-icon-wrap svg {
+            position: relative;
+            z-index: 1;
+            width: 75%;
+            height: 75%;
+            max-width: 100%;
+            max-height: 100%;
+            filter: drop-shadow(0 8px 24px rgba(0, 0, 0, 0.2));
+            box-sizing: border-box;
+        }
+
+        .current-temp {
+            display: flex;
+            align-items: flex-start;
+            gap: var(--space-1);
+            position: relative;
+            z-index: 1;
+        }
+        .temp-value {
+            font-size: var(--fs-display);
+            font-weight: 200;
+            line-height: 0.95;
+            letter-spacing: -0.05em;
+            font-variant-numeric: tabular-nums;
+            background: linear-gradient(180deg, var(--text-primary) 0%, var(--text-secondary) 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+        .temp-unit {
+            font-size: clamp(1.25rem, 3vw, 2rem);
+            color: var(--text-secondary);
+            font-weight: 300;
+            margin-top: var(--space-2);
+        }
+
+        .current-desc {
+            font-size: var(--fs-lg);
+            color: var(--text-secondary);
+            font-weight: 500;
+            display: flex;
+            align-items: center;
+            gap: var(--space-2);
+            flex-wrap: wrap;
+            position: relative;
+            z-index: 1;
+        }
+        .current-feel {
+            font-size: var(--fs-sm);
+            color: var(--text-tertiary);
+            display: flex;
+            align-items: center;
+            gap: var(--space-2);
+            flex-wrap: wrap;
+            position: relative;
+            z-index: 1;
+            margin-top: calc(var(--space-1) * -1);
+        }
+
+        .current-range {
+            margin-top: var(--space-2);
+            position: relative;
+            z-index: 1;
+        }
+        .current-range .range-row {
+            display: flex;
+            align-items: center;
+            gap: var(--space-3);
+        }
+        .current-range .range-low,
+        .current-range .range-high {
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            font-size: var(--fs-sm);
+            font-weight: 600;
+            white-space: nowrap;
+            font-variant-numeric: tabular-nums;
+        }
+        .current-range .range-low { color: #60a5fa; }
+        .current-range .range-low svg { width: 12px; height: 12px; }
+        .current-range .range-high { color: #f87171; }
+        .current-range .range-high svg { width: 12px; height: 12px; }
+        .current-range .range-desc {
+            font-size: 0.7rem;
+            color: var(--text-muted);
+            margin-top: var(--space-2);
+            text-align: center;
+        }
+
+        .comfor-bar {
+            display: inline-flex;
+            align-items: center;
+            gap: var(--space-1);
+            padding: var(--space-1) var(--space-3);
+            background: var(--glass-3);
+            border: 1px solid var(--border-2);
+            border-radius: var(--r-pill);
+            font-size: var(--fs-xs);
+            font-weight: 500;
+            color: var(--text-secondary);
+        }
+        .comfor-dot {
+            width: 6px;
+            height: 6px;
+            border-radius: 50%;
+            background: var(--success);
+        }
+        .comfor-dot.warm { background: var(--warning); }
+        .comfor-dot.hot { background: var(--danger); }
+        .comfor-dot.cold { background: var(--accent); }
+
+        .temp-range {
+            display: flex;
+            align-items: center;
+            gap: var(--space-3);
+            margin-top: var(--space-2);
+            color: var(--text-secondary);
+            font-size: var(--fs-sm);
+            position: relative;
+            z-index: 1;
+        }
+        .temp-bar {
+            flex: 1;
+            max-width: 220px;
+            height: 6px;
+            background: var(--glass-3);
+            border-radius: var(--r-pill);
+            position: relative;
+            overflow: visible;
+        }
+        .temp-bar-fill {
+            position: absolute;
+            top: 0;
+            bottom: 0;
+            left: 0;
+            background: linear-gradient(90deg, #60a5fa, var(--accent), #f87171);
+            border-radius: var(--r-pill);
+            transform-origin: left;
+            animation: bar-grow 1s var(--ease-out) forwards;
+        }
+        .temp-bar-current {
+            position: absolute;
+            top: 50%;
+            width: 10px;
+            height: 10px;
+            background: var(--text-primary);
+            border: 2px solid var(--bg-surface);
+            border-radius: 50%;
+            transform: translate(-50%, -50%);
+            box-shadow: 0 0 8px var(--accent-glow);
+            z-index: 2;
+        }
+
+        /* 详情网格 */
+        .detail-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: var(--space-3);
+            position: relative;
+            z-index: 1;
+        }
+
+        .detail-card {
+            background: var(--glass-1);
+            border: 1px solid var(--border-1);
+            border-radius: var(--r-lg);
+            padding: var(--space-3);
+            transition: all var(--dur-normal) var(--ease);
+            position: relative;
+            overflow: hidden;
+            min-width: 0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            text-align: center;
+        }
+        .detail-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, var(--accent-glow), transparent);
+            opacity: 0.3;
+            transition: left 0.8s var(--ease);
+        }
+        .detail-card:hover { background: var(--glass-2); transform: translateY(-3px); border-color: var(--border-2); }
+        .detail-card:hover::before { left: 100%; }
+        .detail-card .dc-icon {
+            width: 32px;
+            height: 32px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: var(--glass-3);
+            border: 1px solid var(--border-2);
+            border-radius: var(--r-md);
+            margin-bottom: var(--space-2);
+            color: var(--accent);
+            transition: all var(--dur-normal) var(--ease);
+        }
+        .detail-card:hover .dc-icon { transform: scale(1.1); background: var(--glass-4); }
+        .detail-card .dc-icon svg { width: 18px; height: 18px; }
+        .detail-card .dc-value {
+            font-size: var(--fs-base);
+            font-weight: 600;
+            color: var(--text-primary);
+            font-variant-numeric: tabular-nums;
+            display: flex;
+            align-items: baseline;
+            justify-content: center;
+            gap: var(--space-1);
+            flex-wrap: wrap;
+        }
+        .detail-card .dc-label {
+            font-size: var(--fs-xs);
+            color: var(--text-tertiary);
+            margin-top: var(--space-1);
+        }
+        .detail-card .dc-extra {
+            font-size: var(--fs-xs);
+            color: var(--text-secondary);
+            margin-top: var(--space-2);
+            display: flex;
+            align-items: center;
+            gap: var(--space-1);
+            font-weight: 500;
+        }
+        .detail-card .dc-bar {
+            flex: 1;
+            height: 3px;
+            background: var(--glass-3);
+            border-radius: var(--r-pill);
+            overflow: hidden;
+            margin-top: var(--space-3);
+        }
+        .detail-card .dc-bar-fill {
+            height: 100%;
+            background: var(--accent-gradient);
+            border-radius: var(--r-pill);
+            transition: width 1s var(--ease-out);
+        }
+
+        /* AQI 卡片 */
+        .aqi-card {
+            grid-column: 1 / -1;
+            display: flex;
+            align-items: center;
+            gap: var(--space-4);
+            padding: var(--space-3) var(--space-4);
+            background: linear-gradient(135deg, rgba(255,255,255,0.08), rgba(255,255,255,0.04));
+            border: 1px solid var(--border-2);
+            border-radius: var(--r-lg);
+            position: relative;
+            overflow: hidden;
+            transition: all var(--dur-normal) var(--ease);
+            min-width: 0;
+        }
+        .aqi-card::before {
+            content: '';
+            position: absolute;
+            inset: 0;
+            background: radial-gradient(circle at 90% 50%, var(--aqi-glow, transparent), transparent 60%);
+            opacity: 0.6;
+            pointer-events: none;
+        }
+        .aqi-ring {
+            width: 64px;
+            height: 64px;
+            flex-shrink: 0;
+            position: relative;
+            z-index: 1;
+        }
+        .aqi-ring svg { transform: rotate(-90deg); }
+        .aqi-ring .track { fill: none; stroke: var(--glass-3); stroke-width: 6; }
+        .aqi-ring .progress {
+            fill: none;
+            stroke: var(--aqi-color, var(--text-secondary));
+            stroke-width: 6;
+            stroke-linecap: round;
+            stroke-dasharray: 176;
+            stroke-dashoffset: 176;
+            transition: stroke-dashoffset 1s var(--ease-out);
+        }
+        .aqi-ring-text {
+            position: absolute;
+            inset: 0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            font-weight: 700;
+            font-size: var(--fs-lg);
+            color: var(--aqi-color, var(--text-primary));
+        }
+        .aqi-ring-text small {
+            font-size: 0.65rem;
+            font-weight: 500;
+            color: var(--text-tertiary);
+        }
+        .aqi-info { flex: 1; position: relative; z-index: 1; }
+        .aqi-info .aqi-level {
+            font-size: var(--fs-lg);
+            font-weight: 600;
+            color: var(--aqi-color, var(--text-primary));
+            margin-bottom: var(--space-1);
+        }
+        .aqi-info .aqi-desc {
+            font-size: var(--fs-xs);
+            color: var(--text-secondary);
+            line-height: 1.5;
+        }
+        .aqi-pollutants {
+            display: flex;
+            gap: var(--space-3);
+            margin-top: var(--space-2);
+            flex-wrap: wrap;
+        }
+        .aqi-pollutant {
+            font-size: var(--fs-xs);
+            color: var(--text-tertiary);
+        }
+        .aqi-pollutant strong {
+            color: var(--text-secondary);
+            font-weight: 600;
+            margin-left: var(--space-1);
+        }
+
+        /* 左右列容器 */
+        .main-left { display: flex; flex-direction: column; gap: var(--space-5); min-width: 0; }
+        .main-right { display: flex; flex-direction: column; gap: var(--space-5); min-width: 0; }
+
+        /* 右侧栏 */
+        .side-col { display: flex; flex-direction: column; gap: var(--space-5); min-width: 0; }
+
+        .section-head {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: var(--space-4);
+        }
+        .section-title {
+            display: flex;
+            align-items: center;
+            gap: var(--space-2);
+            font-size: var(--fs-sm);
+            font-weight: 600;
+            color: var(--text-secondary);
+            letter-spacing: 0.02em;
+        }
+        .section-title svg { width: 16px; height: 16px; color: var(--accent); }
+        .section-action {
+            font-size: var(--fs-xs);
+            color: var(--text-tertiary);
+            padding: var(--space-1) var(--space-3);
+            border-radius: var(--r-pill);
+            background: var(--glass-1);
+            border: 1px solid var(--border-1);
+            transition: all var(--dur-fast) var(--ease);
+        }
+        .section-action:hover { color: var(--text-primary); background: var(--glass-2); }
+
+        .reveal {
+            opacity: 0;
+            transform: translateY(20px) scale(0.98);
+            animation: fadeInUp 0.6s var(--ease-out) forwards;
+        }
+        .reveal.d1 { animation-delay: 0.35s; }
+        .reveal.d2 { animation-delay: 0.45s; }
+        .reveal.d3 { animation-delay: 0.55s; }
+        .reveal.d4 { animation-delay: 0.65s; }
+        .reveal.d5 { animation-delay: 0.75s; }
+
+        /* 面板 */
+        .panel { padding: var(--space-5); }
+
+        /* 小时预报 */
+        .hourly-scroll {
+            display: flex;
+            gap: var(--space-3);
+            overflow-x: auto;
+            padding: var(--space-1) var(--space-1) var(--space-4);
+            scroll-snap-type: x mandatory;
+            scrollbar-width: thin;
+            scrollbar-color: var(--glass-3) transparent;
+            -webkit-overflow-scrolling: touch;
+            cursor: grab;
+        }
+        .hourly-scroll:active { cursor: grabbing; }
+        .hourly-scroll::-webkit-scrollbar { height: 4px; }
+        .hourly-scroll::-webkit-scrollbar-track { background: transparent; }
+        .hourly-scroll::-webkit-scrollbar-thumb { background: var(--glass-3); border-radius: 2px; }
+        .hourly-scroll::-webkit-scrollbar-thumb:hover { background: var(--glass-4); }
+
+        .hour-card {
+            flex: 0 0 auto;
+            min-width: 76px;
+            padding: var(--space-4) var(--space-3);
+            background: var(--glass-1);
+            border: 1px solid var(--border-1);
+            border-radius: var(--r-lg);
+            text-align: center;
+            scroll-snap-align: start;
+            transition: all var(--dur-normal) var(--ease);
+            cursor: pointer;
+            position: relative;
+        }
+        .hour-card:hover { background: var(--glass-2); transform: translateY(-3px); border-color: var(--border-2); }
+        .hour-card.now { background: var(--glass-3); border-color: var(--accent); box-shadow: 0 0 20px var(--accent-glow); }
+        .hour-card.now .h-time { color: var(--accent); font-weight: 600; }
+        .hour-card .h-time {
+            font-size: var(--fs-xs);
+            color: var(--text-tertiary);
+            margin-bottom: var(--space-2);
+            font-variant-numeric: tabular-nums;
+        }
+        .hour-card .h-icon {
+            width: 32px;
+            height: 32px;
+            margin: var(--space-2) auto;
+            color: var(--accent);
+        }
+        .hour-card .h-temp {
+            font-size: var(--fs-sm);
+            font-weight: 600;
+            margin-top: var(--space-2);
+            color: var(--text-primary);
+            font-variant-numeric: tabular-nums;
+        }
+        .hour-card .h-pop {
+            font-size: 0.65rem;
+            color: var(--accent);
+            margin-top: 2px;
+            font-weight: 600;
+        }
+        .hour-card .h-pop:empty { display: none; }
+
+        /* 多日预报 */
+        .forecast-list { display: flex; flex-direction: column; gap: var(--space-2); }
+        .forecast-item {
+            display: grid;
+            grid-template-columns: 56px 36px 1fr auto;
+            align-items: center;
+            gap: var(--space-3);
+            padding: var(--space-3) var(--space-4);
+            background: var(--glass-1);
+            border: 1px solid var(--border-1);
+            border-radius: var(--r-md);
+            transition: all var(--dur-normal) var(--ease);
+            min-width: 0;
+        }
+        .forecast-item:hover { background: var(--glass-2); transform: translateX(4px); border-color: var(--border-2); }
+        .forecast-item .f-day {
+            font-size: var(--fs-sm);
+            font-weight: 600;
+            color: var(--text-primary);
+        }
+        .forecast-item .f-day small {
+            display: block;
+            font-size: var(--fs-xs);
+            color: var(--text-tertiary);
+            font-weight: 400;
+            margin-top: 2px;
+        }
+        .forecast-item .f-icon { display: flex; align-items: center; justify-content: center; color: var(--accent); }
+        .forecast-item .f-icon svg { width: 28px; height: 28px; }
+        .forecast-item .f-desc {
+            font-size: var(--fs-sm);
+            color: var(--text-secondary);
+            min-width: 0;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+        .forecast-item .f-pop {
+            font-size: 0.7rem;
+            color: var(--accent);
+            margin-top: 2px;
+        }
+        .forecast-item .f-temps {
+            display: flex;
+            align-items: center;
+            gap: var(--space-2);
+            font-size: var(--fs-sm);
+            font-variant-numeric: tabular-nums;
+        }
+        .forecast-item .f-temp-low { color: var(--text-tertiary); }
+        .forecast-item .f-temp-high { color: var(--text-primary); font-weight: 600; }
+        .forecast-item .f-bar {
+            grid-column: 1 / -1;
+            height: 4px;
+            background: var(--glass-3);
+            border-radius: var(--r-pill);
+            position: relative;
+            overflow: hidden;
+        }
+        .forecast-item .f-bar-fill {
+            position: absolute;
+            top: 0;
+            bottom: 0;
+            background: linear-gradient(90deg, #60a5fa, var(--accent), #f87171);
+            border-radius: var(--r-pill);
+            transition: all 0.8s var(--ease-out);
+        }
+
+        /* 生活建议（独立卡片，左栏第二行） */
+        .life-tips-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: var(--space-3);
+        }
+        .life-tip-card {
+            background: var(--glass-1);
+            border: 1px solid var(--border-1);
+            border-radius: var(--r-lg);
+            padding: var(--space-4);
+            transition: all var(--dur-normal) var(--ease);
+            position: relative;
+            overflow: hidden;
+            min-width: 0;
+        }
+        .life-tip-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, var(--accent-glow), transparent);
+            opacity: 0.2;
+            transition: left 0.8s var(--ease);
+        }
+        .life-tip-card:hover { background: var(--glass-2); transform: translateY(-3px); border-color: var(--border-2); }
+        .life-tip-card:hover::before { left: 100%; }
+        .life-tip-card .lt-icon {
+            width: 36px;
+            height: 36px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: var(--glass-3);
+            border: 1px solid var(--border-2);
+            border-radius: var(--r-md);
+            margin-bottom: var(--space-3);
+            color: var(--accent);
+            transition: all var(--dur-normal) var(--ease);
+            font-size: 18px;
+        }
+        .life-tip-card:hover .lt-icon { transform: scale(1.1); background: var(--glass-4); }
+        .life-tip-card .lt-title {
+            font-size: var(--fs-xs);
+            color: var(--text-tertiary);
+            margin-bottom: var(--space-1);
+            font-weight: 500;
+        }
+        .life-tip-card .lt-value {
+            font-size: var(--fs-sm);
+            font-weight: 600;
+            color: var(--text-primary);
+            margin-bottom: var(--space-1);
+        }
+        .life-tip-card .lt-desc {
+            font-size: 0.7rem;
+            color: var(--text-tertiary);
+            line-height: 1.4;
+        }
+
+        /* 日出日落弧线模块 */
+        .sun-arc-panel { padding: var(--space-5); }
+        .sun-arc-wrap { display: flex; flex-direction: column; align-items: center; gap: var(--space-3); }
+        .sun-arc-svg { width: 100%; max-width: 280px; height: auto; }
+        .sun-arc-labels {
+            display: flex;
+            justify-content: space-between;
+            width: 100%;
+            gap: var(--space-4);
+        }
+        .sun-arc-item {
+            display: flex;
+            align-items: center;
+            gap: var(--space-2);
+        }
+        .sun-arc-icon { display: flex; color: var(--accent); }
+        .sun-arc-icon svg { width: 20px; height: 20px; }
+        .sun-arc-time { font-size: var(--fs-base); font-weight: 600; color: var(--text-primary); font-variant-numeric: tabular-nums; }
+        .sun-arc-text { font-size: var(--fs-xs); color: var(--text-tertiary); }
+
+        /* 加载 / 空 / 错 */
+        .skeleton-card {
+            padding: var(--space-6);
+            display: flex;
+            flex-direction: column;
+            gap: var(--space-5);
+        }
+        .sk {
+            background: linear-gradient(105deg, var(--glass-1) 0%, var(--glass-3) 50%, var(--glass-1) 100%);
+            background-size: 200% 100%;
+            border-radius: var(--r-md);
+            animation: shimmer 1.5s ease-in-out infinite;
+        }
+        .sk-circle { width: 96px; height: 96px; border-radius: 50%; }
+        .sk-line { height: 16px; }
+        .sk-line.lg { height: 56px; width: 45%; }
+        .sk-line.sm { width: 30%; height: 12px; }
+        .sk-line.md { width: 65%; }
+
+        .empty {
+            text-align: center;
+            padding: var(--space-12) var(--space-6);
+            color: var(--text-secondary);
+        }
+        .empty-icon {
+            width: 88px;
+            height: 88px;
+            margin: 0 auto var(--space-5);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: var(--glass-2);
+            border: 1px solid var(--border-2);
+            border-radius: 50%;
+            color: var(--accent);
+            animation: float 4s ease-in-out infinite;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.15);
+        }
+        .empty-icon svg { width: 48px; height: 48px; }
+        .empty h3 { font-size: var(--fs-xl); margin-bottom: var(--space-2); color: var(--text-primary); font-weight: 600; }
+        .empty p { font-size: var(--fs-sm); color: var(--text-tertiary); margin-bottom: var(--space-5); max-width: 320px; margin-left: auto; margin-right: auto; }
+        .quick-cities {
+            display: flex;
+            flex-wrap: wrap;
+            gap: var(--space-2);
+            justify-content: center;
+            margin-top: var(--space-4);
+        }
+        .quick-city {
+            padding: var(--space-2) var(--space-4);
+            background: var(--glass-1);
+            border: 1px solid var(--border-1);
+            border-radius: var(--r-pill);
+            color: var(--text-secondary);
+            font-size: var(--fs-xs);
+            font-weight: 500;
+            transition: all var(--dur-normal) var(--ease);
+        }
+        .quick-city:hover {
+            background: var(--glass-3);
+            color: var(--text-primary);
+            transform: translateY(-2px);
+            border-color: var(--accent);
+            box-shadow: 0 4px 14px rgba(0, 0, 0, 0.15);
+        }
+
+        .error {
+            text-align: center;
+            padding: var(--space-8) var(--space-6);
+            background: rgba(248, 113, 113, 0.08);
+            border: 1px solid rgba(248, 113, 113, 0.25);
+            border-radius: var(--r-xl);
+        }
+        .error .err-icon {
+            width: 64px;
+            height: 64px;
+            margin: 0 auto var(--space-4);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: rgba(248, 113, 113, 0.15);
+            border-radius: 50%;
+            color: var(--danger);
+            animation: shake 0.5s ease-in-out;
+        }
+        .error h3 { color: var(--danger); font-size: var(--fs-lg); margin-bottom: var(--space-2); font-weight: 600; }
+        .error p { color: var(--text-secondary); font-size: var(--fs-sm); margin-bottom: var(--space-5); }
+        .error button {
+            padding: var(--space-3) var(--space-5);
+            background: var(--danger);
+            color: var(--white);
+            border-radius: var(--r-pill);
+            font-size: var(--fs-sm);
+            font-weight: 600;
+            transition: all var(--dur-normal) var(--ease);
+            box-shadow: 0 4px 14px rgba(248, 113, 113, 0.35);
+        }
+        .error button:hover { transform: translateY(-2px); box-shadow: 0 8px 24px rgba(248, 113, 113, 0.45); }
+        .error button:active { transform: translateY(0) scale(0.97); }
+
+        .loading {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: var(--space-12) var(--space-6);
+            gap: var(--space-4);
+        }
+        .spinner {
+            width: 44px;
+            height: 44px;
+            border: 3px solid var(--border-2);
+            border-top-color: var(--accent);
+            border-right-color: var(--accent-2);
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+        }
+        .loading-text {
+            color: var(--text-secondary);
+            font-size: var(--fs-sm);
+            display: flex;
+            align-items: center;
+            gap: var(--space-1);
+        }
+        .loading-dots::after {
+            content: '...';
+            display: inline-block;
+            width: 1.5em;
+            text-align: left;
+            animation: dots 1.4s steps(4) infinite;
+        }
+
+        /* Toast */
+        .toast-stack {
+            position: fixed;
+            top: calc(var(--space-4) + var(--safe-top));
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 100;
+            display: flex;
+            flex-direction: column;
+            gap: var(--space-2);
+            pointer-events: none;
+            width: min(90vw, 360px);
+        }
+        .toast {
+            display: flex;
+            align-items: center;
+            gap: var(--space-3);
+            padding: var(--space-3) var(--space-4);
+            background: var(--overlay-bg-light);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            color: var(--text-primary);
+            border: 1px solid var(--border-2);
+            border-radius: var(--r-pill);
+            font-size: var(--fs-sm);
+            box-shadow: 0 12px 36px rgba(0, 0, 0, 0.35);
+            animation: toastIn 0.35s var(--ease-spring);
+            pointer-events: auto;
+        }
+        .toast.success { border-color: rgba(52, 211, 153, 0.35); }
+        .toast.error { border-color: rgba(248, 113, 113, 0.35); }
+        .toast.removing { animation: toastOut 0.3s var(--ease) forwards; }
+        .toast .t-icon { display: flex; flex-shrink: 0; color: var(--accent); }
+        .toast.success .t-icon { color: var(--success); }
+        .toast.error .t-icon { color: var(--danger); }
+
+        /* Footer */
+        .footer {
+            text-align: center;
+            font-size: var(--fs-xs);
+            color: var(--text-muted);
+            padding: var(--space-2) 0 0;
+            opacity: 0;
+            animation: fadeInUp 0.7s var(--ease-out) 0.9s forwards;
+        }
+        .footer .author { color: var(--text-secondary); font-weight: 600; font-style: italic; }
+        .footer .sep { margin: 0 var(--space-2); opacity: 0.4; }
+        .footer a { color: var(--text-muted); text-decoration: none; transition: color var(--dur-normal) var(--ease); }
+        .footer a:hover { color: var(--text-secondary); }
+
+        /* 动画 */
+        @keyframes fadeInUp {
+            from { opacity: 0; transform: translateY(20px) scale(0.98); }
+            to { opacity: 1; transform: translateY(0) scale(1); }
+        }
+        @keyframes fadeInDown {
+            from { opacity: 0; transform: translateY(-12px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        @keyframes scaleIn {
+            from { opacity: 0; transform: scale(0.95) translateY(-8px); }
+            to { opacity: 1; transform: scale(1) translateY(0); }
+        }
+        @keyframes spin { to { transform: rotate(360deg); } }
+        @keyframes pulse-glow {
+            0%, 100% { opacity: 1; transform: scale(1); box-shadow: 0 0 12px var(--accent-glow); }
+            50% { opacity: 0.7; transform: scale(1.25); box-shadow: 0 0 20px var(--accent-glow); }
+        }
+        @keyframes float { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-10px); } }
+        @keyframes aura-pulse { 0%, 100% { opacity: 0.4; transform: scale(1); } 50% { opacity: 0.7; transform: scale(1.08); } }
+        @keyframes aura-drift {
+            0%, 100% { transform: translate(0, 0) rotate(0deg); }
+            33% { transform: translate(20px, -20px) rotate(5deg); }
+            66% { transform: translate(-10px, 15px) rotate(-3deg); }
+        }
+        @keyframes shimmer { 0% { background-position: 200% 0; } 100% { background-position: -200% 0; } }
+        @keyframes dots {
+            0%, 20% { content: '.'; }
+            40% { content: '..'; }
+            60%, 100% { content: '...'; }
+        }
+        @keyframes toastIn {
+            from { opacity: 0; transform: translateY(-20px) scale(0.92); }
+            to { opacity: 1; transform: translateY(0) scale(1); }
+        }
+        @keyframes toastOut { to { opacity: 0; transform: translateY(-20px) scale(0.92); } }
+        @keyframes dataFade {
+            from { opacity: 0; transform: translateY(12px); filter: blur(4px); }
+            to { opacity: 1; transform: translateY(0); filter: blur(0); }
+        }
+        @keyframes bar-grow { from { transform: scaleX(0); } to { transform: scaleX(1); } }
+        @keyframes shake {
+            0%, 100% { transform: translateX(0); }
+            20% { transform: translateX(-6px); }
+            40% { transform: translateX(6px); }
+            60% { transform: translateX(-4px); }
+            80% { transform: translateX(4px); }
+        }
+        @keyframes sunRotate { to { transform: rotate(360deg); } }
+        @keyframes cloudDrift { 0%, 100% { transform: translateX(0); } 50% { transform: translateX(8px); } }
+        @keyframes rainFall { 0% { transform: translateY(0); opacity: 1; } 100% { transform: translateY(14px); opacity: 0; } }
+        @keyframes snowFall { 0% { transform: translateY(0) rotate(0deg); opacity: 1; } 100% { transform: translateY(14px) rotate(180deg); opacity: 0; } }
+        @keyframes lightning { 0%, 95%, 100% { opacity: 0; } 96%, 99% { opacity: 0.9; } }
+
+        @media (prefers-reduced-motion: reduce) {
+            *, *::before, *::after {
+                animation-duration: 0.01ms !important;
+                animation-iteration-count: 1 !important;
+                transition-duration: 0.01ms !important;
+            }
+            #weather-canvas { display: none; }
+        }
+
+        /* 响应式 */
+        @media (max-width: 480px) {
+            :root { --fs-display: clamp(3.5rem, 18vw, 4.5rem); }
+            .app {
+                padding: calc(var(--space-4) + var(--safe-top)) var(--space-3) var(--space-4);
+                gap: var(--space-4);
+            }
+            .badge .update-text { display: none; }
+            #last-update::after {
+                content: attr(data-time);
+                font-size: var(--fs-xs);
+                color: var(--text-secondary);
+            }
+            #net-badge::after {
+                content: attr(data-status);
+                font-size: var(--fs-xs);
+                color: var(--text-secondary);
+            }
+            .current-card {
+                padding: var(--space-5);
+                gap: var(--space-5);
+            }
+            .current-head {
+                flex-direction: column;
+                gap: var(--space-3);
+            }
+            .weather-icon-wrap {
+                width: 72px;
+                height: 72px;
+                align-self: flex-end;
+                margin-top: -60px;
+            }
+            .detail-grid { grid-template-columns: repeat(2, 1fr); gap: var(--space-2); }
+            .detail-card { padding: var(--space-3); }
+            .detail-card .dc-value { font-size: var(--fs-base); }
+            .detail-card .dc-icon { width: 32px; height: 32px; margin-bottom: var(--space-2); }
+            .detail-card .dc-icon svg { width: 16px; height: 16px; }
+            .aqi-card { flex-direction: column; align-items: flex-start; gap: var(--space-3); }
+            .panel { padding: var(--space-4); }
+            .search {
+                flex-wrap: nowrap;
+                gap: var(--space-2);
+            }
+            .search-input {
+                height: 48px;
+                padding: 0 2.75rem 0 2.5rem;
+                font-size: var(--fs-base);
+                min-width: 0;
+            }
+            .search-icon { left: 0.9rem; }
+            .search-shortcut { display: none; }
+            .btn { height: 48px; padding: 0 var(--space-4); }
+            .btn-ghost { width: 48px; height: 48px; padding: 0; flex-shrink: 0; }
+            .forecast-item {
+                grid-template-columns: 44px 28px 1fr auto;
+                gap: var(--space-2);
+                padding: var(--space-3);
+            }
+            .forecast-item .f-icon svg { width: 22px; height: 22px; }
+            .forecast-item .f-day { font-size: var(--fs-xs); }
+            .forecast-item .f-day small { font-size: 0.6rem; }
+            .forecast-item .f-desc { font-size: var(--fs-xs); }
+            .forecast-item .f-temps { font-size: var(--fs-xs); }
+            .hour-card { min-width: 64px; padding: var(--space-3) var(--space-2); }
+            .location-city { font-size: var(--fs-2xl); }
+            /* 移动端减少 backdrop-filter 开销 */
+            .glass { backdrop-filter: blur(16px) saturate(130%); -webkit-backdrop-filter: blur(16px) saturate(130%); }
+            .search-input { backdrop-filter: blur(12px) saturate(130%); -webkit-backdrop-filter: blur(12px) saturate(130%); }
+            /* 生活建议移动端 */
+            .life-tips-grid { grid-template-columns: repeat(2, 1fr); gap: var(--space-2); }
+            .life-tip-card { padding: var(--space-3); }
+            .life-tip-card .lt-icon { width: 32px; height: 32px; font-size: 16px; }
+            .sun-arc-svg { max-width: 220px; }
+            .sun-arc-time { font-size: var(--fs-sm); }
+        }
+
+        @media (min-width: 768px) {
+            .main-grid {
+                display: grid;
+                grid-template-columns: 1fr 1fr;
+                gap: var(--space-5);
+                align-items: start;
+            }
+            .detail-grid { grid-template-columns: repeat(3, 1fr); }
+            .current-card { gap: var(--space-5); }
+        }
+
+        @media (min-width: 1024px) {
+            .main-grid {
+                display: grid;
+                grid-template-columns: 1.1fr 0.9fr;
+                gap: var(--space-6);
+                align-items: start;
+            }
+            .detail-grid { grid-template-columns: repeat(3, 1fr); gap: var(--space-4); }
+        }
+
+        @media (max-height: 500px) and (orientation: landscape) {
+            .app { padding: var(--space-3) var(--space-4); }
+            .current-card { padding: var(--space-4); gap: var(--space-4); }
+            .temp-value { font-size: 3.5rem; }
+        }
+
+        .data-fade { animation: dataFade 0.5s var(--ease-out); }
+
+        ::-webkit-scrollbar { width: 6px; height: 6px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: var(--glass-3); border-radius: 3px; }
+        ::-webkit-scrollbar-thumb:hover { background: var(--glass-4); }
+
+        :focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+        .btn:focus-visible,
+        .search-input:focus-visible,
+        .quick-city:focus-visible,
+        .history-item:focus-visible,
+        .hour-card:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+    </style>
+</head>
+<body>
+
+<canvas id="weather-canvas" aria-hidden="true"></canvas>
+
+<div class="app">
+    <header class="topbar">
+        <div class="brand">
+            <span class="brand-dot"></span>
+            <span>SkyWeather · 云际天气</span>
+        </div>
+        <div class="topbar-meta">
+            <div class="badge ipv6" id="net-badge" data-time="--:--" data-status="检测网络中" title="当前网络连接信息">
+                <span class="dot"></span>
+                <span class="update-text"><span id="net-text">检测网络中</span></span>
+            </div>
+            <div class="badge" id="last-update" data-time="--:--">
+                <span class="dot"></span>
+                <span class="update-text">更新于 <span id="update-time">--:--</span></span>
+            </div>
+        </div>
+    </header>
+
+    <section class="search" role="search">
+        <div class="search-box">
+            <span class="search-icon" aria-hidden="true">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/>
+                </svg>
+            </span>
+            <input
+                type="text"
+                class="search-input"
+                id="city"
+                placeholder="搜索城市 / 地区（支持全球）"
+                autocomplete="off"
+                spellcheck="false"
+                aria-label="搜索城市"
+            >
+            <kbd class="search-shortcut" aria-hidden="true">/</kbd>
+            <div class="history" id="history" role="listbox"></div>
+        </div>
+        <button class="btn btn-primary" id="btn-search" aria-label="查询天气">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M5 12h14M12 5l7 7-7 7"/>
+            </svg>
+            <span>查询</span>
+        </button>
+        <button class="btn btn-ghost" id="btn-refresh" aria-label="刷新" title="刷新">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M21 12a9 9 0 1 1-3-6.7L21 8"/><path d="M21 3v5h-5"/>
+            </svg>
+        </button>
+    </section>
+
+    <main class="main-grid" id="weather-display"></main>
+
+    <footer class="footer">
+        <p>© 2026 <a href="https://sylv.top/" target="_blank" rel="noopener noreferrer" style="font-weight:700">Sylvy</a>. All rights reserved.</p>
+        <p><a href="https://beian.miit.gov.cn/" target="_blank" rel="noopener noreferrer">豫ICP备2026013756号-1</a></p>
+    </footer>
+</div>
+
+<div class="toast-stack" id="toast-stack" aria-live="polite"></div>
+
+<script src="config.js"></script>
+<script>
+    // ===================== SVG 图标库 =====================
+    let svgIdCounter = 0;
+    function uniqueId(prefix) { return `${prefix}-${++svgIdCounter}`; }
+
+    function getSunnyIcon() {
+        const id = uniqueId('sun');
+        return `<svg viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <defs><radialGradient id="${id}" cx="50%" cy="50%"><stop offset="0%" stop-color="#fbbf24"/><stop offset="60%" stop-color="#f59e0b"/><stop offset="100%" stop-color="#ea580c"/></radialGradient></defs>
+            <g style="transform-origin:32px 32px;animation:sunRotate 24s linear infinite">
+                <g stroke="#fbbf24" stroke-width="3" stroke-linecap="round">
+                    <line x1="32" y1="4" x2="32" y2="12"/><line x1="32" y1="52" x2="32" y2="60"/>
+                    <line x1="4" y1="32" x2="12" y2="32"/><line x1="52" y1="32" x2="60" y2="32"/>
+                    <line x1="12" y1="12" x2="18" y2="18"/><line x1="46" y1="46" x2="52" y2="52"/>
+                    <line x1="12" y1="52" x2="18" y2="46"/><line x1="46" y1="18" x2="52" y2="12"/>
+                </g>
+            </g>
+            <circle cx="32" cy="32" r="14" fill="url(#${id})"/>
+            <circle cx="32" cy="32" r="14" fill="none" stroke="#fbbf24" stroke-width="1.5" opacity="0.4"/>
+        </svg>`;
+    }
+
+    function getCloudyIcon() {
+        const id = uniqueId('cloud');
+        return `<svg viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <defs><linearGradient id="${id}" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#e2e8f0"/><stop offset="100%" stop-color="#94a3b8"/></linearGradient></defs>
+            <g style="transform-origin:32px 32px;animation:cloudDrift 5s ease-in-out infinite">
+                <ellipse cx="22" cy="34" rx="14" ry="10" fill="url(#${id})"/>
+                <ellipse cx="36" cy="30" rx="16" ry="12" fill="url(#${id})"/>
+                <ellipse cx="46" cy="38" rx="10" ry="8" fill="url(#${id})"/>
+                <ellipse cx="28" cy="40" rx="12" ry="8" fill="url(#${id})"/>
+            </g>
+        </svg>`;
+    }
+
+    function getPartlyCloudyIcon() {
+        const sunId = uniqueId('sun2');
+        const cloudId = uniqueId('cloud2');
+        return `<svg viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <defs>
+                <radialGradient id="${sunId}" cx="50%" cy="50%"><stop offset="0%" stop-color="#fbbf24"/><stop offset="100%" stop-color="#f59e0b"/></radialGradient>
+                <linearGradient id="${cloudId}" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#e2e8f0"/><stop offset="100%" stop-color="#94a3b8"/></linearGradient>
+            </defs>
+            <g style="transform-origin:18px 18px;animation:sunRotate 24s linear infinite">
+                <g stroke="#fbbf24" stroke-width="2" stroke-linecap="round">
+                    <line x1="18" y1="2" x2="18" y2="6"/><line x1="18" y1="30" x2="18" y2="34"/>
+                    <line x1="2" y1="18" x2="6" y2="18"/><line x1="30" y1="18" x2="34" y2="18"/>
+                    <line x1="7" y1="7" x2="10" y2="10"/><line x1="26" y1="26" x2="29" y2="29"/>
+                    <line x1="7" y1="29" x2="10" y2="26"/><line x1="26" y1="10" x2="29" y2="7"/>
+                </g>
+            </g>
+            <circle cx="18" cy="18" r="8" fill="url(#${sunId})"/>
+            <g style="transform-origin:38px 38px;animation:cloudDrift 4s ease-in-out infinite">
+                <ellipse cx="30" cy="40" rx="12" ry="9" fill="url(#${cloudId})"/>
+                <ellipse cx="42" cy="36" rx="14" ry="10" fill="url(#${cloudId})"/>
+                <ellipse cx="50" cy="44" rx="10" ry="8" fill="url(#${cloudId})"/>
+            </g>
+        </svg>`;
+    }
+
+    function getRainIcon() {
+        const cloudId = uniqueId('rain-cloud');
+        const dropId = uniqueId('rain-drop');
+        return `<svg viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <defs>
+                <linearGradient id="${cloudId}" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#94a3b8"/><stop offset="100%" stop-color="#64748b"/></linearGradient>
+                <linearGradient id="${dropId}" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#60a5fa"/><stop offset="100%" stop-color="#3b82f6"/></linearGradient>
+            </defs>
+            <g style="transform-origin:32px 24px;animation:cloudDrift 4s ease-in-out infinite">
+                <ellipse cx="22" cy="26" rx="12" ry="9" fill="url(#${cloudId})"/>
+                <ellipse cx="36" cy="22" rx="14" ry="10" fill="url(#${cloudId})"/>
+                <ellipse cx="46" cy="30" rx="10" ry="8" fill="url(#${cloudId})"/>
+            </g>
+            <g stroke="url(#${dropId})" stroke-width="3" stroke-linecap="round" fill="none">
+                <line x1="22" y1="42" x2="18" y2="56" style="animation:rainFall 1s ease-in infinite"/>
+                <line x1="30" y1="44" x2="26" y2="58" style="animation:rainFall 1s ease-in 0.2s infinite"/>
+                <line x1="38" y1="42" x2="34" y2="56" style="animation:rainFall 1s ease-in 0.4s infinite"/>
+                <line x1="46" y1="44" x2="42" y2="58" style="animation:rainFall 1s ease-in 0.6s infinite"/>
+            </g>
+        </svg>`;
+    }
+
+    function getStormIcon() {
+        const cloudId = uniqueId('storm-cloud');
+        return `<svg viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <defs><linearGradient id="${cloudId}" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#64748b"/><stop offset="100%" stop-color="#1e293b"/></linearGradient></defs>
+            <g style="transform-origin:32px 24px;animation:cloudDrift 4s ease-in-out infinite">
+                <ellipse cx="22" cy="26" rx="12" ry="9" fill="url(#${cloudId})"/>
+                <ellipse cx="36" cy="22" rx="14" ry="10" fill="url(#${cloudId})"/>
+                <ellipse cx="46" cy="30" rx="10" ry="8" fill="url(#${cloudId})"/>
+            </g>
+            <path d="M30 36 L24 50 L32 50 L26 60 L40 44 L32 44 L36 36 Z" fill="#fbbf24" stroke="#f59e0b" stroke-width="1" stroke-linejoin="round">
+                <animate attributeName="opacity" values="1;0.2;1" dur="1.2s" repeatCount="indefinite"/>
+            </path>
+        </svg>`;
+    }
+
+    function getSnowIcon() {
+        const cloudId = uniqueId('snow-cloud');
+        return `<svg viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <defs><linearGradient id="${cloudId}" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#e2e8f0"/><stop offset="100%" stop-color="#94a3b8"/></linearGradient></defs>
+            <g style="transform-origin:32px 24px;animation:cloudDrift 4s ease-in-out infinite">
+                <ellipse cx="22" cy="26" rx="12" ry="9" fill="url(#${cloudId})"/>
+                <ellipse cx="36" cy="22" rx="14" ry="10" fill="url(#${cloudId})"/>
+                <ellipse cx="46" cy="30" rx="10" ry="8" fill="url(#${cloudId})"/>
+            </g>
+            <g fill="#fff" stroke="#cbd5e1" stroke-width="1">
+                <circle cx="20" cy="50" r="3"><animate attributeName="cy" values="44;58;44" dur="2s" repeatCount="indefinite"/></circle>
+                <circle cx="32" cy="54" r="3"><animate attributeName="cy" values="46;60;46" dur="2.5s" repeatCount="indefinite"/></circle>
+                <circle cx="44" cy="50" r="3"><animate attributeName="cy" values="44;58;44" dur="2.2s" repeatCount="indefinite"/></circle>
+            </g>
+        </svg>`;
+    }
+
+    function getFogIcon() {
+        return `<svg viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <g stroke="#cbd5e1" stroke-width="3" stroke-linecap="round" fill="none">
+                <line x1="10" y1="20" x2="54" y2="20" opacity="0.5"/>
+                <line x1="14" y1="30" x2="50" y2="30" opacity="0.7"/>
+                <line x1="10" y1="40" x2="54" y2="40" opacity="0.6"><animate attributeName="x1" values="10;14;10" dur="3s" repeatCount="indefinite"/><animate attributeName="x2" values="54;50;54" dur="3s" repeatCount="indefinite"/></line>
+                <line x1="14" y1="50" x2="50" y2="50" opacity="0.8"><animate attributeName="x1" values="14;10;14" dur="3.5s" repeatCount="indefinite"/><animate attributeName="x2" values="50;54;50" dur="3.5s" repeatCount="indefinite"/></line>
+            </g>
+        </svg>`;
+    }
+
+    function getHazeIcon() {
+        return `<svg viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <circle cx="32" cy="32" r="14" fill="none" stroke="#fdba74" stroke-width="2" opacity="0.4"/>
+            <circle cx="32" cy="32" r="10" fill="#fdba74" opacity="0.3"/>
+            <g stroke="#cbd5e1" stroke-width="2" stroke-linecap="round" fill="none">
+                <line x1="10" y1="50" x2="40" y2="50"/><line x1="20" y1="56" x2="54" y2="56"/>
+            </g>
+        </svg>`;
+    }
+
+    const iconFunctions = {
+        sunny: getSunnyIcon,
+        cloudy: getCloudyIcon,
+        partlyCloudy: getPartlyCloudyIcon,
+        rain: getRainIcon,
+        storm: getStormIcon,
+        snow: getSnowIcon,
+        fog: getFogIcon,
+        haze: getHazeIcon,
+    };
+
+    const ICONS = {
+        drop: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2.69l5.66 5.66a8 8 0 1 1-11.31 0z"/></svg>`,
+        wind2: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9.59 4.59A2 2 0 1 1 11 8H2"/><path d="M12.59 19.41A2 2 0 1 0 14 16H2"/><path d="M17.73 7.73A2.5 2.5 0 1 1 19.5 12H2"/></svg>`,
+        clock: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>`,
+        thermometer: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 4v10.54a4 4 0 1 1-4 0V4a2 2 0 0 1 4 0Z"/></svg>`,
+        eye: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>`,
+        calendar: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>`,
+        check: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>`,
+        alert: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>`,
+        mapPin: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>`,
+        trash: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-2 14a2 2 0 0 1-2 2H9a2 2 0 0 1-2-2L5 6"/></svg>`,
+        sun: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>`,
+        moon: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>`,
+        gauge: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6Z"/><path d="M19.07 4.93A10 10 0 0 0 12 2a10 10 0 0 0-7.07 17.07"/><path d="M12 12v4"/></svg>`,
+        umbrella: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2v16"/><path d="M12 2a9 9 0 0 1 9 9H3a9 9 0 0 1 9-9Z"/><path d="M12 18a2 2 0 0 0 2 2"/></svg>`,
+        wind: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17.7 7.7a2.5 2.5 0 1 1 1.8 4.3H2"/><path d="M9.6 4.6A2 2 0 1 1 11 8H2"/><path d="M12.6 19.4A2 2 0 1 0 14 16H2"/></svg>`,
+        sunrise: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2v8"/><path d="m4.93 10.93 1.41 1.41"/><path d="M2 18h2"/><path d="M20 18h2"/><path d="m19.07 10.93-1.41 1.41"/><path d="M22 22H2"/><path d="M16 6 12 2 8 6"/><path d="M16 18a4 4 0 0 0-8 0"/></svg>`,
+        sunset: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 10V2"/><path d="m4.93 10.93 1.41 1.41"/><path d="M2 18h2"/><path d="M20 18h2"/><path d="m19.07 10.93-1.41 1.41"/><path d="M22 22H2"/><path d="M16 18a4 4 0 0 1-8 0"/><path d="M8 14 12 18l4-4"/></svg>`,
+        globe: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>`,
+        wifi: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.55a11 11 0 0 1 14.08 0"/><path d="M1.42 9a16 16 0 0 1 21.16 0"/><path d="M8.53 16.11a6 6 0 0 1 6.95 0"/><line x1="12" y1="20" x2="12.01" y2="20"/></svg>`,
+    };
+
+    // ===================== DOM 引用 =====================
+    const $ = (id) => document.getElementById(id);
+    const cityInput = $('city');
+    const weatherDisplay = $('weather-display');
+    const historyBox = $('history');
+    const canvas = $('weather-canvas');
+    const ctx = canvas.getContext('2d');
+    const toastStack = $('toast-stack');
+    const netBadge = $('net-badge');
+    const netText = $('net-text');
+    const updateTime = $('update-time');
+    const lastUpdateBadge = $('last-update');
+    const btnSearch = $('btn-search');
+    const btnRefresh = $('btn-refresh');
+
+    // ===================== 天气类型映射 =====================
+    const weatherTypeMap = {
+        sunny: ['晴', 'clear'],
+        partlyCloudy: ['多云', 'partly', 'mainly clear'],
+        cloudy: ['阴', 'overcast', 'cloudy'],
+        rain: ['雨', 'rain', 'drizzle', 'shower'],
+        storm: ['雷', 'storm', 'thunder'],
+        snow: ['雪', 'snow', 'sleet', 'blizzard'],
+        fog: ['雾', 'fog', 'mist'],
+        haze: ['霾', 'haze', 'dust', 'sand', 'smog'],
+    };
+
+    function getWeatherType(text) {
+        if (!text) return 'sunny';
+        const t = String(text).toLowerCase();
+        for (const [type, keywords] of Object.entries(weatherTypeMap)) {
+            if (keywords.some(k => t.includes(k))) return type;
+        }
+        return 'sunny';
+    }
+
+    // WMO 天气代码转中文天气文本与内部类型
+    function wmoToWeather(code) {
+        const map = {
+            0: ['晴', 'sunny'],
+            1: ['大部晴朗', 'partlyCloudy'], 2: ['多云', 'partlyCloudy'], 3: ['阴', 'cloudy'],
+            45: ['雾', 'fog'], 48: ['雾凇', 'fog'],
+            51: ['毛毛雨', 'rain'], 53: ['小雨', 'rain'], 55: ['中雨', 'rain'],
+            56: ['冻雨', 'rain'], 57: ['冻雨', 'rain'],
+            61: ['小雨', 'rain'], 63: ['中雨', 'rain'], 65: ['大雨', 'rain'],
+            66: ['冻雨', 'rain'], 67: ['冻雨', 'rain'],
+            71: ['小雪', 'snow'], 73: ['中雪', 'snow'], 75: ['大雪', 'snow'],
+            77: ['雪粒', 'snow'],
+            80: ['阵雨', 'rain'], 81: ['阵雨', 'rain'], 82: ['暴雨', 'rain'],
+            85: ['阵雪', 'snow'], 86: ['阵雪', 'snow'],
+            95: ['雷阵雨', 'storm'], 96: ['雷阵雨伴冰雹', 'storm'], 99: ['雷阵雨伴冰雹', 'storm'],
+        };
+        const [text, type] = map[code] || ['晴', 'sunny'];
+        return { text, type };
+    }
+
+    function wmoText(code) { return wmoToWeather(code).text; }
+    function wmoType(code) { return wmoToWeather(code).type; }
+
+    // ===================== 高级天气动画引擎 =====================
+    let animationId = null;
+    let currentAnim = null;
+    let particles = [];
+    let effects = [];          // 溅射、涟漪等短生命周期特效
+    let animIntensity = 0.5;   // 天气强度 0~1
+    let windSpeed = 0;         // 风速（影响粒子偏移）
+    let lastFrameTime = 0;
+    const TARGET_FPS = 60;
+    const FRAME_INTERVAL = 1000 / TARGET_FPS;
+
+    function resizeCanvas() {
+        const dpr = Math.min(window.devicePixelRatio || 1, 2);
+        canvas.width = window.innerWidth * dpr;
+        canvas.height = window.innerHeight * dpr;
+        canvas.style.width = window.innerWidth + 'px';
+        canvas.style.height = window.innerHeight + 'px';
+        ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    }
+    let resizeTimer = null;
+    window.addEventListener('resize', () => {
+        clearTimeout(resizeTimer);
+        resizeTimer = setTimeout(() => {
+            resizeCanvas();
+            if (currentAnim) {
+                particles = makeParticles(currentAnim);
+            }
+        }, 100);
+    });
+    resizeCanvas();
+
+    // 标签页不可见时暂停动画，可见时恢复
+    let wasAnimating = false;
+    document.addEventListener('visibilitychange', () => {
+        if (document.hidden) {
+            if (animationId) {
+                cancelAnimationFrame(animationId);
+                animationId = null;
+                wasAnimating = true;
+            }
+        } else if (wasAnimating && currentAnim) {
+            wasAnimating = false;
+            startAnimation(currentAnim, true);
+        }
+    });
+
+    // ---- 工具函数 ----
+    function lerp(a, b, t) { return a + (b - a) * t; }
+    function rand(min, max) { return Math.random() * (max - min) + min; }
+    function isMobile() { return window.innerWidth < 768; }
+    function particleScale() { return isMobile() ? 0.55 : 1; }
+
+    // ---- 水滴溅射特效 ----
+    class Splash {
+        constructor(x, y, intensity) {
+            this.x = x;
+            this.y = y;
+            this.life = 1;
+            this.decay = rand(0.03, 0.06);
+            this.drops = [];
+            const count = Math.floor(rand(2, 5 + intensity * 3));
+            for (let i = 0; i < count; i++) {
+                const angle = rand(-Math.PI, 0);
+                const speed = rand(1, 3 + intensity * 2);
+                this.drops.push({
+                    vx: Math.cos(angle) * speed,
+                    vy: Math.sin(angle) * speed * 1.2,
+                    r: rand(0.5, 1.5 + intensity),
+                    x: 0, y: 0
+                });
+            }
+        }
+        update() {
+            this.life -= this.decay;
+            for (const d of this.drops) {
+                d.x += d.vx;
+                d.y += d.vy;
+                d.vy += 0.15; // 重力
+            }
+            return this.life > 0;
+        }
+        draw(c) {
+            const alpha = Math.max(0, this.life * 0.6);
+            c.fillStyle = `rgba(147, 197, 253, ${alpha})`;
+            for (const d of this.drops) {
+                c.beginPath();
+                c.arc(this.x + d.x, this.y + d.y, d.r, 0, Math.PI * 2);
+                c.fill();
+            }
+        }
+    }
+
+    // ---- 涟漪特效 ----
+    class Ripple {
+        constructor(x, y) {
+            this.x = x;
+            this.y = y;
+            this.radius = 0;
+            this.maxRadius = rand(8, 20);
+            this.life = 1;
+            this.decay = rand(0.02, 0.04);
+        }
+        update() {
+            this.life -= this.decay;
+            this.radius = (1 - this.life) * this.maxRadius;
+            return this.life > 0;
+        }
+        draw(c) {
+            const alpha = Math.max(0, this.life * 0.35);
+            c.strokeStyle = `rgba(147, 197, 253, ${alpha})`;
+            c.lineWidth = 0.8;
+            c.beginPath();
+            c.ellipse(this.x, this.y, this.radius, this.radius * 0.4, 0, 0, Math.PI * 2);
+            c.stroke();
+        }
+    }
+
+    // ---- 雨滴：真实水滴形态 ----
+    class RainDrop {
+        constructor() { this.reset(true); }
+        reset(initial = false) {
+            const W = window.innerWidth;
+            const H = window.innerHeight;
+            const intensity = animIntensity;
+            // 水滴大小随强度变化
+            this.size = rand(1.5, 3 + intensity * 2);
+            this.x = rand(-50, W + 50);
+            this.y = initial ? rand(-H, H) : rand(-100, -20);
+            // 速度随强度增加
+            this.speed = rand(6, 10 + intensity * 8);
+            this.opacity = rand(0.15, 0.4 + intensity * 0.2);
+            // 风偏移
+            this.windOffset = windSpeed * 0.3;
+            this.slant = this.windOffset + rand(-0.15, 0.15);
+            // 拖尾长度
+            this.tailLen = this.speed * rand(1.2, 2.0);
+            this.hasSplashed = false;
+        }
+        update() {
+            this.y += this.speed;
+            this.x += this.slant;
+            const groundY = window.innerHeight - 2;
+            if (this.y >= groundY && !this.hasSplashed) {
+                this.hasSplashed = true;
+                // 生成溅射和涟漪
+                if (Math.random() < 0.4 + animIntensity * 0.3) {
+                    effects.push(new Splash(this.x, groundY, animIntensity));
+                }
+                if (Math.random() < 0.5) {
+                    effects.push(new Ripple(this.x, groundY));
+                }
+            }
+            if (this.y > window.innerHeight + 30) this.reset();
+        }
+        draw(c) {
+            // 水滴本体：上尖下圆的水滴形
+            const alpha = this.opacity;
+            const s = this.size;
+            c.save();
+            c.translate(this.x, this.y);
+            // 根据风向旋转
+            c.rotate(Math.atan2(this.slant, this.speed));
+
+            // 绘制水滴形状
+            c.fillStyle = `rgba(147, 197, 253, ${alpha})`;
+            c.beginPath();
+            c.moveTo(0, -this.tailLen);  // 尖端
+            c.bezierCurveTo(s * 0.3, -this.tailLen * 0.5, s * 0.6, -s * 0.3, s * 0.5, 0);
+            c.bezierCurveTo(s * 0.4, s * 0.5, 0, s * 0.7, 0, s * 0.7);
+            c.bezierCurveTo(0, s * 0.7, -s * 0.4, s * 0.5, -s * 0.5, 0);
+            c.bezierCurveTo(-s * 0.6, -s * 0.3, -s * 0.3, -this.tailLen * 0.5, 0, -this.tailLen);
+            c.fill();
+
+            // 高光
+            c.fillStyle = `rgba(200, 225, 255, ${alpha * 0.4})`;
+            c.beginPath();
+            c.ellipse(s * 0.1, -this.tailLen * 0.3, s * 0.12, s * 0.25, 0, 0, Math.PI * 2);
+            c.fill();
+
+            c.restore();
+        }
+    }
+
+    // ---- 雪花：六角形晶体 ----
+    class SnowFlake {
+        constructor() { this.reset(true); }
+        reset(initial = false) {
+            const W = window.innerWidth;
+            const H = window.innerHeight;
+            const intensity = animIntensity;
+            this.x = rand(-20, W + 20);
+            this.y = initial ? rand(-H * 0.2, H) : rand(-60, -10);
+            this.r = rand(1.5, 4 + intensity * 2);
+            this.speed = rand(0.3, 1.2 + this.r * 0.2);
+            this.wind = windSpeed * 0.05;
+            this.phase = rand(0, Math.PI * 2);
+            this.phaseSpeed = rand(0.01, 0.03);
+            this.opacity = rand(0.4, 0.85);
+            this.rotation = rand(0, Math.PI * 2);
+            this.rotationSpeed = (rand(-1, 1)) * 0.015;
+            this.wobbleAmp = rand(0.3, 1.2);
+            // 雪花分支数（6或8）
+            this.branches = this.r > 3 ? 6 : 0; // 大雪花绘制晶体，小雪花只画圆
+            this.innerRatio = rand(0.3, 0.5);
+        }
+        update() {
+            this.y += this.speed;
+            this.phase += this.phaseSpeed;
+            this.rotation += this.rotationSpeed;
+            this.x += this.wind + Math.sin(this.phase) * this.wobbleAmp;
+            if (this.y > window.innerHeight + 20) this.reset();
+            if (this.x < -40 || this.x > window.innerWidth + 40) this.reset();
+        }
+        draw(c) {
+            c.save();
+            c.translate(this.x, this.y);
+            c.rotate(this.rotation);
+            c.globalAlpha = this.opacity;
+
+            if (this.branches > 0) {
+                // 绘制六角形雪花晶体
+                c.strokeStyle = '#ffffff';
+                c.lineWidth = Math.max(0.5, this.r * 0.15);
+                c.lineCap = 'round';
+                for (let i = 0; i < this.branches; i++) {
+                    const angle = (Math.PI * 2 / this.branches) * i;
+                    c.save();
+                    c.rotate(angle);
+                    // 主枝
+                    c.beginPath();
+                    c.moveTo(0, 0);
+                    c.lineTo(this.r, 0);
+                    c.stroke();
+                    // 分枝
+                    const bLen = this.r * this.innerRatio;
+                    const bPos = this.r * 0.55;
+                    c.beginPath();
+                    c.moveTo(bPos, 0);
+                    c.lineTo(bPos + bLen * 0.7, -bLen * 0.5);
+                    c.stroke();
+                    c.beginPath();
+                    c.moveTo(bPos, 0);
+                    c.lineTo(bPos + bLen * 0.7, bLen * 0.5);
+                    c.stroke();
+                    // 末端小分枝
+                    const bPos2 = this.r * 0.8;
+                    const bLen2 = bLen * 0.5;
+                    c.beginPath();
+                    c.moveTo(bPos2, 0);
+                    c.lineTo(bPos2 + bLen2 * 0.6, -bLen2 * 0.5);
+                    c.stroke();
+                    c.beginPath();
+                    c.moveTo(bPos2, 0);
+                    c.lineTo(bPos2 + bLen2 * 0.6, bLen2 * 0.5);
+                    c.stroke();
+                    c.restore();
+                }
+                // 中心点
+                c.fillStyle = '#ffffff';
+                c.beginPath();
+                c.arc(0, 0, this.r * 0.12, 0, Math.PI * 2);
+                c.fill();
+            } else {
+                // 小雪花：柔和圆形带光晕
+                const grad = c.createRadialGradient(0, 0, 0, 0, 0, this.r);
+                grad.addColorStop(0, 'rgba(255, 255, 255, 0.9)');
+                grad.addColorStop(0.5, 'rgba(255, 255, 255, 0.5)');
+                grad.addColorStop(1, 'rgba(255, 255, 255, 0)');
+                c.fillStyle = grad;
+                c.beginPath();
+                c.arc(0, 0, this.r, 0, Math.PI * 2);
+                c.fill();
+            }
+
+            c.globalAlpha = 1;
+            c.restore();
+        }
+    }
+
+    // ---- 晴天：阳光光束 + 光斑 ----
+    class SunRay {
+        constructor() { this.reset(true); }
+        reset(initial = false) {
+            const W = window.innerWidth;
+            const H = window.innerHeight;
+            // 光束从右上角射出
+            this.originX = W * rand(0.7, 1.0);
+            this.originY = rand(-20, H * 0.15);
+            this.angle = rand(Math.PI * 0.55, Math.PI * 0.75);
+            this.length = rand(H * 0.4, H * 0.9);
+            this.width = rand(30, 80 + animIntensity * 40);
+            this.opacity = rand(0.02, 0.06 + animIntensity * 0.03);
+            this.speed = rand(0.0003, 0.001);
+            this.phase = rand(0, Math.PI * 2);
+            this.life = 1;
+        }
+        update() {
+            this.phase += this.speed;
+            this.opacity = (0.02 + Math.sin(this.phase) * 0.02) * (0.5 + animIntensity * 0.5);
+        }
+        draw(c) {
+            c.save();
+            c.translate(this.originX, this.originY);
+            c.rotate(this.angle);
+            const grad = c.createLinearGradient(0, 0, this.length, 0);
+            grad.addColorStop(0, `rgba(251, 191, 36, ${this.opacity * 1.5})`);
+            grad.addColorStop(0.3, `rgba(251, 191, 36, ${this.opacity})`);
+            grad.addColorStop(1, 'rgba(251, 191, 36, 0)');
+            c.fillStyle = grad;
+            c.beginPath();
+            c.moveTo(0, -this.width * 0.1);
+            c.lineTo(this.length, -this.width * 0.5);
+            c.lineTo(this.length, this.width * 0.5);
+            c.lineTo(0, this.width * 0.1);
+            c.closePath();
+            c.fill();
+            c.restore();
+        }
+    }
+
+    class SunMote {
+        constructor() { this.reset(true); }
+        reset(initial = false) {
+            const W = window.innerWidth;
+            const H = window.innerHeight;
+            this.x = rand(W * 0.3, W);
+            this.y = initial ? rand(0, H) : rand(H + 20, H + 60);
+            this.r = rand(1, 3 + animIntensity * 2);
+            this.opacity = rand(0.1, 0.35);
+            this.speed = rand(0.15, 0.5);
+            this.phase = rand(0, Math.PI * 2);
+            this.driftSpeed = rand(0.005, 0.015);
+            this.driftAmp = rand(0.3, 1);
+        }
+        update() {
+            this.y -= this.speed;
+            this.phase += this.driftSpeed;
+            this.x += Math.sin(this.phase) * this.driftAmp;
+            this.opacity -= 0.0008;
+            if (this.y < -20 || this.opacity <= 0) this.reset();
+        }
+        draw(c) {
+            const grad = c.createRadialGradient(this.x, this.y, 0, this.x, this.y, this.r * 2);
+            grad.addColorStop(0, `rgba(251, 191, 36, ${this.opacity})`);
+            grad.addColorStop(0.5, `rgba(251, 191, 36, ${this.opacity * 0.4})`);
+            grad.addColorStop(1, 'rgba(251, 191, 36, 0)');
+            c.fillStyle = grad;
+            c.beginPath();
+            c.arc(this.x, this.y, this.r * 2, 0, Math.PI * 2);
+            c.fill();
+        }
+    }
+
+    // ---- 云朵：立体层次感 ----
+    class CloudPuff {
+        constructor() { this.reset(true); }
+        reset(initial = false) {
+            const W = window.innerWidth;
+            const H = window.innerHeight;
+            const intensity = animIntensity;
+            this.x = initial ? rand(-200, W + 200) : -250;
+            this.y = rand(H * 0.02, H * 0.35);
+            this.w = rand(120, 220 + intensity * 60);
+            this.h = this.w * rand(0.3, 0.45);
+            this.speed = rand(0.08, 0.3 + intensity * 0.1);
+            this.opacity = rand(0.04, 0.1 + intensity * 0.04);
+            this.layer = rand(0, 1); // 0=远 1=近
+            // 云朵由多个椭圆组成
+            this.puffs = [];
+            const count = Math.floor(rand(4, 7));
+            for (let i = 0; i < count; i++) {
+                this.puffs.push({
+                    ox: rand(-0.35, 0.35) * this.w,
+                    oy: rand(-0.2, 0.2) * this.h,
+                    rw: rand(0.2, 0.4) * this.w,
+                    rh: rand(0.25, 0.5) * this.h,
+                });
+            }
+        }
+        update() {
+            this.x += this.speed;
+            if (this.x > window.innerWidth + 300) this.reset();
+        }
+        draw(c) {
+            const cx = this.x + this.w / 2;
+            const cy = this.y + this.h / 2;
+            // 阴影层
+            c.fillStyle = `rgba(0, 0, 0, ${this.opacity * 0.3})`;
+            for (const p of this.puffs) {
+                c.beginPath();
+                c.ellipse(cx + p.ox, cy + p.oy + 4, p.rw, p.rh, 0, 0, Math.PI * 2);
+                c.fill();
+            }
+            // 主体
+            c.fillStyle = `rgba(200, 215, 235, ${this.opacity})`;
+            for (const p of this.puffs) {
+                c.beginPath();
+                c.ellipse(cx + p.ox, cy + p.oy, p.rw, p.rh, 0, 0, Math.PI * 2);
+                c.fill();
+            }
+            // 高光
+            c.fillStyle = `rgba(255, 255, 255, ${this.opacity * 0.6})`;
+            for (const p of this.puffs) {
+                c.beginPath();
+                c.ellipse(cx + p.ox, cy + p.oy - p.rh * 0.2, p.rw * 0.7, p.rh * 0.5, 0, 0, Math.PI * 2);
+                c.fill();
+            }
+        }
+    }
+
+    // ---- 雾/霾：层次流动 ----
+    class FogVeil {
+        constructor() { this.reset(true); }
+        reset(initial = false) {
+            const W = window.innerWidth;
+            const H = window.innerHeight;
+            const intensity = animIntensity;
+            this.x = initial ? rand(-300, W + 300) : -400;
+            this.y = rand(H * 0.2, H * 0.85);
+            this.w = rand(200, 400 + intensity * 100);
+            this.h = rand(40, 100 + intensity * 30);
+            this.speed = rand(0.05, 0.2 + intensity * 0.05);
+            this.opacity = rand(0.02, 0.06 + intensity * 0.03);
+            this.phase = rand(0, Math.PI * 2);
+            this.phaseSpeed = rand(0.003, 0.01);
+            this.isHaze = currentAnim === 'haze';
+        }
+        update() {
+            this.x += this.speed;
+            this.phase += this.phaseSpeed;
+            this.y += Math.sin(this.phase) * 0.3;
+            if (this.x > window.innerWidth + 500) this.reset();
+        }
+        draw(c) {
+            const baseColor = this.isHaze ? '180, 140, 100' : '203, 213, 225';
+            const grad = c.createRadialGradient(
+                this.x, this.y, 0,
+                this.x, this.y, this.w
+            );
+            grad.addColorStop(0, `rgba(${baseColor}, ${this.opacity * 2.5})`);
+            grad.addColorStop(0.4, `rgba(${baseColor}, ${this.opacity * 1.5})`);
+            grad.addColorStop(0.7, `rgba(${baseColor}, ${this.opacity * 0.5})`);
+            grad.addColorStop(1, `rgba(${baseColor}, 0)`);
+            c.fillStyle = grad;
+            c.beginPath();
+            c.ellipse(this.x, this.y, this.w, this.h, 0, 0, Math.PI * 2);
+            c.fill();
+        }
+    }
+
+    // ---- 闪电 ----
+    class Lightning {
+        constructor() {
+            const W = window.innerWidth;
+            const H = window.innerHeight;
+            this.startX = rand(W * 0.1, W * 0.9);
+            this.startY = 0;
+            this.segments = [];
+            this.life = 1;
+            this.decay = rand(0.04, 0.08);
+            this.buildBolt(this.startX, this.startY, H * rand(0.4, 0.8), 3);
+        }
+        buildBolt(x, y, length, depth) {
+            if (depth <= 0 || length < 20) return;
+            let cx = x, cy = y;
+            const steps = Math.floor(rand(4, 8));
+            const stepLen = length / steps;
+            for (let i = 0; i < steps; i++) {
+                const nx = cx + rand(-30, 30) * (depth * 0.4);
+                const ny = cy + stepLen;
+                this.segments.push({ x1: cx, y1: cy, x2: nx, y2: ny, w: depth * 0.8 });
+                // 分支
+                if (depth > 1 && Math.random() < 0.35) {
+                    this.buildBolt(nx, ny, length * rand(0.2, 0.4), depth - 1);
+                }
+                cx = nx;
+                cy = ny;
+            }
+        }
+        update() {
+            this.life -= this.decay;
+            return this.life > 0;
+        }
+        draw(c) {
+            const alpha = Math.max(0, this.life);
+            // 外发光
+            c.shadowColor = `rgba(167, 139, 250, ${alpha * 0.8})`;
+            c.shadowBlur = 20;
+            c.strokeStyle = `rgba(200, 190, 255, ${alpha * 0.6})`;
+            c.lineCap = 'round';
+            c.lineJoin = 'round';
+            for (const s of this.segments) {
+                c.lineWidth = s.w * 2;
+                c.beginPath();
+                c.moveTo(s.x1, s.y1);
+                c.lineTo(s.x2, s.y2);
+                c.stroke();
+            }
+            // 内芯
+            c.shadowBlur = 0;
+            c.strokeStyle = `rgba(255, 255, 255, ${alpha * 0.9})`;
+            for (const s of this.segments) {
+                c.lineWidth = s.w * 0.6;
+                c.beginPath();
+                c.moveTo(s.x1, s.y1);
+                c.lineTo(s.x2, s.y2);
+                c.stroke();
+            }
+        }
+    }
+
+    // ---- 地面积水反射（雨天） ----
+    function drawGroundReflection(c) {
+        if (currentAnim !== 'rain' && currentAnim !== 'storm') return;
+        const H = window.innerHeight;
+        const W = window.innerWidth;
+        const reflectH = 30 + animIntensity * 20;
+        const grad = c.createLinearGradient(0, H - reflectH, 0, H);
+        grad.addColorStop(0, 'rgba(96, 165, 250, 0)');
+        grad.addColorStop(0.3, `rgba(96, 165, 250, ${0.02 + animIntensity * 0.03})`);
+        grad.addColorStop(1, `rgba(96, 165, 250, ${0.04 + animIntensity * 0.04})`);
+        c.fillStyle = grad;
+        c.fillRect(0, H - reflectH, W, reflectH);
+    }
+
+    // ---- 积雪效果（雪天） ----
+    function drawSnowGround(c) {
+        if (currentAnim !== 'snow') return;
+        const H = window.innerHeight;
+        const W = window.innerWidth;
+        const snowH = 10 + animIntensity * 15;
+        const grad = c.createLinearGradient(0, H - snowH, 0, H);
+        grad.addColorStop(0, 'rgba(255, 255, 255, 0)');
+        grad.addColorStop(0.4, `rgba(255, 255, 255, ${0.05 + animIntensity * 0.05})`);
+        grad.addColorStop(1, `rgba(255, 255, 255, ${0.1 + animIntensity * 0.08})`);
+        c.fillStyle = grad;
+        c.fillRect(0, H - snowH, W, snowH);
+    }
+
+    // ---- 粒子工厂 ----
+    function makeParticles(type) {
+        const isMob = isMobile();
+        const isLowPower = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+        if (isLowPower) return [];
+        const scale = particleScale();
+        const intensity = animIntensity;
+        switch (type) {
+            case 'rain': {
+                const count = Math.floor(lerp(30, 100, intensity) * scale);
+                return Array.from({ length: count }, () => new RainDrop());
+            }
+            case 'storm': {
+                lightningTimer && clearTimeout(lightningTimer);
+                const count = Math.floor(lerp(50, 130, intensity) * scale);
+                return Array.from({ length: count }, () => new RainDrop());
+            }
+            case 'snow': {
+                const count = Math.floor(lerp(25, 70, intensity) * scale);
+                return Array.from({ length: count }, () => new SnowFlake());
+            }
+            case 'sunny': {
+                const rays = Math.floor(lerp(3, 6, intensity) * scale);
+                const motes = Math.floor(lerp(15, 40, intensity) * scale);
+                return [
+                    ...Array.from({ length: rays }, () => new SunRay()),
+                    ...Array.from({ length: motes }, () => new SunMote())
+                ];
+            }
+            case 'partlyCloudy':
+            case 'cloudy': {
+                const count = Math.floor(lerp(4, 8, intensity) * scale);
+                return Array.from({ length: count }, () => new CloudPuff());
+            }
+            case 'fog':
+            case 'haze': {
+                const count = Math.floor(lerp(6, 14, intensity) * scale);
+                return Array.from({ length: count }, () => new FogVeil());
+            }
+            default: return [];
+        }
+    }
+
+    // ---- 闪电调度（雷暴） ----
+    let lightningTimer = null;
+    function scheduleLightning() {
+        if (lightningTimer) clearTimeout(lightningTimer);
+        const flash = () => {
+            // 画布闪电
+            effects.push(new Lightning());
+            // 屏幕闪光
+            const overlay = document.createElement('div');
+            overlay.style.cssText = 'position:fixed;inset:0;background:#fff;z-index:3;pointer-events:none;opacity:0.4;animation:lightning 0.4s ease-out forwards';
+            document.body.appendChild(overlay);
+            setTimeout(() => overlay.remove(), 400);
+            lightningTimer = setTimeout(flash, 3000 + Math.random() * 7000);
+        };
+        lightningTimer = setTimeout(flash, 1500 + Math.random() * 3000);
+    }
+
+    // ---- 动画主循环 ----
+    function startAnimation(type, force = false) {
+        if (animationId) cancelAnimationFrame(animationId);
+        if (lightningTimer) { clearTimeout(lightningTimer); lightningTimer = null; }
+        if (currentAnim === type && !force) return;
+        currentAnim = type;
+        particles = makeParticles(type);
+        effects = [];
+        if (!particles.length && type !== 'rain' && type !== 'storm' && type !== 'snow') {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            animationId = null;
+            return;
+        }
+        if (type === 'storm') scheduleLightning();
+        lastFrameTime = performance.now();
+
+        function tick(now) {
+            // 帧率控制
+            const delta = now - lastFrameTime;
+            if (delta < FRAME_INTERVAL * 0.8) {
+                animationId = requestAnimationFrame(tick);
+                return;
+            }
+            lastFrameTime = now;
+
+            const W = window.innerWidth;
+            const H = window.innerHeight;
+            ctx.clearRect(0, 0, W, H);
+
+            // 更新和绘制粒子
+            for (const p of particles) {
+                p.update();
+                p.draw(ctx);
+            }
+
+            // 更新和绘制特效
+            effects = effects.filter(e => {
+                const alive = e.update();
+                if (alive) e.draw(ctx);
+                return alive;
+            });
+
+            // 地面效果
+            drawGroundReflection(ctx);
+            drawSnowGround(ctx);
+
+            animationId = requestAnimationFrame(tick);
+        }
+        animationId = requestAnimationFrame(tick);
+    }
+
+    function setTheme(type) {
+        document.body.classList.remove('theme-sunny', 'theme-cloudy', 'theme-rain', 'theme-storm', 'theme-snow', 'theme-fog', 'theme-haze');
+        document.body.classList.add(`theme-${type}`);
+    }
+
+    // ===================== 工具函数 =====================
+    function escapeHTML(s) {
+        return String(s ?? '').replace(/[&<>"']/g, m => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[m]));
+    }
+
+    function getComfort(t) {
+        t = parseFloat(t);
+        if (isNaN(t)) return { text: '--', cls: '' };
+        if (t < 0) return { text: '极冷', cls: 'cold' };
+        if (t < 10) return { text: '寒冷', cls: 'cold' };
+        if (t < 18) return { text: '凉爽', cls: '' };
+        if (t < 25) return { text: '舒适', cls: '' };
+        if (t < 30) return { text: '温暖', cls: 'warm' };
+        if (t < 35) return { text: '炎热', cls: 'warm' };
+        return { text: '酷热', cls: 'hot' };
+    }
+
+    function getWindLevel(speedKmh) {
+        const s = parseFloat(speedKmh) || 0;
+        if (s < 1) return '无风';
+        if (s < 12) return '微风';
+        if (s < 20) return '和风';
+        if (s < 29) return '强风';
+        if (s < 39) return '疾风';
+        return '大风';
+    }
+
+    function getHumidityLevel(h) {
+        h = parseInt(h) || 0;
+        if (h < 30) return '干燥';
+        if (h < 60) return '舒适';
+        if (h < 80) return '潮湿';
+        return '闷热';
+    }
+
+    function getUVLevel(uv) {
+        const u = parseFloat(uv) || 0;
+        if (u < 3) return { text: '低', cls: 'success' };
+        if (u < 6) return { text: '中等', cls: 'warning' };
+        if (u < 8) return { text: '高', cls: 'danger' };
+        if (u < 11) return { text: '极高', cls: 'danger' };
+        return { text: '危险', cls: 'danger' };
+    }
+
+    function getAQIInfo(aqi) {
+        const v = parseInt(aqi) || 0;
+        if (v <= 50) return { level: '优', cls: 'aqi-good', desc: '空气质量令人满意，基本无空气污染。' };
+        if (v <= 100) return { level: '良', cls: 'aqi-moderate', desc: '空气质量可接受，但某些污染物可能对极少数异常敏感人群健康有较弱影响。' };
+        if (v <= 150) return { level: '轻度污染', cls: 'aqi-unhealthy-sensitive', desc: '易感人群症状有轻度加剧，健康人群出现刺激症状。' };
+        if (v <= 200) return { level: '中度污染', cls: 'aqi-unhealthy', desc: '进一步加剧易感人群症状，可能对健康人群心脏、呼吸系统有影响。' };
+        if (v <= 300) return { level: '重度污染', cls: 'aqi-very-unhealthy', desc: '心脏病和肺病患者症状显著加剧，运动耐受力降低，健康人群普遍出现症状。' };
+        return { level: '严重污染', cls: 'aqi-hazardous', desc: '健康人群运动耐受力降低，有明显强烈症状，提前出现某些疾病。' };
+    }
+
+    function getWeekday(date) {
+        const d = date ? new Date(date) : new Date();
+        const days = ['周日', '周一', '周二', '周三', '周四', '周五', '周六'];
+        return days[d.getDay()];
+    }
+
+    function formatTime(date) {
+        const d = new Date(date);
+        return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
+    }
+
+    function formatDate(d) {
+        const date = new Date(d);
+        return `${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
+    }
+
+    // 风向角度转 16 方位中文
+    function degToDirection(deg) {
+        const dirs = ['北', '北东北', '东北', '东东北', '东', '东东南', '东南', '南东南', '南', '南西南', '西南', '西西南', '西', '西西北', '西北', '北西北'];
+        return dirs[Math.round(parseFloat(deg) / 22.5) % 16] || '--';
+    }
+
+    // 中国风力等级转 km/h（粗略）
+    function windScaleToKmh(scale) {
+        const s = parseInt(scale) || 0;
+        if (s <= 0) return 0;
+        if (s <= 1) return 2;
+        if (s <= 2) return 6;
+        if (s <= 3) return 12;
+        if (s <= 4) return 20;
+        if (s <= 5) return 29;
+        if (s <= 6) return 40;
+        if (s <= 7) return 51;
+        if (s <= 8) return 63;
+        return 75;
+    }
+
+    function countryBadge(loc) {
+        const cc = loc.countryCode || (loc.country ? String(loc.country).slice(0, 2).toUpperCase() : '');
+        return cc || 'UN';
+    }
+
+    // ===================== 历史记录 =====================
+    function getHistory() {
+        try { return JSON.parse(localStorage.getItem(CONFIG.STORAGE_KEY)) || []; }
+        catch { return []; }
+    }
+    function saveHistory(city) {
+        let h = getHistory().filter(x => x !== city);
+        h.unshift(city);
+        if (h.length > CONFIG.MAX_HISTORY) h = h.slice(0, CONFIG.MAX_HISTORY);
+        localStorage.setItem(CONFIG.STORAGE_KEY, JSON.stringify(h));
+    }
+    function removeHistory(city) {
+        const h = getHistory().filter(x => x !== city);
+        localStorage.setItem(CONFIG.STORAGE_KEY, JSON.stringify(h));
+        renderHistory();
+    }
+    function clearHistory() {
+        localStorage.setItem(CONFIG.STORAGE_KEY, JSON.stringify([]));
+        renderHistory();
+        showToast('已清空历史', 'success');
+    }
+    function renderHistory() {
+        const h = getHistory();
+        if (!h.length) { historyBox.classList.remove('show'); return; }
+        historyBox.innerHTML = `
+            <div class="history-header"><span>最近搜索</span><button class="history-clear" id="history-clear">清空</button></div>
+            ${h.map(c => `
+                <div class="history-item" data-city="${escapeHTML(c)}" role="option" tabindex="0">
+                    <span class="h-label">${ICONS.mapPin}<span>${escapeHTML(c)}</span></span>
+                    <button class="h-remove" data-city="${escapeHTML(c)}" aria-label="删除">${ICONS.trash}</button>
+                </div>
+            `).join('')}
+        `;
+        if (document.activeElement === cityInput) historyBox.classList.add('show');
+    }
+
+    // ===================== Toast =====================
+    function showToast(msg, type = '') {
+        const t = document.createElement('div');
+        t.className = `toast ${type}`;
+        const iconMap = { success: ICONS.check, error: ICONS.alert };
+        t.innerHTML = `<span class="t-icon">${iconMap[type] || ''}</span><span>${escapeHTML(msg)}</span>`;
+        toastStack.appendChild(t);
+        setTimeout(() => {
+            t.classList.add('removing');
+            setTimeout(() => t.remove(), 300);
+        }, 2800);
+    }
+
+    // ===================== 网络检测 =====================
+    function isPublicIP(ip) {
+        if (!ip || typeof ip !== 'string') return false;
+        // 排除本地回环、私有 IPv4、链路本地 IPv6 等
+        if (ip === '127.0.0.1' || ip === '::1') return false;
+        if (ip.startsWith('10.') || ip.startsWith('192.168.')) return false;
+        if (ip.startsWith('172.')) {
+            const second = parseInt(ip.split('.')[1], 10);
+            if (second >= 16 && second <= 31) return false;
+        }
+        if (ip.startsWith('fe80') || ip.startsWith('fc00') || ip.startsWith('fd00')) return false;
+        return true;
+    }
+
+    async function detectNetwork() {
+        const setStatus = (status, ipv6 = false) => {
+            netBadge.classList.toggle('ipv6', ipv6);
+            netBadge.setAttribute('data-status', status);
+            netText.textContent = status;
+        };
+
+        // 1. 优先通过公网 IP 服务判断真实出口 IP 类型
+        try {
+            const data = await fetchJSON('https://ipapi.co/json/');
+            const ip = data?.ip;
+            if (ip && isPublicIP(ip)) {
+                const hasIPv6 = ip.includes(':');
+                setStatus(hasIPv6 ? 'IPv6 已连接' : 'IPv4 网络', hasIPv6);
+                return hasIPv6;
+            }
+        } catch (e) { console.warn('[Network] ipapi.co 检测失败', e.message); }
+
+        try {
+            const data = await fetchJSON('https://api64.ipify.org?format=json');
+            const ip = data?.ip;
+            if (ip && isPublicIP(ip)) {
+                const hasIPv6 = ip.includes(':');
+                setStatus(hasIPv6 ? 'IPv6 已连接' : 'IPv4 网络', hasIPv6);
+                return hasIPv6;
+            }
+        } catch (e) { console.warn('[Network] ipify 检测失败', e.message); }
+
+        // 2. Fallback：RTCPeerConnection 本地候选检测（公网服务均失败时使用）
+        try {
+            const pc = new RTCPeerConnection({ iceServers: [] });
+            pc.createDataChannel('');
+            const candidates = new Set();
+            pc.onicecandidate = (e) => {
+                if (!e.candidate) return;
+                const ip = /([0-9a-fA-F:.]{7,})/.exec(e.candidate.candidate)?.[1];
+                if (ip) candidates.add(ip);
+            };
+            await new Promise((resolve) => {
+                pc.createOffer().then(o => pc.setLocalDescription(o));
+                setTimeout(resolve, 1200);
+            });
+            pc.close();
+            // 优先以公网候选判断；无公网候选时再看是否有任意 IPv6 候选
+            const publicCandidates = Array.from(candidates).filter(isPublicIP);
+            const pool = publicCandidates.length ? publicCandidates : Array.from(candidates);
+            const hasIPv6 = pool.some(ip => ip.includes(':'));
+            setStatus(hasIPv6 ? 'IPv6 已连接' : 'IPv4 网络', hasIPv6);
+            return hasIPv6;
+        } catch {
+            setStatus('网络检测失败');
+            return false;
+        }
+    }
+
+    // ===================== API 提供者 =====================
+    async function fetchJSON(url, options = {}) {
+        const timeout = options.timeout || 8000;
+        const controller = new AbortController();
+        const timer = setTimeout(() => controller.abort(), timeout);
+        try {
+            const res = await fetch(url, { ...options, signal: controller.signal });
+            if (!res.ok) throw new Error(`HTTP ${res.status}`);
+            return await res.json();
+        } finally {
+            clearTimeout(timer);
+        }
+    }
+
+    // ===================== Open-Meteo 数据解析（供多源复用）=====================
+    async function fetchOpenMeteoForecast(lat, lon) {
+        const url = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}` +
+            `&current=temperature_2m,relative_humidity_2m,apparent_temperature,weather_code,pressure_msl,surface_pressure,wind_speed_10m,wind_direction_10m,visibility,is_day,precipitation` +
+            `&hourly=temperature_2m,weather_code,precipitation_probability,wind_speed_10m` +
+            `&daily=weather_code,temperature_2m_max,temperature_2m_min,precipitation_probability_max,sunrise,sunset,uv_index_max` +
+            `&timezone=auto&forecast_days=7`;
+        return fetchJSON(url);
+    }
+
+    async function fetchOpenMeteoAQI(lat, lon) {
+        const url = `https://air-quality-api.open-meteo.com/v1/air-quality?latitude=${lat}&longitude=${lon}&current=us_aqi,pm10,pm2_5,nitrogen_dioxide,ozone`;
+        return fetchJSON(url).catch(() => null);
+    }
+
+    function parseOpenMeteoWeather(data, loc, source = 'Open-Meteo') {
+        if (!data.current) throw new Error('Open-Meteo 数据异常');
+        const cur = data.current;
+        const weather = wmoText(cur.weather_code);
+        const now = new Date();
+        let currentPop = null;
+        const hourly = [];
+        for (let i = 0; i < (data.hourly?.time?.length || 0); i++) {
+            const t = new Date(data.hourly.time[i]);
+            if (t < now) continue;
+            if (hourly.length >= 24) break;
+            const pop = data.hourly.precipitation_probability[i];
+            if (currentPop === null && Math.abs(t.getTime() - now.getTime()) < 3600000) currentPop = pop;
+            hourly.push({
+                time: data.hourly.time[i],
+                label: formatTime(data.hourly.time[i]),
+                temp: data.hourly.temperature_2m[i],
+                weather: wmoText(data.hourly.weather_code[i]),
+                weatherCode: data.hourly.weather_code[i],
+                precipProbability: pop,
+                windSpeed: data.hourly.wind_speed_10m[i],
+            });
+        }
+        const daily = [];
+        for (let i = 0; i < (data.daily?.time?.length || 0); i++) {
+            daily.push({
+                date: data.daily.time[i],
+                minTemp: data.daily.temperature_2m_min[i],
+                maxTemp: data.daily.temperature_2m_max[i],
+                weather: wmoText(data.daily.weather_code[i]),
+                weatherCode: data.daily.weather_code[i],
+                precipProbability: data.daily.precipitation_probability_max[i],
+                sunrise: data.daily.sunrise?.[i] ? formatTime(data.daily.sunrise[i]) : null,
+                sunset: data.daily.sunset?.[i] ? formatTime(data.daily.sunset[i]) : null,
+            });
+        }
+        return {
+            location: {
+                city: loc.city,
+                province: loc.province,
+                country: loc.country,
+                countryCode: loc.countryCode,
+                lat: loc.lat,
+                lon: loc.lon,
+                timezone: data.timezone || loc.timezone || 'UTC',
+            },
+            current: {
+                temp: cur.temperature_2m,
+                feelsLike: cur.apparent_temperature,
+                weather,
+                weatherCode: cur.weather_code,
+                humidity: cur.relative_humidity_2m,
+                pressure: cur.pressure_msl,
+                windSpeed: cur.wind_speed_10m,
+                windDirection: degToDirection(cur.wind_direction_10m),
+                windDirectionDeg: cur.wind_direction_10m,
+                visibility: cur.visibility ? (cur.visibility / 1000).toFixed(1) : null,
+                uv: data.daily?.uv_index_max?.[0] ?? null,
+                precipProbability: currentPop,
+                aqi: null,
+            },
+            hourly,
+            daily,
+            source,
+            updatedAt: cur.time || new Date().toISOString(),
+        };
+    }
+
+    function mergeAQI(target, aqiData) {
+        const current = aqiData?.current;
+        if (!current) return target;
+        target.current.aqi = current.us_aqi != null ? parseInt(current.us_aqi) : target.current.aqi;
+        target.current.aqiPm25 = current.pm2_5 != null ? parseFloat(current.pm2_5).toFixed(1) : target.current.aqiPm25;
+        target.current.aqiPm10 = current.pm10 != null ? parseFloat(current.pm10).toFixed(1) : target.current.aqiPm10;
+        target.current.aqiNo2 = current.nitrogen_dioxide != null ? parseFloat(current.nitrogen_dioxide).toFixed(1) : target.current.aqiNo2;
+        target.current.aqiO3 = current.ozone != null ? parseFloat(current.ozone).toFixed(1) : target.current.aqiO3;
+        return target;
+    }
+
+    const Providers = {
+        // --- IP 定位：ipapi.co（IPv6 / 海外） ---
+        ipapi: {
+            name: 'ipapi.co',
+            ipv6: true,
+            overseas: true,
+            available: () => true,
+            async locateIP() {
+                const data = await fetchJSON('https://ipapi.co/json/', { timeout: 5000 });
+                if (!data.latitude || !data.longitude) throw new Error('ipapi 定位失败');
+                return {
+                    city: data.city,
+                    province: data.region,
+                    country: data.country_name,
+                    countryCode: data.country_code,
+                    lat: data.latitude,
+                    lon: data.longitude,
+                    timezone: data.timezone,
+                    source: 'ipapi.co',
+                };
+            }
+        },
+
+        // --- IP 定位：高德（IPv6 / 中国） ---
+        amap_ip: {
+            name: '高德 IP',
+            ipv6: true,
+            overseas: false,
+            available: () => !!CONFIG.AMAP_KEY,
+            async locateIP() {
+                const data = await fetchJSON(`https://restapi.amap.com/v3/ip?key=${CONFIG.AMAP_KEY}`);
+                if (data.status !== '1' || !data.adcode) throw new Error('高德 IP 定位失败');
+                // 高德对直辖市可能返回空字符串或 []，需要用 province 兜底
+                const city = (data.city && data.city !== '[]') ? data.city : data.province;
+                const result = {
+                    city,
+                    province: data.province,
+                    country: '中国',
+                    countryCode: 'CN',
+                    adcode: data.adcode,
+                    source: '高德 IP',
+                };
+                // 高德IP定位不返回坐标，需要通过地理编码补全 lat/lon
+                // 有了坐标才能让 Open-Meteo 补全 AQI/UV/逐小时等丰富数据
+                if (city) {
+                    try {
+                        const geo = await fetchJSON(`https://restapi.amap.com/v3/geocode/geo?address=${encodeURIComponent(city)}&key=${CONFIG.AMAP_KEY}`);
+                        if (geo.status === '1' && geo.geocodes?.length) {
+                            const [lon, lat] = (geo.geocodes[0].location || ',').split(',').map(Number);
+                            if (lat && lon) {
+                                result.lat = lat;
+                                result.lon = lon;
+                            }
+                        }
+                    } catch (e) { console.warn('[amap_ip] 地理编码补全失败', e.message); }
+                }
+                // 若地理编码失败，尝试从 rectangle 字段解析中心点
+                if ((!result.lat || !result.lon) && data.rectangle) {
+                    try {
+                        const coords = data.rectangle.split(';').map(s => s.split(',').map(Number));
+                        if (coords.length === 2) {
+                            result.lon = (coords[0][0] + coords[1][0]) / 2;
+                            result.lat = (coords[0][1] + coords[1][1]) / 2;
+                        }
+                    } catch (e) { /* ignore */ }
+                }
+                return result;
+            }
+        },
+
+        // --- IP 定位：腾讯位置服务（中国 / 返回坐标） ---
+        qqip: {
+            name: '腾讯 IP',
+            ipv6: false,
+            overseas: false,
+            available: () => true,
+            async locateIP() {
+                // 腾讯IP定位基础版无需Key，返回经纬度，国内速度快
+                // 使用 JSONP 方式调用以规避浏览器 CORS 限制
+                const data = await new Promise((resolve, reject) => {
+                    const cbName = '__qqip_cb_' + Date.now();
+                    const timer = setTimeout(() => {
+                        delete window[cbName];
+                        reject(new Error('腾讯 IP 定位超时'));
+                    }, 5000);
+                    window[cbName] = (res) => {
+                        clearTimeout(timer);
+                        delete window[cbName];
+                        resolve(res);
+                    };
+                    const script = document.createElement('script');
+                    script.src = `https://apis.map.qq.com/ws/location/v1/ip?output=jsonp&callback=${cbName}`;
+                    script.onerror = () => {
+                        clearTimeout(timer);
+                        delete window[cbName];
+                        reject(new Error('腾讯 IP 定位加载失败'));
+                    };
+                    document.head.appendChild(script);
+                    script.remove();
+                });
+                if (data.status !== 0 || !data.result) throw new Error('腾讯 IP 定位失败');
+                const ad = data.result.ad_info;
+                const loc = data.result.location;
+                return {
+                    city: ad.city || ad.province,
+                    province: ad.province,
+                    country: ad.nation || '中国',
+                    countryCode: ad.nation_code === '156' ? 'CN' : (ad.nation_code || ''),
+                    lat: loc?.lat,
+                    lon: loc?.lng,
+                    adcode: ad.adcode ? String(ad.adcode) : '',
+                    source: '腾讯 IP',
+                };
+            }
+        },
+
+        // --- 地理编码 + 天气：高德（中国） ---
+        amap: {
+            name: '高德地图',
+            ipv6: true,
+            overseas: false,
+            available: () => !!CONFIG.AMAP_KEY,
+            async geocode(city) {
+                const data = await fetchJSON(`https://restapi.amap.com/v3/geocode/geo?address=${encodeURIComponent(city)}&key=${CONFIG.AMAP_KEY}`);
+                if (data.status !== '1' || !data.geocodes?.length) throw new Error('高德地理编码失败');
+                const g = data.geocodes[0];
+                const [lon, lat] = (g.location || ',').split(',').map(Number);
+                return {
+                    city: g.city || city,
+                    province: g.province,
+                    country: '中国',
+                    countryCode: 'CN',
+                    lat, lon,
+                    adcode: g.adcode,
+                    formatted: g.formatted_address,
+                    source: '高德地图',
+                };
+            },
+            async getWeather(loc) {
+                let adcode = loc.adcode ? String(loc.adcode) : '';
+                // 若缺少 adcode（如 ipapi/腾讯IP 定位），尝试通过逆地理编码获取
+                if (!adcode && loc.lat && loc.lon) {
+                    try {
+                        const regeo = await fetchJSON(`https://restapi.amap.com/v3/geocode/regeo?key=${CONFIG.AMAP_KEY}&location=${loc.lon},${loc.lat}&extensions=base`);
+                        if (regeo.status === '1' && regeo.regeocode?.addressComponent?.adcode) {
+                            adcode = regeo.regeocode.addressComponent.adcode;
+                        }
+                    } catch (e) { console.warn('[amap] 逆地理编码失败', e.message); }
+                }
+                if (!adcode) throw new Error('高德天气需要 adcode');
+                const [allRes, baseRes, omForecast, omAQI] = await Promise.all([
+                    fetchJSON(`https://restapi.amap.com/v3/weather/weatherInfo?city=${adcode}&key=${CONFIG.AMAP_KEY}&extensions=all`),
+                    fetchJSON(`https://restapi.amap.com/v3/weather/weatherInfo?city=${adcode}&key=${CONFIG.AMAP_KEY}&extensions=base`),
+                    loc.lat && loc.lon ? fetchOpenMeteoForecast(loc.lat, loc.lon).catch(e => { console.warn('[amap] Open-Meteo 补全失败', e.message); return null; }) : Promise.resolve(null),
+                    loc.lat && loc.lon ? fetchOpenMeteoAQI(loc.lat, loc.lon) : Promise.resolve(null),
+                ]);
+                if (allRes.status !== '1') throw new Error(allRes.info || '高德天气失败');
+                const fc = allRes.forecasts?.[0];
+                const c0 = fc?.casts?.[0] || {};
+                const liveBase = baseRes.status === '1' && baseRes.lives?.[0] ? baseRes.lives[0] : {};
+                const temp = parseFloat(liveBase.temperature) || parseFloat(c0.daytemp) || 0;
+                const weatherText = liveBase.weather || c0.dayweather || '晴';
+                const windDir = liveBase.winddirection || c0.daywind || '--';
+                const windPower = liveBase.windpower || c0.daypower || '0';
+                const windSpeed = windScaleToKmh(windPower);
+
+                // 用 Open-Meteo 补全气压、UV、能见度、逐小时、AQI、日出日落、7 天预报等字段
+                let enriched = null;
+                if (omForecast) {
+                    try {
+                        enriched = parseOpenMeteoWeather(omForecast, loc, '高德地图 + Open-Meteo');
+                    } catch (e) { console.warn('[amap] Open-Meteo 解析失败', e.message); }
+                }
+                if (enriched) mergeAQI(enriched, omAQI);
+
+                // 优先使用 Open-Meteo 的 7 天预报（含日出日落、降水概率），失败时回退到高德 4 天预报
+                const daily = enriched?.daily?.length
+                    ? enriched.daily
+                    : (fc?.casts || []).map(d => ({
+                        date: d.date,
+                        minTemp: parseFloat(d.nighttemp),
+                        maxTemp: parseFloat(d.daytemp),
+                        weather: d.dayweather,
+                        weatherCode: null,
+                        precipProbability: null,
+                        sunrise: null,
+                        sunset: null,
+                    }));
+                return {
+                    location: {
+                        city: fc?.city || loc.city,
+                        province: fc?.province || loc.province,
+                        country: '中国',
+                        countryCode: 'CN',
+                        lat: loc.lat,
+                        lon: loc.lon,
+                        timezone: 'Asia/Shanghai',
+                    },
+                    current: {
+                        temp,
+                        feelsLike: enriched?.current?.feelsLike ?? temp,
+                        weather: weatherText,
+                        weatherCode: enriched?.current?.weatherCode ?? null,
+                        humidity: parseInt(liveBase.humidity) || enriched?.current?.humidity || null,
+                        pressure: enriched?.current?.pressure ?? null,
+                        windSpeed,
+                        windDirection: windDir,
+                        windDirectionDeg: enriched?.current?.windDirectionDeg ?? null,
+                        visibility: enriched?.current?.visibility ?? (liveBase.visibility || null),
+                        uv: enriched?.current?.uv ?? null,
+                        precipProbability: enriched?.current?.precipProbability ?? null,
+                        aqi: enriched?.current?.aqi ?? null,
+                        aqiPm25: enriched?.current?.aqiPm25 ?? null,
+                        aqiPm10: enriched?.current?.aqiPm10 ?? null,
+                        aqiNo2: enriched?.current?.aqiNo2 ?? null,
+                        aqiO3: enriched?.current?.aqiO3 ?? null,
+                    },
+                    hourly: enriched?.hourly || [],
+                    daily,
+                    source: enriched ? '高德地图 + Open-Meteo' : '高德地图',
+                    updatedAt: liveBase.reporttime || fc?.reporttime || new Date().toISOString(),
+                };
+            }
+        },
+
+        // --- 天气：和风天气（丰富数据，无 IPv6） ---
+        qweather: {
+            name: '和风天气',
+            ipv6: false,
+            overseas: true,
+            available: () => !!CONFIG.QWEATHER_KEY,
+            async geocode(city) {
+                const data = await fetchJSON(`https://geoapi.qweather.com/v2/city/lookup?location=${encodeURIComponent(city)}&key=${CONFIG.QWEATHER_KEY}&range=world&number=1&lang=zh`);
+                if (data.code !== '200' || !data.location?.length) throw new Error('和风地理编码失败');
+                const g = data.location[0];
+                return {
+                    city: g.name,
+                    province: g.adm1,
+                    country: g.country,
+                    countryCode: g.country === '中国' ? 'CN' : null,
+                    lat: parseFloat(g.lat),
+                    lon: parseFloat(g.lon),
+                    id: g.id,
+                    timezone: g.tz,
+                    source: '和风天气',
+                };
+            },
+            async getWeather(loc) {
+                const locId = loc.id ? loc.id : `${loc.lon},${loc.lat}`;
+                const [nowRes, hourRes, dayRes, airRes] = await Promise.all([
+                    fetchJSON(`https://devapi.qweather.com/v7/weather/now?location=${locId}&key=${CONFIG.QWEATHER_KEY}&lang=zh`).catch(() => ({})),
+                    fetchJSON(`https://devapi.qweather.com/v7/weather/24h?location=${locId}&key=${CONFIG.QWEATHER_KEY}&lang=zh`).catch(() => ({})),
+                    fetchJSON(`https://devapi.qweather.com/v7/weather/7d?location=${locId}&key=${CONFIG.QWEATHER_KEY}&lang=zh`).catch(() => ({})),
+                    fetchJSON(`https://devapi.qweather.com/v7/air/now?location=${locId}&key=${CONFIG.QWEATHER_KEY}&lang=zh`).catch(() => ({})),
+                ]);
+                if (nowRes.code !== '200') throw new Error('和风天气实况失败');
+                const n = nowRes.now;
+                const hourly = (hourRes.hourly || []).slice(0, 24).map(h => ({
+                    time: h.fxTime,
+                    label: formatTime(h.fxTime),
+                    temp: parseFloat(h.temp),
+                    weather: h.text,
+                    weatherCode: null,
+                    precipProbability: h.pop ? parseInt(h.pop) : null,
+                    windSpeed: parseFloat(h.windSpeed) || null,
+                }));
+                const daily = (dayRes.daily || []).map(d => ({
+                    date: d.fxDate,
+                    minTemp: parseFloat(d.tempMin),
+                    maxTemp: parseFloat(d.tempMax),
+                    weather: d.textDay,
+                    weatherCode: null,
+                    precipProbability: null,
+                    sunrise: d.sunrise,
+                    sunset: d.sunset,
+                }));
+                const aqi = airRes.now?.aqi ? parseInt(airRes.now.aqi) : null;
+                return {
+                    location: {
+                        city: loc.city,
+                        province: loc.province,
+                        country: loc.country,
+                        countryCode: loc.countryCode,
+                        lat: loc.lat,
+                        lon: loc.lon,
+                        timezone: loc.timezone || 'Asia/Shanghai',
+                    },
+                    current: {
+                        temp: parseFloat(n.temp),
+                        feelsLike: parseFloat(n.feelsLike),
+                        weather: n.text,
+                        weatherCode: null,
+                        humidity: parseInt(n.humidity) || null,
+                        pressure: parseInt(n.pressure) || null,
+                        windSpeed: parseFloat(n.windSpeed) || null,
+                        windDirection: n.windDir,
+                        windDirectionDeg: parseInt(n.wind360) || null,
+                        visibility: n.vis || null,
+                        uv: null,
+                        precipProbability: null,
+                        aqi,
+                        aqiPm25: airRes.now?.pm2p5 || null,
+                        aqiPm10: airRes.now?.pm10 || null,
+                        aqiNo2: airRes.now?.no2 || null,
+                        aqiO3: airRes.now?.o3 || null,
+                    },
+                    hourly,
+                    daily,
+                    source: '和风天气',
+                    updatedAt: nowRes.updateTime || new Date().toISOString(),
+                };
+            }
+        },
+
+        // --- 天气：Open-Meteo（全球 / IPv6 / 免 key） ---
+        openmeteo: {
+            name: 'Open-Meteo',
+            ipv6: true,
+            overseas: true,
+            available: () => true,
+            async geocode(city) {
+                // 非中文查询使用英文地名，避免 "New York" 被翻译为 "约克"
+                const isChinese = /[\u4e00-\u9fa5]/.test(city);
+                const lang = isChinese ? 'zh' : 'en';
+                const data = await fetchJSON(`https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(city)}&count=1&language=${lang}&format=json`);
+                if (!data.results?.length) throw new Error('Open-Meteo 地理编码失败');
+                const g = data.results[0];
+                return {
+                    city: g.name,
+                    province: g.admin1 || g.admin2 || '',
+                    country: g.country,
+                    countryCode: g.country_code,
+                    lat: g.latitude,
+                    lon: g.longitude,
+                    timezone: g.timezone,
+                    source: 'Open-Meteo',
+                };
+            },
+            async getWeather(loc) {
+                const [forecast, aqi] = await Promise.all([
+                    fetchOpenMeteoForecast(loc.lat, loc.lon),
+                    fetchOpenMeteoAQI(loc.lat, loc.lon),
+                ]);
+                const result = parseOpenMeteoWeather(forecast, loc, 'Open-Meteo');
+                return mergeAQI(result, aqi);
+            }
+        }
+    };
+
+    // 地理编码结果与查询词的相关性校验，避免不存在的城市被解析为默认地点
+    function validateGeocodeMatch(query, loc, providerKey) {
+        if (!loc || !loc.city) return false;
+        const q = String(query).toLowerCase().trim();
+        const city = String(loc.city).toLowerCase();
+        const province = String(loc.province || '').toLowerCase();
+        const country = String(loc.country || '').toLowerCase();
+        const formatted = String(loc.formatted || '').toLowerCase();
+        const tokens = q.split(/\s+/).filter(Boolean);
+
+        if (providerKey === 'amap' || providerKey === 'qweather') {
+            // 中文查询要求返回地名中至少包含一个查询词素
+            if (/[\u4e00-\u9fa5]/.test(q)) {
+                return tokens.some(t => city.includes(t) || province.includes(t) || formatted.includes(t));
+            }
+            // 英文查询做宽松匹配
+            return tokens.some(t => t.length >= 2 && (city.includes(t) || province.includes(t) || formatted.includes(t)));
+        }
+        if (providerKey === 'openmeteo') {
+            return tokens.some(t => t.length >= 2 && (city.includes(t) || province.includes(t) || country.includes(t)))
+                || city.includes(q) || q.includes(city);
+        }
+        return true;
+    }
+
+    // ===================== 天气服务：多源降级 =====================
+    const WeatherService = {
+        async locateIP() {
+            for (const key of CONFIG.IP_PROVIDER_ORDER) {
+                // IP定位提供者映射：amap → amap_ip，其他直接使用 key
+                const providerKey = key === 'amap' ? 'amap_ip' : key;
+                const p = Providers[providerKey];
+                if (!p || !p.available()) continue;
+                try {
+                    const loc = await p.locateIP();
+                    if (loc) {
+                        loc._provider = p.name;
+                        loc._ipv6 = p.ipv6;
+                        return loc;
+                    }
+                } catch (e) { console.warn(`[IP] ${p.name} 失败:`, e.message); }
+            }
+            throw new Error('IP 定位失败，请手动输入城市');
+        },
+
+        async geocode(city) {
+            // 常见海外城市中文名映射，避免被高德误解析为国内同名地点
+            const overseasZh = {
+                '纽约': 'New York', '伦敦': 'London', '东京': 'Tokyo', '巴黎': 'Paris',
+                '悉尼': 'Sydney', '新加坡': 'Singapore', '洛杉矶': 'Los Angeles',
+                '旧金山': 'San Francisco', '西雅图': 'Seattle', '芝加哥': 'Chicago',
+                '柏林': 'Berlin', '罗马': 'Rome', '马德里': 'Madrid', '莫斯科': 'Moscow',
+                '首尔': 'Seoul', '曼谷': 'Bangkok', '吉隆坡': 'Kuala Lumpur',
+                '多伦多': 'Toronto', '温哥华': 'Vancouver', '迪拜': 'Dubai',
+            };
+            const query = overseasZh[city] || city;
+            const isChinese = /[\u4e00-\u9fa5]/.test(query);
+            // 中文优先用高德（中国适用性），非中文/海外中文名优先用全球源
+            const order = isChinese
+                ? CONFIG.PROVIDER_ORDER
+                : ['openmeteo', 'qweather', 'amap'];
+            for (const key of order) {
+                const p = Providers[key];
+                if (!p || !p.available() || !p.geocode) continue;
+                try {
+                    const loc = await p.geocode(query);
+                    if (loc && validateGeocodeMatch(query, loc, key)) {
+                        loc._provider = p.name;
+                        // 使用原始中文名作为显示城市
+                        if (overseasZh[city]) loc.city = city;
+                        return loc;
+                    }
+                } catch (e) { console.warn(`[Geocode] ${p.name} 失败:`, e.message); }
+            }
+            throw new Error('找不到该城市，请检查城市名称');
+        },
+
+        async getWeather(location) {
+            // 根据地区智能选择天气源顺序
+            const isChina = !location.countryCode || location.countryCode === 'CN';
+            // 中国地址：高德(实况+adcode) > Open-Meteo(全球+AQI) > 和风(需Key)
+            // 海外地址：Open-Meteo > 和风 > 高德(不支持海外)
+            const order = isChina
+                ? ['amap', 'openmeteo', 'qweather']
+                : ['openmeteo', 'qweather', 'amap'];
+            for (const key of order) {
+                const p = Providers[key];
+                if (!p || !p.available() || !p.getWeather) continue;
+                // 海外地址跳过仅支持中国的源
+                if (location.countryCode && location.countryCode !== 'CN' && !p.overseas) {
+                    console.warn(`[Weather] 跳过 ${p.name}，不支持海外`);
+                    continue;
+                }
+                try {
+                    const data = await p.getWeather(location);
+                    if (data) {
+                        data._provider = p.name;
+                        data._ipv6 = p.ipv6;
+                        return data;
+                    }
+                } catch (e) { console.warn(`[Weather] ${p.name} 失败:`, e.message); }
+            }
+            throw new Error('所有数据源均无法获取天气，请稍后重试');
+        }
+    };
+
+    // ===================== 渲染辅助函数 =====================
+    function getWeatherIcon(type) {
+        return (iconFunctions[type] || iconFunctions.sunny)();
+    }
+
+    function hourIcon(hour) {
+        if (hour.weatherCode != null) return getWeatherIcon(wmoType(hour.weatherCode));
+        return getWeatherIcon(getWeatherType(hour.weather));
+    }
+
+    function dayIcon(day) {
+        if (day.weatherCode != null) return getWeatherIcon(wmoType(day.weatherCode));
+        return getWeatherIcon(getWeatherType(day.weather));
+    }
+
+    function fmtPop(pop) {
+        const v = parseInt(pop);
+        return isNaN(v) || v <= 0 ? '' : `${v}%`;
+    }
+
+    function showLoading() {
+        weatherDisplay.innerHTML = `
+            <div class="glass current-card skeleton-card">
+                <div style="display:flex;gap:1rem;align-items:center">
+                    <div class="sk sk-circle"></div>
+                    <div style="flex:1;display:flex;flex-direction:column;gap:0.5rem">
+                        <div class="sk sk-line sm"></div>
+                        <div class="sk sk-line"></div>
+                    </div>
+                </div>
+                <div class="sk sk-line lg"></div>
+                <div style="display:grid;grid-template-columns:repeat(2,1fr);gap:0.75rem">
+                    ${[1,2,3,4,5,6].map(() => '<div class="sk sk-line" style="height:88px"></div>').join('')}
+                </div>
+            </div>
+            <div class="side-col">
+                <div class="glass panel">
+                    <div class="sk sk-line sm" style="width:40%;margin-bottom:1rem"></div>
+                    <div style="display:flex;gap:0.5rem">${[1,2,3,4,5].map(() => '<div class="sk" style="width:64px;height:96px;border-radius:12px"></div>').join('')}</div>
+                </div>
+            </div>
+        `;
+    }
+
+    function showError(msg) {
+        weatherDisplay.innerHTML = `
+            <div class="glass current-card" style="grid-column:1/-1">
+                <div class="error">
+                    <div class="err-icon">${ICONS.alert}</div>
+                    <h3>出错了</h3>
+                    <p>${escapeHTML(msg)}</p>
+                    <button onclick="window.retryLast()">重新尝试</button>
+                </div>
+            </div>
+        `;
+    }
+
+    function showEmpty() {
+        weatherDisplay.innerHTML = `
+            <div class="glass current-card" style="grid-column:1/-1">
+                <div class="empty">
+                    <div class="empty-icon">${getSunnyIcon()}</div>
+                    <h3>探索全球天气</h3>
+                    <p>输入城市名称开始查询，已支持全球主要城市与 IPv6 网络</p>
+                    <div class="quick-cities">
+                        ${CONFIG.QUICK_CITIES.map(c => `<button class="quick-city" data-city="${escapeHTML(c)}">${escapeHTML(c)}</button>`).join('')}
+                    </div>
+                </div>
+            </div>
+        `;
+    }
+
+    // ===================== 渲染各模块 =====================
+    function renderCurrentHead(data) {
+        const loc = data.location;
+        const cur = data.current;
+        const d0 = data.daily?.[0] || {};
+        const comfort = getComfort(cur.temp);
+        const weatherType = cur.weatherCode != null ? wmoType(cur.weatherCode) : getWeatherType(cur.weather);
+        const providerBadge = data._provider ? `<span class="provider-badge">${ICONS.globe}<span>${escapeHTML(data._provider)}</span></span>` : '';
+        const countryBadge = `<span class="country-badge">${escapeHTML(countryBadgeLabel(loc))}</span>`;
+        return `
+            <div class="current-head">
+                <div class="location">
+                    <div class="location-city">
+                        <span>${escapeHTML(loc.city)}</span>
+                        ${countryBadge}
+                        ${providerBadge}
+                    </div>
+                    <div class="location-meta">
+                        ${loc.province ? `<span>${escapeHTML(loc.province)}</span>` : ''}
+                        ${loc.country && loc.country !== loc.province ? `<span>${escapeHTML(loc.country)}</span>` : ''}
+                        <span>${formatDate(data.updatedAt)} ${formatTime(data.updatedAt)}</span>
+                    </div>
+                </div>
+                <div class="weather-icon-wrap">${getWeatherIcon(weatherType)}</div>
+            </div>
+            <div class="current-temp">
+                <span class="temp-value">${Math.round(cur.temp)}</span>
+                <span class="temp-unit">°C</span>
+            </div>
+            <div class="current-desc">
+                <span>${escapeHTML(cur.weather)}</span>
+                <span class="comfor-bar"><span class="comfor-dot ${comfort.cls}"></span><span>${comfort.text}</span></span>
+            </div>
+            <div class="current-feel">
+                <span>体感 ${Math.round(cur.feelsLike)}°</span>
+            </div>
+            ${d0.maxTemp != null && d0.minTemp != null ? `
+                <div class="current-range">
+                    <div class="range-row">
+                        <span class="range-low">${ICONS.drop}<span>${Math.round(d0.minTemp)}°</span></span>
+                        <div class="temp-bar"><div class="temp-bar-fill" style="width:${tempBarWidth(d0.minTemp, d0.maxTemp, cur.temp)}%"></div><div class="temp-bar-current" style="left:${tempBarWidth(d0.minTemp, d0.maxTemp, cur.temp)}%"></div></div>
+                        <span class="range-high">${ICONS.sun}<span>${Math.round(d0.maxTemp)}°</span></span>
+                    </div>
+                    <div class="range-desc">今日最低 / 最高气温，当前 ${Math.round(cur.temp)}°</div>
+                </div>
+            ` : ''}
+        `;
+    }
+
+    function countryBadgeLabel(loc) {
+        if (loc.countryCode) return loc.countryCode;
+        if (loc.country) return String(loc.country).slice(0, 2).toUpperCase();
+        return 'UN';
+    }
+
+    function tempBarWidth(min, max, cur) {
+        if (max <= min) return 50;
+        return Math.max(5, Math.min(95, ((cur - min) / (max - min)) * 100));
+    }
+
+    function renderDetails(current, daily0) {
+        const items = [
+            { icon: ICONS.drop, label: '湿度', value: current.humidity != null ? `${current.humidity}%` : '--', extra: current.humidity != null ? getHumidityLevel(current.humidity) : '' },
+            { icon: ICONS.wind, label: '风速', value: current.windSpeed != null ? `${Math.round(current.windSpeed)} km/h` : '--', extra: current.windDirection || '' },
+            { icon: ICONS.gauge, label: '气压', value: current.pressure != null ? `${Math.round(current.pressure)} hPa` : '--', extra: '' },
+            { icon: ICONS.sun, label: 'UV 指数', value: current.uv != null ? current.uv : '--', extra: current.uv != null ? getUVLevel(current.uv).text : '' },
+            { icon: ICONS.eye, label: '能见度', value: current.visibility != null ? `${current.visibility} km` : '--', extra: '' },
+            { icon: ICONS.umbrella, label: '降水概率', value: current.precipProbability != null ? `${current.precipProbability}%` : '--', extra: '' },
+        ];
+        return `
+            <div class="detail-grid">
+                ${items.map(item => `
+                    <div class="detail-card">
+                        <div class="dc-icon">${item.icon}</div>
+                        <div class="dc-value"><span>${item.value}</span>${item.extra ? `<span style="font-size:var(--fs-xs);color:var(--text-tertiary);font-weight:500">${escapeHTML(item.extra)}</span>` : ''}</div>
+                        <div class="dc-label">${item.label}</div>
+                    </div>
+                `).join('')}
+            </div>
+        `;
+    }
+
+    function renderAQI(current) {
+        if (current.aqi == null) return '';
+        const info = getAQIInfo(current.aqi);
+        const max = 500;
+        const pct = Math.min(current.aqi / max, 1);
+        const offset = 176 * (1 - pct);
+        const pollutants = [];
+        if (current.aqiPm25) pollutants.push(`PM2.5 <strong>${current.aqiPm25}</strong>`);
+        if (current.aqiPm10) pollutants.push(`PM10 <strong>${current.aqiPm10}</strong>`);
+        if (current.aqiNo2) pollutants.push(`NO₂ <strong>${current.aqiNo2}</strong>`);
+        if (current.aqiO3) pollutants.push(`O₃ <strong>${current.aqiO3}</strong>`);
+        return `
+            <div class="aqi-card ${info.cls}">
+                <div class="aqi-ring">
+                    <svg width="64" height="64" viewBox="0 0 64 64">
+                        <circle class="track" cx="32" cy="32" r="28"/>
+                        <circle class="progress" cx="32" cy="32" r="28" style="stroke-dashoffset:${offset}"/>
+                    </svg>
+                    <div class="aqi-ring-text"><span>${current.aqi}</span><small>AQI</small></div>
+                </div>
+                <div class="aqi-info">
+                    <div class="aqi-level">${info.level}</div>
+                    <div class="aqi-desc">${info.desc}</div>
+                    ${pollutants.length ? `<div class="aqi-pollutants">${pollutants.map(p => `<span class="aqi-pollutant">${p}</span>`).join('')}</div>` : ''}
+                </div>
+            </div>
+        `;
+    }
+
+    function renderSunArc(daily0) {
+        if (!daily0?.sunrise && !daily0?.sunset) return '';
+        const sunrise = daily0.sunrise || '06:00';
+        const sunset = daily0.sunset || '18:00';
+        // 计算日照进度
+        const now = new Date();
+        const [sh, sm] = sunrise.split(':').map(Number);
+        const [eh, em] = sunset.split(':').map(Number);
+        const sunriseMin = sh * 60 + sm;
+        const sunsetMin = eh * 60 + em;
+        const nowMin = now.getHours() * 60 + now.getMinutes();
+        const dayLen = sunsetMin - sunriseMin || 1;
+        let progress = 0;
+        let isDay = false;
+        if (nowMin >= sunriseMin && nowMin <= sunsetMin) {
+            progress = (nowMin - sunriseMin) / dayLen;
+            isDay = true;
+        } else if (nowMin > sunsetMin) {
+            progress = 1;
+        }
+        // 弧线上太阳位置
+        const sunAngle = Math.PI * (1 - progress); // 从左到右
+        const arcR = 42;
+        const cx = 50, cy = 52;
+        const sunX = cx + arcR * Math.cos(sunAngle);
+        const sunY = cy - arcR * Math.sin(sunAngle);
+        // 日照时长
+        const dayHours = Math.floor(dayLen / 60);
+        const dayMins = dayLen % 60;
+        const dayLenStr = dayHours > 0 ? `${dayHours}h ${dayMins}m` : `${dayMins}m`;
+
+        return `
+            <div class="glass panel reveal d2 sun-arc-panel">
+                <div class="section-head">
+                    <div class="section-title">${ICONS.sunrise}<span>日出日落</span></div>
+                    <span class="section-action">${dayLenStr} 日照</span>
+                </div>
+                <div class="sun-arc-wrap">
+                    <svg viewBox="0 0 100 58" class="sun-arc-svg" aria-hidden="true">
+                        <!-- 地平线 -->
+                        <line x1="5" y1="52" x2="95" y2="52" stroke="rgba(255,255,255,0.08)" stroke-width="0.5"/>
+                        <!-- 弧线轨道 -->
+                        <path d="M 8 52 A 42 42 0 0 1 92 52" fill="none" stroke="rgba(255,255,255,0.1)" stroke-width="1.5" stroke-linecap="round"/>
+                        <!-- 已过弧线 -->
+                        ${isDay ? `<path d="M 8 52 A 42 42 0 0 1 92 52" fill="none" stroke="url(#sunGrad)" stroke-width="2" stroke-linecap="round"
+                            stroke-dasharray="${progress * 131.95} 131.95"/>` : ''}
+                        <defs>
+                            <linearGradient id="sunGrad" x1="0" y1="0" x2="1" y2="0">
+                                <stop offset="0%" stop-color="#fbbf24"/>
+                                <stop offset="100%" stop-color="#f97316"/>
+                            </linearGradient>
+                        </defs>
+                        <!-- 太阳 -->
+                        ${isDay ? `
+                        <circle cx="${sunX}" cy="${sunY}" r="3.5" fill="#fbbf24">
+                            <animate attributeName="r" values="3.5;4;3.5" dur="3s" repeatCount="indefinite"/>
+                        </circle>
+                        <circle cx="${sunX}" cy="${sunY}" r="6" fill="rgba(251,191,36,0.2)">
+                            <animate attributeName="r" values="6;8;6" dur="3s" repeatCount="indefinite"/>
+                        </circle>
+                        ` : ''}
+                    </svg>
+                    <div class="sun-arc-labels">
+                        <div class="sun-arc-item">
+                            <span class="sun-arc-icon">${ICONS.sunrise}</span>
+                            <div>
+                                <div class="sun-arc-time">${sunrise}</div>
+                                <div class="sun-arc-text">日出</div>
+                            </div>
+                        </div>
+                        <div class="sun-arc-item">
+                            <span class="sun-arc-icon">${ICONS.sunset}</span>
+                            <div>
+                                <div class="sun-arc-time">${sunset}</div>
+                                <div class="sun-arc-text">日落</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        `;
+    }
+
+    function renderLifeTips(current, daily0) {
+        const tips = [];
+
+        // 穿衣建议
+        const comfort = getComfort(current.temp);
+        let dressAdvice = '';
+        if (current.temp < 0) dressAdvice = '极寒天气，请穿厚重羽绒服、保暖内衣';
+        else if (current.temp < 10) dressAdvice = '寒冷，建议穿厚外套、毛衣';
+        else if (current.temp < 18) dressAdvice = '凉爽，适合穿夹克、薄毛衣';
+        else if (current.temp < 25) dressAdvice = '舒适，可穿长袖衬衫、薄外套';
+        else if (current.temp < 30) dressAdvice = '温暖，建议穿短袖、薄衣物';
+        else dressAdvice = '炎热，请穿轻薄透气衣物，注意防暑';
+
+        tips.push({
+            icon: '👔',
+            title: '穿衣指数',
+            value: comfort.text,
+            desc: dressAdvice
+        });
+
+        // 紫外线建议
+        if (current.uv != null) {
+            const uvInfo = getUVLevel(current.uv);
+            let uvAdvice = '';
+            if (current.uv < 3) uvAdvice = '紫外线较弱，无需特别防护';
+            else if (current.uv < 6) uvAdvice = '建议涂抹防晒霜，戴帽子';
+            else if (current.uv < 8) uvAdvice = '紫外线强，请做好防晒措施';
+            else if (current.uv < 11) uvAdvice = '紫外线很强，尽量避免户外活动';
+            else uvAdvice = '紫外线极强，请避免外出';
+
+            tips.push({
+                icon: '☀️',
+                title: '紫外线',
+                value: `${current.uv} (${uvInfo.text})`,
+                desc: uvAdvice
+            });
+        }
+
+        // 运动建议
+        let sportAdvice = '';
+        const isRain = current.weather?.includes('雨') || current.weather?.includes('雷');
+        const isSnow = current.weather?.includes('雪');
+        if (isRain || isSnow) sportAdvice = '天气不佳，建议室内运动';
+        else if (current.temp > 35) sportAdvice = '天气炎热，避免剧烈运动';
+        else if (current.temp < 5) sportAdvice = '天气寒冷，注意保暖运动';
+        else sportAdvice = '天气适宜，适合户外运动';
+
+        tips.push({
+            icon: '🏃',
+            title: '运动指数',
+            value: isRain || isSnow ? '不宜' : '适宜',
+            desc: sportAdvice
+        });
+
+        // 洗车建议
+        let carAdvice = '';
+        const pop = current.precipProbability || 0;
+        if (pop > 60) carAdvice = '降水概率高，不建议洗车';
+        else if (pop > 30) carAdvice = '有降水可能，谨慎洗车';
+        else carAdvice = '天气良好，适合洗车';
+
+        tips.push({
+            icon: '🚗',
+            title: '洗车指数',
+            value: pop > 60 ? '不宜' : pop > 30 ? '谨慎' : '适宜',
+            desc: carAdvice
+        });
+
+        // 感冒指数
+        let coldAdvice = '';
+        const tempDiff = daily0.maxTemp && daily0.minTemp ? (daily0.maxTemp - daily0.minTemp) : 0;
+        if (tempDiff > 15) coldAdvice = '昼夜温差大，注意增减衣物';
+        else if (current.temp < 10) coldAdvice = '天气寒冷，注意保暖防感冒';
+        else if (current.humidity > 80) coldAdvice = '湿度较大，注意防潮';
+        else coldAdvice = '天气舒适，感冒概率低';
+
+        tips.push({
+            icon: '🤧',
+            title: '感冒指数',
+            value: tempDiff > 15 || current.temp < 10 ? '易发' : '少发',
+            desc: coldAdvice
+        });
+
+        // 过敏指数
+        let allergyAdvice = '';
+        if (current.weather?.includes('花粉') || current.weather?.includes('柳絮')) {
+            allergyAdvice = '花粉浓度高，易过敏人群注意防护';
+        } else if (current.humidity < 30) {
+            allergyAdvice = '空气干燥，注意保湿';
+        } else {
+            allergyAdvice = '空气质量良好，适宜外出';
+        }
+
+        tips.push({
+            icon: '🌸',
+            title: '过敏指数',
+            value: current.weather?.includes('花粉') ? '高' : '低',
+            desc: allergyAdvice
+        });
+
+        return `
+            <div class="glass panel reveal d5 life-tips-section">
+                <div class="section-head">
+                    <div class="section-title">💡<span>生活建议</span></div>
+                </div>
+                <div class="life-tips-grid">
+                    ${tips.map(tip => `
+                        <div class="life-tip-card">
+                            <div class="lt-icon">${tip.icon}</div>
+                            <div class="lt-title">${tip.title}</div>
+                            <div class="lt-value">${tip.value}</div>
+                            <div class="lt-desc">${tip.desc}</div>
+                        </div>
+                    `).join('')}
+                </div>
+            </div>
+        `;
+    }
+
+    function renderHourly(hourly) {
+        if (!hourly?.length) return '';
+        const nowLabel = formatTime(new Date());
+        const cards = hourly.slice(0, 24).map((h, i) => {
+            const isNow = i === 0 || h.label === nowLabel;
+            return `
+                <div class="hour-card ${isNow ? 'now' : ''}">
+                    <div class="h-time">${isNow ? '现在' : escapeHTML(h.label)}</div>
+                    <div class="h-icon">${hourIcon(h)}</div>
+                    <div class="h-temp">${Math.round(h.temp)}°</div>
+                    <div class="h-pop">${fmtPop(h.precipProbability)}</div>
+                </div>
+            `;
+        }).join('');
+        return `
+            <div class="glass panel reveal d2">
+                <div class="section-head">
+                    <div class="section-title">${ICONS.clock}<span>24 小时预报</span></div>
+                    <span class="section-action">逐时更新</span>
+                </div>
+                <div class="hourly-scroll">${cards}</div>
+            </div>
+        `;
+    }
+
+    function renderDaily(daily) {
+        if (!daily?.length) return '';
+        let minAll = Infinity, maxAll = -Infinity;
+        daily.forEach(d => { if (d.minTemp != null) minAll = Math.min(minAll, d.minTemp); if (d.maxTemp != null) maxAll = Math.max(maxAll, d.maxTemp); });
+        const range = maxAll - minAll || 1;
+        const rows = daily.map((d, i) => {
+            const left = d.minTemp != null ? ((d.minTemp - minAll) / range) * 100 : 0;
+            const width = d.maxTemp != null && d.minTemp != null ? Math.max(8, ((d.maxTemp - d.minTemp) / range) * 100) : 0;
+            const dayName = i === 0 ? '今天' : getWeekday(d.date);
+            return `
+                <div class="forecast-item">
+                    <div class="f-day">${escapeHTML(dayName)}<small>${formatDate(d.date)}</small></div>
+                    <div class="f-icon">${dayIcon(d)}</div>
+                    <div class="f-desc">
+                        <div>${escapeHTML(d.weather || '--')}</div>
+                        <div class="f-pop">${fmtPop(d.precipProbability)}</div>
+                    </div>
+                    <div class="f-temps"><span class="f-temp-low">${Math.round(d.minTemp)}°</span><span class="f-temp-high">${Math.round(d.maxTemp)}°</span></div>
+                    <div class="f-bar"><div class="f-bar-fill" style="left:${left}%;width:${width}%"></div></div>
+                </div>
+            `;
+        }).join('');
+        return `
+            <div class="glass panel reveal d4">
+                <div class="section-head">
+                    <div class="section-title">${ICONS.calendar}<span>未来 7 天</span></div>
+                    <span class="section-action">逐时更新</span>
+                </div>
+                <div class="forecast-list">${rows}</div>
+            </div>
+        `;
+    }
+
+    function renderWeather(data) {
+        const cur = data.current;
+        const daily0 = data.daily?.[0] || {};
+        const weatherType = cur.weatherCode != null ? wmoType(cur.weatherCode) : getWeatherType(cur.weather);
+
+        // 根据天气数据计算动画强度和风速
+        const precip = cur.precipProbability ?? 50;
+        const ws = parseFloat(cur.windSpeed) || 0;
+        // 强度映射：不同天气类型使用不同指标
+        if (weatherType === 'rain' || weatherType === 'storm') {
+            animIntensity = Math.min(1, precip / 100);
+        } else if (weatherType === 'snow') {
+            animIntensity = Math.min(1, precip / 80);
+        } else if (weatherType === 'fog' || weatherType === 'haze') {
+            const vis = parseFloat(cur.visibility) || 10;
+            animIntensity = Math.min(1, Math.max(0.2, 1 - vis / 20));
+        } else if (weatherType === 'sunny') {
+            const uv = parseFloat(cur.uv) || 5;
+            animIntensity = Math.min(1, uv / 11);
+        } else if (weatherType === 'cloudy' || weatherType === 'partlyCloudy') {
+            const hum = parseInt(cur.humidity) || 50;
+            animIntensity = Math.min(1, hum / 100);
+        } else {
+            animIntensity = 0.5;
+        }
+        windSpeed = ws;
+
+        setTheme(weatherType);
+        startAnimation(weatherType);
+        updateMeta(data);
+
+        weatherDisplay.innerHTML = `
+            <div class="main-left">
+                <div class="current-card glass reveal d1">
+                    ${renderCurrentHead(data)}
+                    ${renderAQI(cur)}
+                    ${renderDetails(cur, daily0)}
+                </div>
+                ${renderLifeTips(cur, daily0)}
+            </div>
+            <div class="main-right">
+                ${renderSunArc(daily0)}
+                ${renderHourly(data.hourly)}
+                ${renderDaily(data.daily)}
+            </div>
+        `;
+    }
+
+    function updateMeta(data) {
+        const t = formatTime(data.updatedAt);
+        updateTime.textContent = t;
+        lastUpdateBadge.setAttribute('data-time', t);
+    }
+
+    // ===================== 业务逻辑 =====================
+    let lastCity = null;
+    let isLoading = false;
+    let searchDebounceTimer = null;
+
+    async function loadByIP(silent = false) {
+        if (isLoading) return;
+        isLoading = true;
+        showLoading();
+        try {
+            const loc = await WeatherService.locateIP();
+            const data = await WeatherService.getWeather(loc);
+            lastCity = loc.city;
+            cityInput.value = loc.city;
+            renderWeather(data);
+            showToast(`已定位到 ${loc.city}`, 'success');
+        } catch (e) {
+            if (silent) showEmpty();
+            else showError(e.message);
+            showToast(e.message, 'error');
+        } finally {
+            isLoading = false;
+        }
+    }
+
+    async function loadWeather(city) {
+        if (!city || isLoading) return;
+        isLoading = true;
+        clearTimeout(searchDebounceTimer);
+        cityInput.value = city;
+        historyBox.classList.remove('show');
+        cityInput.blur();
+        showLoading();
+        try {
+            const loc = await WeatherService.geocode(city);
+            const data = await WeatherService.getWeather(loc);
+            lastCity = city;
+            renderWeather(data);
+            saveHistory(city);
+            renderHistory();
+        } catch (e) {
+            showError(e.message);
+            showToast(e.message, 'error');
+        } finally {
+            isLoading = false;
+        }
+    }
+
+    window.retryLast = () => {
+        if (lastCity) loadWeather(lastCity);
+        else loadByIP();
+    };
+
+    // ===================== 事件绑定 =====================
+    function doSearch() {
+        const city = cityInput.value.trim();
+        if (!city) return;
+        clearTimeout(searchDebounceTimer);
+        searchDebounceTimer = setTimeout(() => loadWeather(city), 120);
+    }
+
+    btnSearch.addEventListener('click', doSearch);
+    cityInput.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') {
+            clearTimeout(searchDebounceTimer);
+            const city = cityInput.value.trim();
+            if (city) loadWeather(city);
+        }
+        if (e.key === 'Escape') {
+            historyBox.classList.remove('show');
+            cityInput.blur();
+        }
+        if (e.key === '/') {
+            const tag = e.target;
+            if (tag.selectionStart === 0 && tag.selectionEnd === tag.value.length) {
+                // 全选状态下按 / 允许输入
+                return;
+            }
+            if (tag.value === '') {
+                e.preventDefault();
+                tag.focus();
+            }
+        }
+    });
+    cityInput.addEventListener('focus', () => {
+        renderHistory();
+        cityInput.select();
+    });
+    // 使用 mousedown 而非 click，避免 blur 先触发导致下拉框消失而无法点击
+    cityInput.addEventListener('blur', () => setTimeout(() => historyBox.classList.remove('show'), 200));
+
+    document.addEventListener('click', (e) => {
+        if (!e.target.closest('.search-box')) historyBox.classList.remove('show');
+    });
+
+    document.addEventListener('keydown', (e) => {
+        if (e.key === '/' && document.activeElement !== cityInput) {
+            e.preventDefault();
+            cityInput.focus();
+        }
+    });
+
+    btnRefresh.addEventListener('click', () => {
+        btnRefresh.classList.add('spinning');
+        const promise = lastCity ? loadWeather(lastCity) : loadByIP();
+        promise?.finally(() => setTimeout(() => btnRefresh.classList.remove('spinning'), 600));
+    });
+
+    historyBox.addEventListener('mousedown', (e) => {
+        // 阻止 mousedown 使搜索框失焦，确保下拉项可点击
+        if (e.target.closest('.history-item, .history-clear')) {
+            e.preventDefault();
+        }
+    });
+    historyBox.addEventListener('click', (e) => {
+        const clearBtn = e.target.closest('.history-clear');
+        if (clearBtn) {
+            e.stopPropagation();
+            clearHistory();
+            return;
+        }
+        const removeBtn = e.target.closest('.h-remove');
+        if (removeBtn) {
+            e.stopPropagation();
+            removeHistory(removeBtn.dataset.city);
+            return;
+        }
+        const item = e.target.closest('.history-item');
+        if (item) loadWeather(item.dataset.city);
+    });
+    historyBox.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') {
+            const item = e.target.closest('.history-item');
+            if (item) loadWeather(item.dataset.city);
+        }
+    });
+
+    weatherDisplay.addEventListener('click', (e) => {
+        const cityBtn = e.target.closest('.quick-city');
+        if (cityBtn) loadWeather(cityBtn.dataset.city);
+    });
+
+    // ===================== 小时预报滚动增强 =====================
+    // 鼠标滚轮横向滚动（桌面端）
+    weatherDisplay.addEventListener('wheel', (e) => {
+        const scrollContainer = e.target.closest('.hourly-scroll');
+        if (scrollContainer && Math.abs(e.deltaY) > Math.abs(e.deltaX)) {
+            e.preventDefault();
+            scrollContainer.scrollLeft += e.deltaY;
+        }
+    }, { passive: false });
+
+    // 拖拽滚动（桌面端）
+    (function initDragScroll() {
+        let isDown = false, startX, scrollLeft;
+        const getScrollContainer = () => document.querySelector('.hourly-scroll');
+
+        weatherDisplay.addEventListener('mousedown', (e) => {
+            const container = e.target.closest('.hourly-scroll');
+            if (!container) return;
+            isDown = true;
+            startX = e.pageX - container.offsetLeft;
+            scrollLeft = container.scrollLeft;
+            container.classList.add('dragging');
+        });
+
+        document.addEventListener('mouseleave', () => { isDown = false; });
+        document.addEventListener('mouseup', () => {
+            isDown = false;
+            getScrollContainer()?.classList.remove('dragging');
+        });
+
+        document.addEventListener('mousemove', (e) => {
+            if (!isDown) return;
+            const container = getScrollContainer();
+            if (!container) return;
+            e.preventDefault();
+            const x = e.pageX - container.offsetLeft;
+            const walk = (x - startX) * 1.5;
+            container.scrollLeft = scrollLeft - walk;
+        });
+    })();
+
+    // ===================== 初始化 =====================
+    (async function init() {
+        renderHistory();
+        detectNetwork();
+        showEmpty();
+        // 尝试自动定位，失败不阻塞，保留空状态
+        try { await loadByIP(true); }
+        catch (e) { console.log('自动定位未成功', e.message); }
+    })();
+</script>
+</body>
+</html>
