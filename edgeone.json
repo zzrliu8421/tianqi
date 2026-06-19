@@ -1,0 +1,5 @@
+{
+    "buildCommand": "node build.js",
+    "outputDirectory": "./",
+    "nodeVersion": "20.18.0"
+}
