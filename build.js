@@ -17,7 +17,8 @@ const path = require('path');
 // ===================== 配置项 =====================
 const STATIC_CONFIG = {
     PROVIDER_ORDER: ['qweather', 'amap', 'openmeteo'],
-    IP_PROVIDER_ORDER: ['amap', 'qqip', 'ipapi'],
+    // IP定位降级顺序（仅当 GeoDB 完全失败时使用；正常流程由 locateIP 分流逻辑控制）
+    IP_PROVIDER_ORDER: ['amap', 'geodb'],
     STORAGE_KEY: 'weather_search_history_v2',
     MAX_HISTORY: 8,
     QUICK_CITIES: ['北京', '上海', '广州', '深圳', '杭州', '成都', '纽约', '伦敦', '东京'],
@@ -28,6 +29,7 @@ const STATIC_CONFIG = {
 const ENV_KEY_MAP = {
     AMAP_KEY: 'AMAP_KEY',
     QWEATHER_KEY: 'QWEATHER_KEY',
+    IPNEWS_KEY: 'IPNEWS_KEY',
 };
 
 // ===================== 工具函数 =====================
@@ -72,9 +74,12 @@ function generateConfigJS(env) {
     lines.push('    // ---------- API 密钥 ----------');
     for (const [envKey, configKey] of Object.entries(ENV_KEY_MAP)) {
         const value = env[envKey] !== undefined ? env[envKey] : '';
-        const comment = envKey === 'AMAP_KEY'
-            ? '高德 Web 服务 Key（用于中国地区天气与地理编码）'
-            : '和风天气 Web API Key（可选，填写后可获得 AQI 等数据）';
+        const comments = {
+            AMAP_KEY: '高德 Web 服务 Key（用于中国地区天气与地理编码）',
+            QWEATHER_KEY: '和风天气 Web API Key（可选，填写后可获得 AQI 等数据）',
+            IPNEWS_KEY: 'IPnews API Key（用于 IPv6 网络 IP 定位）',
+        };
+        const comment = comments[envKey] || '';
         lines.push(`    // ${comment}`);
         lines.push(`    ${configKey}: '${escapeJS(value)}',`);
     }
@@ -129,6 +134,7 @@ function main() {
         console.log('');
         console.log('高德天气: ' + (env.AMAP_KEY ? '可用' : '未配置'));
         console.log('和风天气: ' + (env.QWEATHER_KEY ? '可用' : '未配置'));
+        console.log('IPnews: ' + (env.IPNEWS_KEY ? '可用（IPv6 定位）' : '未配置'));
         console.log('Open-Meteo: 始终可用（免 Key 兜底）');
         if (!hasAny) {
             console.log('');
