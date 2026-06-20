@@ -2803,13 +2803,18 @@
         };
 
         // 通过公网 IP 服务判断真实出口 IP 类型
+        // api4 强制走 IPv4，api6 强制走 IPv6，双栈下优先获取 IPv4 地址
         try {
-            const data = await fetchJSON('https://api64.ipify.org?format=json');
-            const ip = data?.ip;
-            if (ip && isPublicIP(ip)) {
-                const hasIPv6 = ip.includes(':');
-                setStatus(hasIPv6 ? 'IPv6 已连接' : 'IPv4 网络', hasIPv6);
-                return hasIPv6;
+            const [v4Res, v6Res] = await Promise.allSettled([
+                fetchJSON('https://api4.ipify.org?format=json'),
+                fetchJSON('https://api6.ipify.org?format=json')
+            ]);
+            const hasV4 = v4Res.status === 'fulfilled' && v4Res.value?.ip && isPublicIP(v4Res.value.ip);
+            const hasV6 = v6Res.status === 'fulfilled' && v6Res.value?.ip && isPublicIP(v6Res.value.ip);
+            if (hasV4 || hasV6) {
+                const isV6 = hasV6 && !hasV4;
+                setStatus(isV6 ? 'IPv6 已连接' : 'IPv4 网络', isV6);
+                return isV6;
             }
         } catch (e) { console.warn('[Network] ipify 检测失败', e.message); }
 
@@ -2830,9 +2835,11 @@
             pc.close();
             const publicCandidates = Array.from(candidates).filter(isPublicIP);
             const pool = publicCandidates.length ? publicCandidates : Array.from(candidates);
-            const hasIPv6 = pool.some(ip => ip.includes(':'));
-            setStatus(hasIPv6 ? 'IPv6 已连接' : 'IPv4 网络', hasIPv6);
-            return hasIPv6;
+            const hasV4 = pool.some(ip => !ip.includes(':'));
+            const hasV6 = pool.some(ip => ip.includes(':'));
+            const isV6 = hasV6 && !hasV4;
+            setStatus(isV6 ? 'IPv6 已连接' : 'IPv4 网络', isV6);
+            return isV6;
         } catch {
             setStatus('网络检测失败');
             return false;
