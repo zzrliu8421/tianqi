@@ -2984,7 +2984,7 @@
             available: () => !!CONFIG.IPNEWS_KEY,
             async locateIP(ip) {
                 if (!ip) throw new Error('IPnews 需要传入 IP 地址');
-                const data = await fetchJSON(`https://ipnews.io/api/v1/json/${encodeURIComponent(ip)}?api-key=${CONFIG.IPNEWS_KEY}`, { timeout: 5000 });
+                const data = await fetchJSON(`${CONFIG.API_BASE}/api/ipnews/api/v1/json/${encodeURIComponent(ip)}`, { timeout: 5000 });
                 if (!data || !data.latitude || !data.longitude) throw new Error('IPnews 定位失败');
                 return {
                     city: data.city || data.region,
@@ -3005,7 +3005,7 @@
             overseas: false,
             available: () => !!CONFIG.AMAP_KEY,
             async locateIP() {
-                const data = await fetchJSON(`https://restapi.amap.com/v3/ip?key=${CONFIG.AMAP_KEY}`);
+                const data = await fetchJSON(`${CONFIG.API_BASE}/api/amap/v3/ip`);
                 if (data.status !== '1' || !data.adcode) throw new Error('高德 IP 定位失败');
                 // 高德对直辖市可能返回空字符串或 []，需要用 province 兜底
                 const city = (data.city && data.city !== '[]') ? data.city : data.province;
@@ -3021,7 +3021,7 @@
                 // 有了坐标才能让 Open-Meteo 补全 AQI/UV/逐小时等丰富数据
                 if (city) {
                     try {
-                        const geo = await fetchJSON(`https://restapi.amap.com/v3/geocode/geo?address=${encodeURIComponent(city)}&key=${CONFIG.AMAP_KEY}`);
+                        const geo = await fetchJSON(`${CONFIG.API_BASE}/api/amap/v3/geocode/geo?address=${encodeURIComponent(city)}`);
                         if (geo.status === '1' && geo.geocodes?.length) {
                             const [lon, lat] = (geo.geocodes[0].location || ',').split(',').map(Number);
                             if (lat && lon) {
@@ -3052,7 +3052,7 @@
             overseas: false,
             available: () => !!CONFIG.AMAP_KEY,
             async geocode(city) {
-                const data = await fetchJSON(`https://restapi.amap.com/v3/geocode/geo?address=${encodeURIComponent(city)}&key=${CONFIG.AMAP_KEY}`);
+                const data = await fetchJSON(`${CONFIG.API_BASE}/api/amap/v3/geocode/geo?address=${encodeURIComponent(city)}`);
                 if (data.status !== '1' || !data.geocodes?.length) throw new Error('高德地理编码失败');
                 const g = data.geocodes[0];
                 const [lon, lat] = (g.location || ',').split(',').map(Number);
@@ -3072,7 +3072,7 @@
                 // 若缺少 adcode（如 ipapi 定位），尝试通过逆地理编码获取
                 if (!adcode && loc.lat && loc.lon) {
                     try {
-                        const regeo = await fetchJSON(`https://restapi.amap.com/v3/geocode/regeo?key=${CONFIG.AMAP_KEY}&location=${loc.lon},${loc.lat}&extensions=base`);
+                        const regeo = await fetchJSON(`${CONFIG.API_BASE}/api/amap/v3/geocode/regeo?location=${loc.lon},${loc.lat}&extensions=base`);
                         if (regeo.status === '1' && regeo.regeocode?.addressComponent?.adcode) {
                             adcode = regeo.regeocode.addressComponent.adcode;
                         }
@@ -3080,7 +3080,7 @@
                 }
                 if (!adcode) throw new Error('高德天气需要 adcode');
                 const [baseRes, omForecast, omAQI] = await Promise.all([
-                    fetchJSON(`https://restapi.amap.com/v3/weather/weatherInfo?city=${adcode}&key=${CONFIG.AMAP_KEY}&extensions=base`),
+                    fetchJSON(`${CONFIG.API_BASE}/api/amap/v3/weather/weatherInfo?city=${adcode}&extensions=base`),
                     loc.lat && loc.lon ? fetchOpenMeteoForecast(loc.lat, loc.lon).catch(e => { console.warn('[amap] Open-Meteo 补全失败', e.message); return null; }) : Promise.resolve(null),
                     loc.lat && loc.lon ? fetchOpenMeteoAQI(loc.lat, loc.lon) : Promise.resolve(null),
                 ]);
@@ -3147,7 +3147,7 @@
             overseas: true,
             available: () => !!CONFIG.QWEATHER_KEY,
             async geocode(city) {
-                const data = await fetchJSON(`https://geoapi.qweather.com/v2/city/lookup?location=${encodeURIComponent(city)}&key=${CONFIG.QWEATHER_KEY}&range=world&number=1&lang=zh`);
+                const data = await fetchJSON(`${CONFIG.API_BASE}/api/qweather/geo/v2/city/lookup?location=${encodeURIComponent(city)}&range=world&number=1&lang=zh`);
                 if (data.code !== '200' || !data.location?.length) throw new Error('和风地理编码失败');
                 const g = data.location[0];
                 return {
@@ -3165,10 +3165,10 @@
             async getWeather(loc) {
                 const locId = loc.id ? loc.id : `${loc.lon},${loc.lat}`;
                 const [nowRes, hourRes, dayRes, airRes] = await Promise.all([
-                    fetchJSON(`https://devapi.qweather.com/v7/weather/now?location=${locId}&key=${CONFIG.QWEATHER_KEY}&lang=zh`).catch(() => ({})),
-                    fetchJSON(`https://devapi.qweather.com/v7/weather/24h?location=${locId}&key=${CONFIG.QWEATHER_KEY}&lang=zh`).catch(() => ({})),
-                    fetchJSON(`https://devapi.qweather.com/v7/weather/7d?location=${locId}&key=${CONFIG.QWEATHER_KEY}&lang=zh`).catch(() => ({})),
-                    fetchJSON(`https://devapi.qweather.com/v7/air/now?location=${locId}&key=${CONFIG.QWEATHER_KEY}&lang=zh`).catch(() => ({})),
+                    fetchJSON(`${CONFIG.API_BASE}/api/qweather/dev/v7/weather/now?location=${locId}&lang=zh`).catch(() => ({})),
+                    fetchJSON(`${CONFIG.API_BASE}/api/qweather/dev/v7/weather/24h?location=${locId}&lang=zh`).catch(() => ({})),
+                    fetchJSON(`${CONFIG.API_BASE}/api/qweather/dev/v7/weather/7d?location=${locId}&lang=zh`).catch(() => ({})),
+                    fetchJSON(`${CONFIG.API_BASE}/api/qweather/dev/v7/air/now?location=${locId}&lang=zh`).catch(() => ({})),
                 ]);
                 if (nowRes.code !== '200') throw new Error('和风天气实况失败');
                 const n = nowRes.now;

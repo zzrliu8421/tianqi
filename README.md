@@ -40,13 +40,43 @@
 ```
 .
 ├── index.html          # 主页面（包含样式与业务逻辑）
-├── build.js            # 构建脚本：根据环境变量生成 config.js
+├── server.js           # 代理服务器：托管静态文件 + 代理上游 API（隐藏 Key）
+├── build.js            # 构建脚本：根据环境变量生成 config.js（仅含布尔标志）
 ├── edgeone.json        # EdgeOne Pages 部署配置
 ├── package.json        # 项目脚本定义
 ├── .env.example        # 环境变量模板
 ├── .gitignore          # Git 忽略规则
 └── README.md           # 本文件
 ```
+
+---
+
+## 安全模型：API Key 不暴露给用户
+
+为避免 API Key 硬编码到前端被用户在浏览器中查看，本项目采用 **服务端代理** 模式：
+
+- 真实 Key 仅在服务端读取（来自系统环境变量或 `.env` 文件），前端代码、构建产物、Git 仓库中均不出现
+- 前端 `config.js` 仅包含布尔值（如 `AMAP_KEY: true`）表示"服务端是否已配置"，**不含任何密钥**
+- 前端所有需要 Key 的请求统一走同源 `/api/*` 代理，由服务端补齐 Key 后转发到上游
+
+本项目提供两种等价的服务端实现，路由表完全一致，可按部署场景任选其一：
+
+| 实现 | 入口文件 | 适用场景 | Key 读取方式 |
+|---|---|---|---|
+| Node.js 代理 | [server.js](server.js) | 方式 A：自建 NAT 服务器 / VPS | `process.env` 或 `.env` |
+| EdgeOne 边缘函数 | [edge-functions/api/[[path]].js](edge-functions/api/%5B%5Bpath%5D%5D.js) | 方式 D：EdgeOne Pages 部署 | `context.env`（控制台环境变量） |
+
+代理路由：
+
+| 前端请求 | 上游目标 |
+|---|---|
+| `GET /api/amap/<path>` | `https://restapi.amap.com/<path>` (附加 `key=AMAP_KEY`) |
+| `GET /api/qweather/geo/<path>` | `https://geoapi.qweather.com/<path>` (附加 `key=QWEATHER_KEY`) |
+| `GET /api/qweather/dev/<path>` | `https://devapi.qweather.com/<path>` (附加 `key=QWEATHER_KEY`) |
+| `GET /api/ipnews/<path>` | `https://ipnews.io/<path>` (附加 `api-key=IPNEWS_KEY`) |
+| `GET /api/status` | 返回服务端已配置的 provider 列表（不暴露 Key） |
+
+> Open-Meteo、ipify 等免 Key 公开 API 仍由前端直接访问。
 
 ---
 
@@ -67,23 +97,28 @@ cd tianqi
 cp .env.example .env
 ```
 
-按需填入以下 Key：
+按需填入以下 Key（**仅服务端读取，不会暴露给前端**）：
 
 | 变量名 | 用途 | 是否必填 |
 |---|---|---|
 | `AMAP_KEY` | 高德地图 Web 服务 Key，用于中国地区天气与地理编码 | 推荐 |
 | `QWEATHER_KEY` | 和风天气 Key，用于 AQI 空气质量数据 | 可选 |
 | `IPNEWS_KEY` | IPnews Key，用于 IPv6 IP 定位 | 可选 |
+| `PORT` | 代理服务器端口，默认 8787 | 可选 |
+| `HOST` | 代理服务器监听地址，默认 0.0.0.0 | 可选 |
+| `API_BASE` | 前端访问代理的基地址，默认空（同源） | 可选 |
 
-### 3. 生成配置
+### 3. 本地预览（推荐：代理模式）
+
+直接启动代理服务器，它会同时托管静态文件、代理上游 API、自动生成 `config.js`：
 
 ```bash
-npm run build
+npm start
 # 或
-node build.js
+node server.js
 ```
 
-构建脚本会读取 `.env` 或系统环境变量，生成 `config.js`。
+打开浏览器访问 `http://localhost:8787` 即可。此时所有 API Key 仅存在服务端进程内存中，前端不会以任何形式获取到。
 
 检查配置是否生效：
 
@@ -93,31 +128,197 @@ npm run check
 node build.js check
 ```
 
-### 4. 本地预览
+### 4. 仅生成前端配置（不启动代理）
 
-`index.html` 是纯静态文件，可直接用任意静态服务器打开，例如：
+如果需要把前端单独部署到静态托管平台（此时 `config.js` 不再包含真实 Key，已安全），可只运行构建脚本：
 
 ```bash
-npx serve .
+npm run build
+# 或
+node build.js
 ```
+
+构建脚本会读取 `.env` 或系统环境变量，生成只含布尔标志的 `config.js`。
 
 ---
 
 ## 部署
 
-### EdgeOne Pages
+### 方式 A：自建 NAT 服务器（推荐，Key 完全不暴露）
 
-项目已包含 `edgeone.json`，构建命令为：
+适用于你拥有 NAT 服务器 / VPS / 容器的场景。一台机器同时托管前端与代理：
+
+```bash
+# 1. 把代码部署到服务器
+# 2. 配置 .env（填入真实 API Key）
+cp .env.example .env
+vim .env
+
+# 3. 启动代理服务器（推荐用 pm2 / systemd 守护）
+npm start
+# 或
+PORT=8787 node server.js
+
+# 4. 浏览器访问 http://<服务器IP>:8787
+```
+
+反向代理（Nginx）示例：
+
+```nginx
+server {
+    listen 80;
+    server_name your-domain.com;
+
+    location / {
+        proxy_pass http://127.0.0.1:8787;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+    }
+}
+```
+
+此模式下：
+- `config.js` 只含布尔值，即便被抓包也无法获取真实 Key
+- 浏览器请求 `/api/amap/v3/ip` → 服务器补齐 `key=AMAP_KEY` → 转发到高德
+- 用户在前端开发者工具中只能看到 `/api/...`，看不到任何 Key
+
+### 方式 B：前端静态托管 + 独立代理服务
+
+如果你想把前端部署到 EdgeOne Pages / Vercel / Cloudflare Pages（享受 CDN），把代理单独部署到自己的服务器：
+
+1. **前端侧**：构建时设置 `API_BASE` 指向你的代理服务器：
+
+   ```bash
+   API_BASE=https://api.your-domain.com node build.js
+   ```
+
+   生成的 `config.js` 会包含 `API_BASE: 'https://api.your-domain.com'`，前端请求会拼成 `https://api.your-domain.com/api/amap/...`。
+
+2. **代理侧**：在另一台服务器上运行 `server.js`，配置好 `.env` 与 CORS 即可（`server.js` 已默认开启 `Access-Control-Allow-Origin: *`）。
+
+### 方式 C：纯静态部署（不再使用代理）
+
+如果不需要隐藏 Key（例如内部使用），可像旧版本那样直接构建并部署：
 
 ```bash
 node build.js
 ```
 
-输出目录为 `./`，Node 版本 `20.18.0`。
+> 注意：自代理模式上线后，`build.js` 生成的 `config.js` **不再包含真实 Key**，纯静态部署将无法调用高德 / 和风 / IPnews 等需要 Key 的 API。仅 Open-Meteo 等免 Key 数据源可用。
 
-### 其他平台
+### 方式 D：EdgeOne Pages 边缘函数（推荐，可用性最高）
 
-由于 `config.js` 包含 API Key，建议在部署前运行 `node build.js` 生成，或在 CI/CD 中注入环境变量后运行构建。不要直接将 `.env` 提交到仓库。
+把代理逻辑直接跑在 EdgeOne 的全球边缘节点上，**无需自建服务器**，Key 收敛在边缘函数运行时中，前端零暴露。这是本项目针对 EdgeOne Pages 平台的原生适配方案。
+
+#### 架构
+
+```
+浏览器
+  │  GET /api/amap/v3/ip  (同源，不带 Key)
+  ▼
+EdgeOne 边缘节点 (edge-functions/api/[[path]].js)
+  │  读取 context.env.AMAP_KEY
+  │  fetch https://restapi.amap.com/v3/ip?key=AMAP_KEY
+  ▼
+上游 API (高德 / 和风 / IPnews)
+```
+
+- 静态资源（`index.html` / `config.js` 等）由 EdgeOne Pages CDN 托管
+- `/api/*` 请求由 `edge-functions/api/[[path]].js` 在边缘节点处理
+- 真实 Key 仅存在于 `context.env`，**不会出现在前端代码、构建产物、Git 仓库中**
+
+#### 项目结构（新增部分）
+
+```
+.
+├── edge-functions/
+│   └── api/
+│       └── [[path]].js     # 边缘函数：catch-all 处理所有 /api/* 请求
+├── edgeone.json            # 构建配置（buildCommand: node build.js）
+├── server.js               # 保留，仅用于方式 A（自建服务器）
+├── build.js                # 构建时生成只含布尔值的 config.js
+└── index.html              # 前端（不修改，仍请求同源 /api/*）
+```
+
+> `edge-functions/` 目录会被 EdgeOne Pages 自动扫描，无需在 `edgeone.json` 中声明。静态资源路由与边缘函数路由冲突时，静态资源优先；本项目 `/api/*` 不与任何静态文件冲突。
+
+#### 步骤 1：在 EdgeOne Pages 控制台配置环境变量
+
+进入「项目设置 → 环境变量」，添加以下三个变量，**作用域同时勾选「构建环境」和「运行环境」**：
+
+| 变量名 | 用途 | 构建环境 | 运行环境 |
+|---|---|---|---|
+| `AMAP_KEY` | 高德 Web 服务 Key | ✅（生成 config.js 布尔标志） | ✅（边缘函数代理时注入） |
+| `QWEATHER_KEY` | 和风天气 Key | ✅ | ✅ |
+| `IPNEWS_KEY` | IPnews Key | ✅ | ✅ |
+
+为什么两个作用域都要勾？
+- **构建环境**：`build.js` 读取后生成 `config.js`，仅含 `AMAP_KEY: true/false` 等布尔值，前端据此判断功能可用性
+- **运行环境**：`edge-functions/api/[[path]].js` 通过 `context.env.AMAP_KEY` 读取真实 Key 用于上游转发
+
+> 也可以用 CLI 一键同步：`edgeone makers env set AMAP_KEY <your-key>`
+
+#### 步骤 2：关联 Git 仓库并部署
+
+1. 把代码推送到 GitHub / GitLab 仓库（`.env` 会被 `.gitignore` 自动忽略，安全）
+2. 在 EdgeOne Pages 控制台「新建项目」→ 选择仓库 → 框架预设选「无」
+3. 构建配置会自动读取项目根目录的 `edgeone.json`：
+   - 构建命令：`node build.js`
+   - 输出目录：`./`
+   - Node 版本：`20.18.0`
+4. 点击「部署」，等待构建完成
+
+部署成功后访问 EdgeOne 分配的域名（如 `xxx.edgeone.app`），所有 `/api/*` 请求会自动路由到边缘函数。
+
+#### 步骤 3：本地调试边缘函数
+
+```bash
+# 安装 EdgeOne CLI
+npm install -g edgeone
+
+# 登录（选择 China 站）
+edgeone login
+
+# 在项目根目录创建本地 .env（仅供本地调试用，不提交）
+cp .env.example .env
+# 编辑 .env 填入真实 Key
+
+# 启动本地开发服务（同时托管静态资源 + 边缘函数）
+edgeone pages dev
+# 或新命名空间：edgeone makers dev
+```
+
+CLI 会读取本地 `.env` 注入到 `context.env`，行为与线上一致。默认监听 `http://localhost:8788`。
+
+#### 边缘函数路由表
+
+| 前端请求 | 上游目标 | 注入的 Key |
+|---|---|---|
+| `GET /api/status` | （无上游）返回 provider 布尔值 | — |
+| `GET /api/amap/<path>` | `https://restapi.amap.com/<path>` | `key=AMAP_KEY` |
+| `GET /api/qweather/geo/<path>` | `https://geoapi.qweather.com/<path>` | `key=QWEATHER_KEY` |
+| `GET /api/qweather/dev/<path>` | `https://devapi.qweather.com/<path>` | `key=QWEATHER_KEY` |
+| `GET /api/ipnews/<path>` | `https://ipnews.io/<path>` | `api-key=IPNEWS_KEY` |
+
+未匹配 `/api/*` 的请求会回退到静态资源。
+
+#### 安全与限制说明
+
+- **CORS**：边缘函数已在所有响应中附加 `Access-Control-Allow-Origin: *`，跨域调用可直接使用
+- **超时**：单次上游请求超时 10s（通过 EdgeOne 特有的 `eo.timeoutSetting` 配置）；EdgeOne 边缘函数单次执行 CPU 时间限制 200ms（不含 I/O 等待）
+- **CPU 限制**：边缘函数单次执行 CPU 时间片 200ms，本项目代理逻辑远低于此限制
+- **代码包大小**：单个函数代码包 ≤ 5MB，本文件远低于此限制
+- **Key 安全**：`context.env` 中的 Key 不会出现在前端任何位置；建议同时在高德 / 和风控制台设置 **域名白名单 / 配额限制**，防止边缘节点 IP 被盗用
+- **降级**：若所有 Key 均未配置，前端会自动降级到 Open-Meteo 等免 Key 数据源（由 `config.js` 布尔值控制）
+
+#### 与其它方式的对比
+
+| 方式 | Key 安全 | 运维成本 | 全球加速 | 国内访问 |
+|---|---|---|---|---|
+| A 自建服务器 | ✅ | 高（需维护服务器） | ❌ | 取决于服务器位置 |
+| B 静态+独立代理 | ✅ | 中（CDN + 服务器） | ✅ 前端 | 取决于代理位置 |
+| C 纯静态 | ❌ Key 暴露 | 低 | ✅ | ✅ |
+| **D EdgeOne 边缘函数** | ✅ | **低（无服务器）** | ✅ 3200+ 节点 | ✅ |
 
 ---
 
@@ -129,6 +330,8 @@ node build.js
 2. `.env` 文件
 
 这样设计可以同时兼容本地开发与 EdgeOne Pages / Vercel 等 CI/CD 平台。
+
+`server.js` 同样按上述优先级读取 Key，并自动调用 `node build.js` 生成 `config.js`。
 
 ---
 

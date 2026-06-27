@@ -3,6 +3,10 @@
  *
  * 从系统环境变量或 .env 文件读取 API Key 等配置，生成 config.js。
  *
+ * 重要：自代理模式上线后，config.js 不再包含任何真实 API Key，
+ *       只生成布尔值 HAS_AMAP / HAS_QWEATHER / HAS_IPNEWS 表示服务端是否配置。
+ *       真实 Key 由 server.js 在服务端持有，前端通过 /api/* 代理调用。
+ *
  * 来源优先级（覆盖模式）：
  *   1. 系统环境变量（process.env）— 适配 EdgeOne Pages / Vercel 等 CI/CD 平台
  *   2. .env 文件 — 适配本地开发
@@ -16,6 +20,9 @@ const path = require('path');
 
 // ===================== 配置项 =====================
 const STATIC_CONFIG = {
+    // 代理基地址：为空字符串表示与前端同源（即由 server.js 同进程托管）
+    // 部署到不同域名时，可设为如 'https://api.example.com'
+    API_BASE: process.env.API_BASE || '',
     PROVIDER_ORDER: ['qweather', 'amap', 'openmeteo'],
     // IP定位降级顺序（仅当 GeoDB 完全失败时使用；正常流程由 locateIP 分流逻辑控制）
     IP_PROVIDER_ORDER: ['amap', 'geodb'],
@@ -25,7 +32,7 @@ const STATIC_CONFIG = {
 };
 
 // ===================== 环境变量映射 =====================
-// 键名含义：系统环境变量名 → CONFIG 属性名
+// 系统环境变量名 → 用于判断"是否已配置"的字段
 const ENV_KEY_MAP = {
     AMAP_KEY: 'AMAP_KEY',
     QWEATHER_KEY: 'QWEATHER_KEY',
@@ -69,23 +76,29 @@ function resolveConfig() {
 function generateConfigJS(env) {
     const lines = [];
     lines.push('// 此文件由 build.js 自动生成，请勿手动修改');
-    lines.push('// 如需修改配置，请编辑 .env 文件或系统环境变量后重新运行: node build.js\n');
+    lines.push('// 如需修改配置，请编辑 .env 文件或系统环境变量后重新运行: node build.js');
+    lines.push('// 安全说明：本文件不含任何真实 API Key，密钥仅保存在服务端（server.js）。\n');
     lines.push('const CONFIG = {');
-    lines.push('    // ---------- API 密钥 ----------');
+    lines.push('    // ---------- 代理基地址 ----------');
+    lines.push('    // 为空表示与前端同源；如代理部署在其它域名，请通过环境变量 API_BASE 指定。');
+    lines.push(`    API_BASE: ${formatJSValue(STATIC_CONFIG.API_BASE)},`);
+    lines.push('');
+    lines.push('    // ---------- 服务端已配置的 Provider（布尔值，仅用于前端可用性判断） ----------');
     for (const [envKey, configKey] of Object.entries(ENV_KEY_MAP)) {
-        const value = env[envKey] !== undefined ? env[envKey] : '';
+        const configured = !!(env[envKey] && env[envKey].trim());
         const comments = {
-            AMAP_KEY: '高德 Web 服务 Key（用于中国地区天气与地理编码）',
-            QWEATHER_KEY: '和风天气 Web API Key（可选，填写后可获得 AQI 等数据）',
-            IPNEWS_KEY: 'IPnews API Key（用于 IPv6 网络 IP 定位）',
+            AMAP_KEY: '高德 Web 服务 Key 是否已在服务端配置（用于中国地区天气与地理编码）',
+            QWEATHER_KEY: '和风天气 Web API Key 是否已在服务端配置（用于 AQI 等数据）',
+            IPNEWS_KEY: 'IPnews API Key 是否已在服务端配置（用于 IPv6 网络 IP 定位）',
         };
         const comment = comments[envKey] || '';
         lines.push(`    // ${comment}`);
-        lines.push(`    ${configKey}: '${escapeJS(value)}',`);
+        lines.push(`    ${configKey}: ${configured ? 'true' : 'false'},`);
     }
     lines.push('');
     lines.push('    // ---------- 静态配置 ----------');
     for (const [key, value] of Object.entries(STATIC_CONFIG)) {
+        if (key === 'API_BASE') continue; // 已在上方输出
         lines.push(`    ${key}: ${formatJSValue(value)},`);
     }
     lines.push('};\n');

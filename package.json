@@ -4,6 +4,8 @@
     "private": true,
     "scripts": {
         "build": "node build.js",
-        "check": "node build.js check"
+        "check": "node build.js check",
+        "start": "node server.js",
+        "dev": "node server.js"
     }
 }
