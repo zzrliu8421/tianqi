@@ -1,0 +1,53 @@
+{
+  "appId": "com.skyweather.app",
+  "productName": "SkyWeather",
+  "copyright": "Copyright © 2026 SkyWeather",
+  "directories": {
+    "output": "dist-electron",
+    "buildResources": "electron/build"
+  },
+  "files": [
+    "index.html",
+    "weather-renderer.js",
+    "config.js",
+    "server.js",
+    "build.js",
+    "electron/**/*",
+    "edge-functions/**/*",
+    "package.json",
+    ".env"
+  ],
+  "extraResources": [],
+  "win": {
+    "target": [
+      {
+        "target": "nsis",
+        "arch": ["x64", "ia32"]
+      },
+      {
+        "target": "portable",
+        "arch": ["x64"]
+      }
+    ],
+    "icon": "electron/build/icon.ico",
+    "artifactName": "SkyWeather-${version}-${arch}.${ext}"
+  },
+  "nsis": {
+    "oneClick": false,
+    "perMachine": false,
+    "allowToChangeInstallationDirectory": true,
+    "createDesktopShortcut": true,
+    "createStartMenuShortcut": true,
+    "shortcutName": "SkyWeather"
+  },
+  "mac": {
+    "target": ["dmg"],
+    "icon": "electron/build/icon.icns",
+    "category": "public.app-category.weather"
+  },
+  "linux": {
+    "target": ["AppImage", "deb"],
+    "icon": "electron/build/icon.png",
+    "category": "Utility"
+  }
+}

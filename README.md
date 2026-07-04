@@ -1,8 +1,8 @@
 # SkyWeather · 云际天气
 
-一个简洁、现代的纯前端天气应用，支持城市搜索、IP / GPS 定位、实时天气、24 小时预报、7 天预报、空气质量 AQI 以及沉浸式动态天气背景。
+一个简洁、现代的跨平台天气应用，支持城市搜索、IP / GPS 定位、实时天气、24 小时预报、7 天预报、空气质量 AQI 以及**小米天气级 WebGL 沉浸式动态背景**。
 
-> 项目采用单文件 `index.html` 构建，无前端框架依赖，可直接部署到任意静态托管平台。
+> 同一份前端代码同时支持：**Web 浏览器**、**Windows 桌面应用（Electron）**、**Android 应用（Capacitor）**。
 
 ---
 
@@ -13,7 +13,16 @@
 - **空气质量 AQI**：PM2.5、PM10、NO₂、SO₂、O₃ 等污染物数据（需配置和风天气 Key）。
 - **24 小时预报**：逐小时温度、天气、降水概率、风速。
 - **7 天预报**：每日最高 / 最低温度、天气、降水概率、日出日落。
-- **动态天气背景**：基于 Canvas 的雨雪、雷暴、雪花、雾气等沉浸式粒子动画。
+- **动态天气背景**：基于 **WebGL（Three.js）** 的小米天气级沉浸式动画，包含：
+  - **god rays 体积光** + 双层光晕 + 大气散射（晴天）
+  - **分层视差云**（4 层深度分布 + 闪电时云层瞬时照亮）
+  - **真实雨滴** + 落地飞溅 + 地面水膜反射（雨天）
+  - **景深雪花** + 六角晶体纹理旋转 + 地面积雪（雪天）
+  - **体积雾** + fbm 噪声流动 + 雾/霾色彩切换（雾/霾）
+  - **闪电分形** + 整屏闪光 + 二次闪 + 云层照亮（雷暴）
+  - **昼夜主题** + 颜色插值的平滑天气过渡
+  - 后期处理：UnrealBloomPass 辉光 + 自定义景深/色调/暗角
+  - **降级机制**：WebGL 不可用时自动回退到 Canvas 2D 粒子动画
 - **自适应主题**：根据天气状态自动切换晴天、多云、雨天、雪天、雷暴、雾霾等主题。
 - **搜索历史**：本地存储最近搜索城市，最多 8 条，支持一键清空。
 - **随机背景图**：可切换 Bing / 随机风景背景。
@@ -24,7 +33,11 @@
 ## 技术栈
 
 - **纯前端**：HTML5 + CSS3（自定义属性 / 玻璃拟态）+ 原生 JavaScript（ES6+）
-- **动画**：Canvas 2D 粒子系统 + CSS 动画
+- **动画**：**WebGL（Three.js）** 主渲染 + Canvas 2D 粒子降级方案 + CSS 动画
+- **跨平台打包**：
+  - **Web**：静态文件 + server.js 代理
+  - **Windows**：Electron 28（GPU 硬件加速 WebGL）
+  - **Android**：Capacitor 6（WebView 承载 + 原生能力桥接）
 - **天气数据源**：
   - [Open-Meteo](https://open-meteo.com/)：全球天气，免 API Key，作为默认兜底。
   - [高德地图 Web 服务](https://lbs.amap.com/)：中国地区地理编码 / 天气 / IP 定位。
@@ -39,14 +52,21 @@
 
 ```
 .
-├── index.html          # 主页面（包含样式与业务逻辑）
-├── server.js           # 代理服务器：托管静态文件 + 代理上游 API（隐藏 Key）
-├── build.js            # 构建脚本：根据环境变量生成 config.js（仅含布尔标志）
-├── edgeone.json        # EdgeOne Pages 部署配置
-├── package.json        # 项目脚本定义
-├── .env.example        # 环境变量模板
-├── .gitignore          # Git 忽略规则
-└── README.md           # 本文件
+├── index.html              # 主页面（HTML + CSS + 业务逻辑）
+├── weather-renderer.js    # WebGL 渲染器（Three.js，小米天气级动画）
+├── mobile-bridge.js       # Capacitor 移动端原生能力桥接
+├── server.js              # 代理服务器：托管静态文件 + 代理上游 API（隐藏 Key）
+├── build.js               # 构建脚本：根据环境变量生成 config.js（仅含布尔标志）
+├── electron/              # Electron 桌面应用配置
+│   ├── main.js            # 主进程：创建窗口 + 内嵌 server.js
+│   ├── preload.js         # preload：暴露 window.skyApp
+│   └── builder.json       # electron-builder 打包配置
+├── capacitor.config.json  # Capacitor Android 配置
+├── edgeone.json           # EdgeOne Pages 部署配置
+├── package.json           # 项目脚本定义（含 Web/Electron/Android 三端命令）
+├── .env.example           # 环境变量模板
+├── .gitignore             # Git 忽略规则
+└── README.md              # 本文件
 ```
 
 ---
@@ -337,9 +357,111 @@ CLI 会读取本地 `.env` 注入到 `context.env`，行为与线上一致。默
 
 ## 浏览器支持
 
-- Chrome / Edge / Firefox / Safari 最新版
+- Chrome / Edge / Firefox / Safari 最新版（需支持 WebGL 2）
 - 支持移动端浏览器与 PWA 添加到主屏
 - 尊重 `prefers-reduced-motion` 媒体查询，减少动态效果
+- WebGL 不可用时自动降级为 Canvas 2D 粒子动画
+
+---
+
+## Windows 桌面应用（Electron）
+
+将 Web 版本打包为 Windows 原生桌面应用，享受独立窗口、GPU 加速与离线能力。
+
+### 1. 安装依赖
+
+```bash
+npm install
+```
+
+### 2. 开发模式（连接到正在运行的 server.js）
+
+```bash
+# 终端 1：启动代理服务器（提供 API Key 安全代理）
+npm start
+# 终端 2：启动 Electron
+npm run electron:dev
+```
+
+### 3. 打包为 Windows 可执行文件
+
+```bash
+npm run electron:build
+```
+
+构建产物位于 `dist-electron/`，包含：
+- `SkyWeather-Setup-x64.exe`：NSIS 安装包（推荐分发）
+- `SkyWeather-1.0.0-x64.exe`：便携版（免安装）
+
+### 4. Electron 架构说明
+
+```
+electron/
+├── main.js          # 主进程：创建窗口 + 内嵌启动 server.js 代理
+├── preload.js       # preload：通过 contextBridge 暴露 window.skyApp
+└── builder.json     # electron-builder 打包配置
+```
+
+- 主进程通过 `require('../server.js')` 内嵌启动代理服务器，所有 API Key 仍走服务端代理，与 Web 部署一致
+- 启用 GPU 硬件加速（`enable-gpu-rasterization` + `ignore-gpu-blocklist`），WebGL 必需
+- 单例锁，避免多开
+- macOS/Linux 同样支持（修改 `builder.json` 的 target 即可）
+
+---
+
+## Android 应用（Capacitor）
+
+将 Web 版本打包为 Android 原生应用，使用 WebView 承载，并桥接原生能力。
+
+### 1. 安装依赖 + 添加 Android 平台
+
+```bash
+npm install
+npx cap add android
+```
+
+### 2. 同步 Web 资源到 Android 工程
+
+每次修改 `index.html` / `weather-renderer.js` / `mobile-bridge.js` 后，都需要重新同步：
+
+```bash
+npm run cap:sync
+```
+
+### 3. 在 Android Studio 中打开
+
+```bash
+npm run cap:open:android
+```
+
+然后在 Android Studio 中点击 ▶ 运行到设备/模拟器，或 Build → Generate Signed APK 生成发布包。
+
+### 4. Capacitor 配置说明
+
+`capacitor.config.json` 关键配置：
+
+| 字段 | 值 | 说明 |
+|---|---|---|
+| `appId` | `com.skyweather.app` | Android 包名 |
+| `appName` | `SkyWeather` | 应用显示名 |
+| `webDir` | `.` | Web 资源根目录（即 `index.html` 所在位置） |
+| `server.androidScheme` | `https` | 使用 HTTPS scheme（CORS 友好） |
+| `StatusBar.overlaysWebView` | `true` | 状态栏沉浸式覆盖 |
+
+### 5. 原生能力桥接
+
+`mobile-bridge.js` 在 Capacitor 环境下自动启用：
+- **StatusBar**：深色主题，沉浸式覆盖 WebView
+- **SplashScreen**：启动后淡出
+- **Geolocation**：用 Capacitor 原生定位替代浏览器定位（权限弹窗更友好）
+- **App.backButton**：Android 返回键映射到浏览器历史后退
+
+### 6. 注意事项
+
+- Capacitor WebView 需要 Android 5.0+（API 21+）
+- WebGL 在 Android WebView 中支持良好（Chromium 内核）
+- 如需离线运行，需把 `importmap` 中的 Three.js CDN 替换为本地路径
+- 发布到应用商店需要签名，参考 [Capacitor 签名指南](https://capacitorjs.com/docs/android/deploying-to-google-play)
 
 ---
 

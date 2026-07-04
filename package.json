@@ -2,10 +2,32 @@
     "name": "skyweather",
     "version": "1.0.0",
     "private": true,
+    "description": "SkyWeather · 云际天气 - 跨平台天气应用（Web/Windows/Android）",
     "scripts": {
         "build": "node build.js",
         "check": "node build.js check",
         "start": "node server.js",
-        "dev": "node server.js"
+        "dev": "node server.js",
+        "sync:web": "node build.js",
+        "cap:sync": "node build.js && cap sync",
+        "cap:run:android": "node build.js && cap sync android && cap run android",
+        "cap:open:android": "cap open android",
+        "cap:add:android": "cap add android",
+        "electron:dev": "set DEV_URL=http://127.0.0.1:8787/ && electron electron/main.js",
+        "electron:start": "node build.js && electron electron/main.js",
+        "electron:build": "node build.js && electron-builder --config electron/builder.json"
+    },
+    "dependencies": {
+        "three": "^0.160.1"
+    },
+    "devDependencies": {
+        "@capacitor/android": "^6.0.0",
+        "@capacitor/cli": "^6.0.0",
+        "@capacitor/core": "^6.0.0",
+        "@capacitor/geolocation": "^6.0.0",
+        "@capacitor/splash-screen": "^6.0.0",
+        "@capacitor/status-bar": "^6.0.0",
+        "electron": "^28.0.0",
+        "electron-builder": "^24.9.1"
     }
 }
