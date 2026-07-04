@@ -2823,45 +2823,12 @@
             netText.textContent = status;
         };
 
-        // 通过公网 IP 服务判断真实出口 IP 类型
-        // 优先使用国内可访问的服务（ipify 在国内被墙）
-        try {
-            const [cfRes, ipipRes] = await Promise.allSettled([
-                fetch('https://www.cloudflare.com/cdn-cgi/trace').then(r => r.text()),
-                fetch('https://myip.ipip.net', { headers: { 'Accept': 'text/plain' } }).then(r => r.text())
-            ]);
-            const ips = [];
-            if (cfRes.status === 'fulfilled') {
-                const m = /ip=(\S+)/.exec(cfRes.value);
-                if (m && isPublicIP(m[1])) ips.push(m[1]);
-            }
-            if (ipipRes.status === 'fulfilled') {
-                const m = /(\d+\.\d+\.\d+\.\d+|[0-9a-fA-F:]{2,})/.exec(ipipRes.value || '');
-                if (m && isPublicIP(m[1])) ips.push(m[1]);
-            }
-            if (ips.length) {
-                const hasV6 = ips.some(ip => ip.includes(':'));
-                const hasV4 = ips.some(ip => !ip.includes(':'));
-                const isV6 = hasV6 && !hasV4;
-                setStatus(isV6 ? 'IPv6 已连接' : 'IPv4 网络', isV6);
-                return isV6;
-            }
-        } catch (e) { console.warn('[Network] 主检测失败', e.message); }
-
-        // 备用：ipify（国内可能不可用，海外可用）
-        try {
-            const [v4Res, v6Res] = await Promise.allSettled([
-                fetchJSON('https://api4.ipify.org?format=json'),
-                fetchJSON('https://api6.ipify.org?format=json')
-            ]);
-            const hasV4 = v4Res.status === 'fulfilled' && v4Res.value?.ip && isPublicIP(v4Res.value.ip);
-            const hasV6 = v6Res.status === 'fulfilled' && v6Res.value?.ip && isPublicIP(v6Res.value.ip);
-            if (hasV4 || hasV6) {
-                const isV6 = hasV6 && !hasV4;
-                setStatus(isV6 ? 'IPv6 已连接' : 'IPv4 网络', isV6);
-                return isV6;
-            }
-        } catch (e) { console.warn('[Network] ipify 检测失败', e.message); }
+        // 复用 fetchPublicIP（与 locateIP 共享缓存，避免重复探测）
+        const { isIPv6, ok } = await fetchPublicIP();
+        if (ok) {
+            setStatus(isIPv6 ? 'IPv6 已连接' : 'IPv4 网络', isIPv6);
+            return isIPv6;
+        }
 
         // Fallback：RTCPeerConnection 本地候选检测（最后一道防线，仅依赖公网候选）
         try {
@@ -3340,10 +3307,64 @@
     }
 
     // ===================== 天气服务：多源降级 =====================
+    // 缓存公网 IP 与网络类型，避免 detectNetwork 和 locateIP 重复探测
+    let _cachedPublicIP = null;
+    let _cachedIsIPv6 = null;
+    let _ipFetchDone = false;
+
+    async function fetchPublicIP() {
+        if (_ipFetchDone) {
+            return { ip: _cachedPublicIP, isIPv6: _cachedIsIPv6, ok: _cachedPublicIP !== null };
+        }
+        // 优先国内可访问的服务（ipify 在国内被墙）
+        try {
+            const [cfRes, ipipRes] = await Promise.allSettled([
+                fetch('https://www.cloudflare.com/cdn-cgi/trace').then(r => r.text()),
+                fetch('https://myip.ipip.net', { headers: { 'Accept': 'text/plain' } }).then(r => r.text())
+            ]);
+            const ips = [];
+            if (cfRes.status === 'fulfilled') {
+                const m = /ip=(\S+)/.exec(cfRes.value);
+                if (m && isPublicIP(m[1])) ips.push(m[1]);
+            }
+            if (ipipRes.status === 'fulfilled') {
+                const m = /(\d+\.\d+\.\d+\.\d+|[0-9a-fA-F:]{2,})/.exec(ipipRes.value || '');
+                if (m && isPublicIP(m[1])) ips.push(m[1]);
+            }
+            if (ips.length) {
+                const hasV6 = ips.some(ip => ip.includes(':'));
+                const hasV4 = ips.some(ip => !ip.includes(':'));
+                _cachedPublicIP = hasV4 ? ips.find(ip => !ip.includes(':')) : ips[0];
+                _cachedIsIPv6 = hasV6 && !hasV4;
+                _ipFetchDone = true;
+                return { ip: _cachedPublicIP, isIPv6: _cachedIsIPv6, ok: true };
+            }
+        } catch (e) { console.warn('[IP] 主检测失败:', e.message); }
+
+        // 备用：ipify（海外可用）
+        try {
+            const [v4Res, v6Res] = await Promise.allSettled([
+                fetchJSON('https://api4.ipify.org?format=json'),
+                fetchJSON('https://api6.ipify.org?format=json')
+            ]);
+            const v4IP = v4Res.status === 'fulfilled' && v4Res.value?.ip && isPublicIP(v4Res.value.ip) ? v4Res.value.ip : null;
+            const v6IP = v6Res.status === 'fulfilled' && v6Res.value?.ip && isPublicIP(v6Res.value.ip) ? v6Res.value.ip : null;
+            if (v4IP || v6IP) {
+                _cachedPublicIP = v4IP || v6IP;
+                _cachedIsIPv6 = !v4IP && !!v6IP;
+                _ipFetchDone = true;
+                return { ip: _cachedPublicIP, isIPv6: _cachedIsIPv6, ok: true };
+            }
+        } catch (e) { console.warn('[IP] ipify 检测失败:', e.message); }
+
+        // 全部失败：不缓存，允许 detectNetwork 走 RTCPeerConnection 兜底
+        return { ip: null, isIPv6: false, ok: false };
+    }
+
     const WeatherService = {
         async locateIP() {
             // 分流策略：
-            // 1. 先用 ipify 检测网络类型（IPv4/IPv6）并获取公网 IP
+            // 1. 先检测网络类型（IPv4/IPv6）并获取公网 IP（国内优先，ipify 在国内被墙）
             // 2. IPv6 网络 → 用 IPnews 定位（GeoDB 不支持 IPv6，高德 IPv6 需付费）
             // 3. IPv4 网络 → 用 GeoDB 判断地域：
             //    - 中国大陆 IP → 高德定位（更精确，返回 adcode）
@@ -3353,14 +3374,8 @@
             const amapIP = Providers.amap_ip;
             const ipnews = Providers.ipnews;
 
-            // 第一步：通过 ipify 检测网络类型并获取公网 IP
-            let publicIP = null;
-            let isIPv6 = false;
-            try {
-                const ipData = await fetchJSON('https://api64.ipify.org?format=json');
-                publicIP = ipData?.ip;
-                if (publicIP) isIPv6 = publicIP.includes(':');
-            } catch (e) { console.warn('[IP] ipify 检测失败:', e.message); }
+            // 第一步：检测网络类型并获取公网 IP（复用缓存，避免重复探测）
+            const { ip: publicIP, isIPv6 } = await fetchPublicIP();
 
             // 第二步：IPv6 网络 → IPnews 定位
             if (isIPv6 && publicIP && ipnews && ipnews.available()) {
@@ -4004,7 +4019,7 @@
         showLoading();
         try {
             const loc = await WeatherService.locateIP();
-            // locateIP 内部已通过 ipify 检测网络类型，复用其结果更新界面
+            // locateIP 内部已检测网络类型，复用其结果更新界面
             const isIPv6 = loc._ipv6 || false;
             netBadge.classList.toggle('ipv6', isIPv6);
             netBadge.setAttribute('data-status', isIPv6 ? 'IPv6 已连接' : 'IPv4 网络');
