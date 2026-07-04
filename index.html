@@ -2096,14 +2096,27 @@
     let _groundGradKey = '';
     let _snowGradCache = null;
     let _snowGradKey = '';
+
+    // 稳定视口尺寸：取地址栏隐藏时的最大视口高度，不随地址栏显示/隐藏变化。
+    // 这样 canvas 尺寸、粒子边界、地面反射位置都保持稳定，避免地址栏变化导致的动画跳变。
+    // 地址栏显示时 canvas 底部会被地址栏遮挡（用户看不到），隐藏时完全显示。
+    let _stableH = window.innerHeight;
+    let _stableW = window.innerWidth;
+    function updateStableViewport() {
+        const vvH = window.visualViewport ? window.visualViewport.height : window.innerHeight;
+        const vvW = window.visualViewport ? window.visualViewport.width : window.innerWidth;
+        // 持续记录最大值：地址栏隐藏时视口高度增大，记录下来作为稳定值
+        if (vvH > _stableH) _stableH = vvH;
+        if (vvW > _stableW) _stableW = vvW;
+    }
+
     function resizeCanvas() {
         const dpr = Math.min(window.devicePixelRatio || 1, 2);
-        const w = window.visualViewport ? window.visualViewport.width : window.innerWidth;
-        const h = window.visualViewport ? window.visualViewport.height : window.innerHeight;
-        // 更新缓存（即使尺寸变化 <1px 也更新，确保 tick 拿到最新值）
+        // 使用稳定尺寸（不随地址栏变化），而非实时的 visualViewport.height
+        const w = _stableW;
+        const h = _stableH;
         _cachedVpW = w;
         _cachedVpH = h;
-        // 仅在尺寸真正变化时才重置画布，避免地址栏频繁变化导致的清空闪烁
         if (Math.abs(w - lastCW) < 1 && Math.abs(h - lastCH) < 1 && dpr === lastDpr) return;
         for (const cv of [canvasFar, canvas]) {
             cv.width = Math.max(1, Math.floor(w * dpr));
@@ -2114,26 +2127,35 @@
         ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
         ctxFar.setTransform(dpr, 0, 0, dpr, 0, 0);
         lastCW = w; lastCH = h; lastDpr = dpr;
-        // 尺寸变化时让渐变缓存失效
         _groundGradKey = '';
         _snowGradKey = '';
     }
     let resizeTimer = null;
     function handleResize() {
+        // 先更新稳定视口尺寸（取最大值，地址栏隐藏时记录最大高度）
+        updateStableViewport();
         clearTimeout(resizeTimer);
-        // 较长防抖以合并地址栏显示/隐藏引发的高频 resize
+        // 防抖：合并地址栏显示/隐藏引发的高频 resize
         resizeTimer = setTimeout(() => {
             resizeCanvas();
-            // 注意：不在此处重建粒子。
-            // 地址栏变化时重建粒子会导致动画整体跳变；
-            // 现有粒子通过 vpH()/vpW() 在每帧自适应新边界，过渡更平滑。
+            // 不在此处重建粒子：现有粒子通过 vpH()/vpW() 在每帧自适应稳定边界
         }, 200);
     }
     window.addEventListener('resize', handleResize);
-    window.addEventListener('orientationchange', handleResize);
     if (window.visualViewport) {
         window.visualViewport.addEventListener('resize', handleResize);
     }
+    // 横竖屏切换时重置稳定值（设备旋转，视口尺寸完全改变）
+    window.addEventListener('orientationchange', function () {
+        setTimeout(function () {
+            _stableH = window.innerHeight;
+            _stableW = window.innerWidth;
+            updateStableViewport();
+            resizeCanvas();
+        }, 500);
+    });
+    // 初始化：尝试获取最大视口高度
+    updateStableViewport();
     resizeCanvas();
 
     // 标签页不可见时暂停动画，可见时恢复
@@ -2183,8 +2205,9 @@
     function clamp(v, a, b) { return Math.max(a, Math.min(b, v)); }
     function isMobile() { return window.innerWidth < 768; }
     function particleScale() { return isMobile() ? 0.55 : 1; }
-    function vpH() { return window.visualViewport ? window.visualViewport.height : window.innerHeight; }
-    function vpW() { return window.visualViewport ? window.visualViewport.width : window.innerWidth; }
+    // vpH/vpW 返回稳定视口尺寸（地址栏隐藏时的最大高度），不随地址栏变化
+    function vpH() { return _stableH; }
+    function vpW() { return _stableW; }
     const TAU = Math.PI * 2;
 
     // ---- 柏林噪声（自然感扰动的灵魂）----
