@@ -2992,28 +2992,36 @@
         const timeout = options.timeout || 8000;
         const controller = new AbortController();
         const timer = setTimeout(() => controller.abort(), timeout);
+        // 支持外部 signal 取消（用于请求去重，新请求发起时取消旧的）
+        const externalSignal = options.signal;
+        const onAbort = () => controller.abort();
+        if (externalSignal) {
+            if (externalSignal.aborted) controller.abort();
+            else externalSignal.addEventListener('abort', onAbort, { once: true });
+        }
         try {
             const res = await fetch(url, { ...options, signal: controller.signal });
             if (!res.ok) throw new Error(`HTTP ${res.status}`);
             return await res.json();
         } finally {
             clearTimeout(timer);
+            if (externalSignal) externalSignal.removeEventListener('abort', onAbort);
         }
     }
 
     // ===================== Open-Meteo 数据解析（供多源复用）=====================
-    async function fetchOpenMeteoForecast(lat, lon) {
+    async function fetchOpenMeteoForecast(lat, lon, signal) {
         const url = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}` +
-            `&current=temperature_2m,relative_humidity_2m,apparent_temperature,weather_code,pressure_msl,surface_pressure,wind_speed_10m,wind_direction_10m,visibility,is_day,precipitation` +
+            `&current=temperature_2m,relative_humidity_2m,apparent_temperature,weather_code,pressure_msl,wind_speed_10m,wind_direction_10m,visibility` +
             `&hourly=temperature_2m,weather_code,precipitation_probability,wind_speed_10m` +
             `&daily=weather_code,temperature_2m_max,temperature_2m_min,precipitation_probability_max,sunrise,sunset,uv_index_max` +
             `&timezone=auto&forecast_days=7`;
-        return fetchJSON(url);
+        return fetchJSON(url, { signal });
     }
 
-    async function fetchOpenMeteoAQI(lat, lon) {
+    async function fetchOpenMeteoAQI(lat, lon, signal) {
         const url = `https://air-quality-api.open-meteo.com/v1/air-quality?latitude=${lat}&longitude=${lon}&current=us_aqi,pm10,pm2_5,nitrogen_dioxide,ozone`;
-        return fetchJSON(url).catch(() => null);
+        return fetchJSON(url, { signal }).catch(() => null);
     }
 
     function parseOpenMeteoWeather(data, loc, source = 'Open-Meteo') {
@@ -3102,8 +3110,8 @@
             ipv6: false,
             overseas: true,
             available: () => true,
-            async locateIP() {
-                const data = await fetchJSON('https://geolocation-db.com/json/', { timeout: 5000 });
+            async locateIP(signal) {
+                const data = await fetchJSON('https://geolocation-db.com/json/', { timeout: 5000, signal });
                 if (!data.latitude || !data.longitude) throw new Error('GeoDB 定位失败');
                 return {
                     city: data.city || data.state,
@@ -3123,9 +3131,9 @@
             ipv6: true,
             overseas: true,
             available: () => !!CONFIG.IPNEWS_KEY,
-            async locateIP(ip) {
+            async locateIP(ip, signal) {
                 if (!ip) throw new Error('IPnews 需要传入 IP 地址');
-                const data = await fetchJSON(`${CONFIG.API_BASE}/api/ipnews/api/v1/json/${encodeURIComponent(ip)}`, { timeout: 5000 });
+                const data = await fetchJSON(`${CONFIG.API_BASE}/api/ipnews/api/v1/json/${encodeURIComponent(ip)}`, { timeout: 5000, signal });
                 if (!data || !data.latitude || !data.longitude) throw new Error('IPnews 定位失败');
                 return {
                     city: data.city || data.region,
@@ -3147,11 +3155,11 @@
             available: () => !!CONFIG.AMAP_KEY,
             // ip 参数：用户公网 IP。在边缘函数代理场景下必须显式传入，
             // 否则高德会以边缘节点的出口 IP 作为定位依据，导致定位到节点所在地而非用户所在地。
-            async locateIP(ip) {
+            async locateIP(ip, signal) {
                 const url = ip
                     ? `${CONFIG.API_BASE}/api/amap/v3/ip?ip=${encodeURIComponent(ip)}`
                     : `${CONFIG.API_BASE}/api/amap/v3/ip`;
-                const data = await fetchJSON(url);
+                const data = await fetchJSON(url, { signal });
                 if (data.status !== '1' || !data.adcode) throw new Error('高德 IP 定位失败');
                 // 高德对直辖市可能返回空字符串或 []，需要用 province 兜底
                 const city = (data.city && data.city !== '[]') ? data.city : data.province;
@@ -3163,11 +3171,21 @@
                     adcode: data.adcode,
                     source: '高德 IP',
                 };
-                // 高德IP定位不返回坐标，需要通过地理编码补全 lat/lon
-                // 有了坐标才能让 Open-Meteo 补全 AQI/UV/逐小时等丰富数据
-                if (city) {
+                // 优先从 rectangle 字段解析中心点（无需额外请求，省 ~300ms）
+                // rectangle 精度对天气查询足够（天气不需要街道级精度）
+                if (data.rectangle) {
                     try {
-                        const geo = await fetchJSON(`${CONFIG.API_BASE}/api/amap/v3/geocode/geo?address=${encodeURIComponent(city)}`);
+                        const coords = data.rectangle.split(';').map(s => s.split(',').map(Number));
+                        if (coords.length === 2) {
+                            result.lon = (coords[0][0] + coords[1][0]) / 2;
+                            result.lat = (coords[0][1] + coords[1][1]) / 2;
+                        }
+                    } catch (e) { /* ignore */ }
+                }
+                // 若 rectangle 缺失或解析失败，回退到地理编码补全 lat/lon
+                if ((!result.lat || !result.lon) && city) {
+                    try {
+                        const geo = await fetchJSON(`${CONFIG.API_BASE}/api/amap/v3/geocode/geo?address=${encodeURIComponent(city)}`, { signal });
                         if (geo.status === '1' && geo.geocodes?.length) {
                             const [lon, lat] = (geo.geocodes[0].location || ',').split(',').map(Number);
                             if (lat && lon) {
@@ -3176,16 +3194,6 @@
                             }
                         }
                     } catch (e) { console.warn('[amap_ip] 地理编码补全失败', e.message); }
-                }
-                // 若地理编码失败，尝试从 rectangle 字段解析中心点
-                if ((!result.lat || !result.lon) && data.rectangle) {
-                    try {
-                        const coords = data.rectangle.split(';').map(s => s.split(',').map(Number));
-                        if (coords.length === 2) {
-                            result.lon = (coords[0][0] + coords[1][0]) / 2;
-                            result.lat = (coords[0][1] + coords[1][1]) / 2;
-                        }
-                    } catch (e) { /* ignore */ }
                 }
                 return result;
             }
@@ -3213,12 +3221,12 @@
                     source: '高德地图',
                 };
             },
-            async getWeather(loc) {
+            async getWeather(loc, signal) {
                 let adcode = loc.adcode ? String(loc.adcode) : '';
                 // 若缺少 adcode（如 ipapi 定位），尝试通过逆地理编码获取
                 if (!adcode && loc.lat && loc.lon) {
                     try {
-                        const regeo = await fetchJSON(`${CONFIG.API_BASE}/api/amap/v3/geocode/regeo?location=${loc.lon},${loc.lat}&extensions=base`);
+                        const regeo = await fetchJSON(`${CONFIG.API_BASE}/api/amap/v3/geocode/regeo?location=${loc.lon},${loc.lat}&extensions=base`, { signal });
                         if (regeo.status === '1' && regeo.regeocode?.addressComponent?.adcode) {
                             adcode = regeo.regeocode.addressComponent.adcode;
                         }
@@ -3226,9 +3234,9 @@
                 }
                 if (!adcode) throw new Error('高德天气需要 adcode');
                 const [baseRes, omForecast, omAQI] = await Promise.all([
-                    fetchJSON(`${CONFIG.API_BASE}/api/amap/v3/weather/weatherInfo?city=${adcode}&extensions=base`),
-                    loc.lat && loc.lon ? fetchOpenMeteoForecast(loc.lat, loc.lon).catch(e => { console.warn('[amap] Open-Meteo 补全失败', e.message); return null; }) : Promise.resolve(null),
-                    loc.lat && loc.lon ? fetchOpenMeteoAQI(loc.lat, loc.lon) : Promise.resolve(null),
+                    fetchJSON(`${CONFIG.API_BASE}/api/amap/v3/weather/weatherInfo?city=${adcode}&extensions=base`, { signal }),
+                    loc.lat && loc.lon ? fetchOpenMeteoForecast(loc.lat, loc.lon, signal).catch(e => { console.warn('[amap] Open-Meteo 补全失败', e.message); return null; }) : Promise.resolve(null),
+                    loc.lat && loc.lon ? fetchOpenMeteoAQI(loc.lat, loc.lon, signal) : Promise.resolve(null),
                 ]);
                 if (baseRes.status !== '1') throw new Error(baseRes.info || '高德天气失败');
                 const liveBase = baseRes.lives?.[0] || {};
@@ -3308,13 +3316,13 @@
                     source: '和风天气',
                 };
             },
-            async getWeather(loc) {
+            async getWeather(loc, signal) {
                 const locId = loc.id ? loc.id : `${loc.lon},${loc.lat}`;
                 const [nowRes, hourRes, dayRes, airRes] = await Promise.all([
-                    fetchJSON(`${CONFIG.API_BASE}/api/qweather/dev/v7/weather/now?location=${locId}&lang=zh`).catch(() => ({})),
-                    fetchJSON(`${CONFIG.API_BASE}/api/qweather/dev/v7/weather/24h?location=${locId}&lang=zh`).catch(() => ({})),
-                    fetchJSON(`${CONFIG.API_BASE}/api/qweather/dev/v7/weather/7d?location=${locId}&lang=zh`).catch(() => ({})),
-                    fetchJSON(`${CONFIG.API_BASE}/api/qweather/dev/v7/air/now?location=${locId}&lang=zh`).catch(() => ({})),
+                    fetchJSON(`${CONFIG.API_BASE}/api/qweather/dev/v7/weather/now?location=${locId}&lang=zh`, { signal }).catch(() => ({})),
+                    fetchJSON(`${CONFIG.API_BASE}/api/qweather/dev/v7/weather/24h?location=${locId}&lang=zh`, { signal }).catch(() => ({})),
+                    fetchJSON(`${CONFIG.API_BASE}/api/qweather/dev/v7/weather/7d?location=${locId}&lang=zh`, { signal }).catch(() => ({})),
+                    fetchJSON(`${CONFIG.API_BASE}/api/qweather/dev/v7/air/now?location=${locId}&lang=zh`, { signal }).catch(() => ({})),
                 ]);
                 if (nowRes.code !== '200') throw new Error('和风天气实况失败');
                 const n = nowRes.now;
@@ -3399,10 +3407,10 @@
                     source: 'Open-Meteo',
                 };
             },
-            async getWeather(loc) {
+            async getWeather(loc, signal) {
                 const [forecast, aqi] = await Promise.all([
-                    fetchOpenMeteoForecast(loc.lat, loc.lon),
-                    fetchOpenMeteoAQI(loc.lat, loc.lon),
+                    fetchOpenMeteoForecast(loc.lat, loc.lon, signal),
+                    fetchOpenMeteoAQI(loc.lat, loc.lon, signal),
                 ]);
                 const result = parseOpenMeteoWeather(forecast, loc, 'Open-Meteo');
                 return mergeAQI(result, aqi);
@@ -3445,11 +3453,19 @@
         if (_ipFetchDone) {
             return { ip: _cachedPublicIP, isIPv6: _cachedIsIPv6, ok: _cachedPublicIP !== null };
         }
+        // 带超时的 fetch 封装（避免 cloudflare/ipip 卡死拖慢整个 IP 检测）
+        const fetchWithTimeout = (url, opts = {}, ms = 4000) => {
+            const controller = new AbortController();
+            const timer = setTimeout(() => controller.abort(), ms);
+            return fetch(url, { ...opts, signal: controller.signal })
+                .then(r => { clearTimeout(timer); return r; })
+                .catch(e => { clearTimeout(timer); throw e; });
+        };
         // 优先国内可访问的服务（ipify 在国内被墙）
         try {
             const [cfRes, ipipRes] = await Promise.allSettled([
-                fetch('https://www.cloudflare.com/cdn-cgi/trace').then(r => r.text()),
-                fetch('https://myip.ipip.net', { headers: { 'Accept': 'text/plain' } }).then(r => r.text())
+                fetchWithTimeout('https://www.cloudflare.com/cdn-cgi/trace').then(r => r.text()),
+                fetchWithTimeout('https://myip.ipip.net', { headers: { 'Accept': 'text/plain' } }).then(r => r.text())
             ]);
             const ips = [];
             if (cfRes.status === 'fulfilled') {
@@ -3461,6 +3477,7 @@
                 if (m && isPublicIP(m[1])) ips.push(m[1]);
             }
             if (ips.length) {
+                // 双栈网络下优先返回 IPv4（IPv4 数据源更精确），仅纯 IPv6 网络才标记为 IPv6
                 const hasV6 = ips.some(ip => ip.includes(':'));
                 const hasV4 = ips.some(ip => !ip.includes(':'));
                 _cachedPublicIP = hasV4 ? ips.find(ip => !ip.includes(':')) : ips[0];
@@ -3470,11 +3487,11 @@
             }
         } catch (e) { console.warn('[IP] 主检测失败:', e.message); }
 
-        // 备用：ipify（海外可用）
+        // 备用：ipify（海外可用，fetchJSON 自带 8s 超时）
         try {
             const [v4Res, v6Res] = await Promise.allSettled([
-                fetchJSON('https://api4.ipify.org?format=json'),
-                fetchJSON('https://api6.ipify.org?format=json')
+                fetchJSON('https://api4.ipify.org?format=json', { timeout: 5000 }),
+                fetchJSON('https://api6.ipify.org?format=json', { timeout: 5000 })
             ]);
             const v4IP = v4Res.status === 'fulfilled' && v4Res.value?.ip && isPublicIP(v4Res.value.ip) ? v4Res.value.ip : null;
             const v6IP = v6Res.status === 'fulfilled' && v6Res.value?.ip && isPublicIP(v6Res.value.ip) ? v6Res.value.ip : null;
@@ -3492,16 +3509,18 @@
 
     // 天气数据内存缓存：Map<cacheKey, {data, ts}>，5min TTL
     const _weatherCache = new Map();
+    // 地理编码结果缓存：Map<city, {loc, ts}>，30min TTL（坐标不变，可长缓存）
+    const _geocodeCache = new Map();
 
     const WeatherService = {
-        async locateIP() {
-            // 分流策略：
+        async locateIP(signal) {
+            // 分流策略（优化版，减少中国大陆用户的串行步骤）：
             // 1. 先检测网络类型（IPv4/IPv6）并获取公网 IP（国内优先，ipify 在国内被墙）
             // 2. IPv6 网络 → 用 IPnews 定位（GeoDB 不支持 IPv6，高德 IPv6 需付费）
-            // 3. IPv4 网络 → 用 GeoDB 判断地域：
-            //    - 中国大陆 IP → 高德定位（更精确，返回 adcode）
-            //    - 海外 IP → 直接使用 GeoDB 结果
-            // 4. 以上均失败 → 按 IP_PROVIDER_ORDER 降级
+            // 3. IPv4 + 有高德 Key → 直接高德 IP 定位（一步到位，高德对中国 IP 精确）
+            //    - 高德失败/海外 IP → 回退 GeoDB
+            // 4. IPv4 + 无高德 → GeoDB 定位
+            // 5. 以上均失败 → 按 IP_PROVIDER_ORDER 降级
             const geoDB = Providers.geodb;
             const amapIP = Providers.amap_ip;
             const ipnews = Providers.ipnews;
@@ -3512,7 +3531,7 @@
             // 第二步：IPv6 网络 → IPnews 定位
             if (isIPv6 && publicIP && ipnews && ipnews.available()) {
                 try {
-                    const ipnewsResult = await ipnews.locateIP(publicIP);
+                    const ipnewsResult = await ipnews.locateIP(publicIP, signal);
                     if (ipnewsResult && ipnewsResult.lat != null && ipnewsResult.lon != null
                         && isFinite(ipnewsResult.lat) && isFinite(ipnewsResult.lon)) {
                         ipnewsResult._provider = ipnews.name;
@@ -3524,53 +3543,47 @@
                 } catch (e) { console.warn('[IP] IPnews 定位失败:', e.message); }
             }
 
-            // 第三步：IPv4 网络 → GeoDB 判断地域分流
-            let geoDBResult = null;
+            // 第三步：IPv4 + 有高德 Key → 直接高德 IP 定位（跳过 GeoDB 分流，省 ~500ms）
+            // 高德对中国大陆 IP 精确，海外 IP 会返回空坐标，自动回退 GeoDB
+            if (!isIPv6 && publicIP && amapIP && amapIP.available()) {
+                try {
+                    const amapResult = await amapIP.locateIP(publicIP, signal);
+                    if (amapResult && amapResult.lat != null && amapResult.lon != null
+                        && isFinite(amapResult.lat) && isFinite(amapResult.lon)) {
+                        amapResult._provider = amapIP.name;
+                        amapResult._ipv6 = amapIP.ipv6;
+                        console.info('[IP] IPv4 网络，直接使用高德定位');
+                        return amapResult;
+                    }
+                    console.warn('[IP] 高德定位返回无效坐标（可能是海外 IP），回退到 GeoDB');
+                } catch (e) { console.warn('[IP] 高德定位失败，回退到 GeoDB:', e.message); }
+            }
+
+            // 第四步：GeoDB 定位（高德不可用/海外 IP/高德失败 时使用）
             if (geoDB && geoDB.available()) {
                 try {
-                    geoDBResult = await geoDB.locateIP();
-                } catch (e) { console.warn('[IP] GeoDB 初步查询失败:', e.message); }
+                    const geoDBResult = await geoDB.locateIP(signal);
+                    if (geoDBResult && geoDBResult.lat != null && geoDBResult.lon != null
+                        && isFinite(geoDBResult.lat) && isFinite(geoDBResult.lon)) {
+                        geoDBResult._provider = geoDB.name;
+                        geoDBResult._ipv6 = geoDB.ipv6;
+                        console.info('[IP] 使用 GeoDB 定位');
+                        return geoDBResult;
+                    }
+                } catch (e) { console.warn('[IP] GeoDB 定位失败:', e.message); }
             }
 
-            if (geoDBResult) {
-                const isChina = geoDBResult.countryCode === 'CN';
-                if (isChina && amapIP && amapIP.available()) {
-                    // 中国大陆 IP：用高德重新定位，获取更精确的 adcode 和坐标
-                    // 传入 publicIP：避免边缘函数代理时高德误把边缘节点 IP 当作用户 IP
-                    try {
-                        const amapResult = await amapIP.locateIP(publicIP);
-                        if (amapResult && amapResult.lat != null && amapResult.lon != null
-                            && isFinite(amapResult.lat) && isFinite(amapResult.lon)) {
-                            amapResult._provider = amapIP.name;
-                            amapResult._ipv6 = amapIP.ipv6;
-                            console.info('[IP] 中国大陆 IP，使用高德定位');
-                            return amapResult;
-                        }
-                        console.warn('[IP] 高德定位返回无效坐标，回退到 GeoDB');
-                    } catch (e) { console.warn('[IP] 高德定位失败，回退到 GeoDB:', e.message); }
-                }
-                // 海外 IP 或高德不可用：直接使用 GeoDB 结果
-                if (geoDBResult.lat != null && geoDBResult.lon != null
-                    && isFinite(geoDBResult.lat) && isFinite(geoDBResult.lon)) {
-                    geoDBResult._provider = geoDB.name;
-                    geoDBResult._ipv6 = geoDB.ipv6;
-                    console.info(`[IP] ${isChina ? '高德不可用，回退到' : '海外 IP，使用'} GeoDB`);
-                    return geoDBResult;
-                }
-            }
-
-            // 第四步：GeoDB 完全失败时，按配置顺序降级尝试所有提供者
+            // 第五步：全部失败，按配置顺序降级尝试所有提供者
             for (const key of CONFIG.IP_PROVIDER_ORDER) {
                 const providerKey = key === 'amap' ? 'amap_ip' : key;
                 const p = Providers[providerKey];
                 if (!p || !p.available()) continue;
-                // 跳过已经尝试过的 GeoDB
-                if (p === geoDB) continue;
+                // 跳过已经尝试过的源
+                if (p === geoDB || p === amapIP) continue;
                 try {
-                    // amap_ip 同样需要 publicIP 才能避免边缘节点误判
                     const loc = p === amapIP
-                        ? await p.locateIP(publicIP)
-                        : await p.locateIP();
+                        ? await p.locateIP(publicIP, signal)
+                        : await p.locateIP(signal);
                     if (loc && loc.lat != null && loc.lon != null && isFinite(loc.lat) && isFinite(loc.lon)) {
                         loc._provider = p.name;
                         loc._ipv6 = p.ipv6;
@@ -3582,7 +3595,14 @@
             throw new Error('IP 定位失败，请手动输入城市');
         },
 
-        async geocode(city) {
+        async geocode(city, signal) {
+            // 地理编码缓存：30min TTL（坐标不变，重复搜索即时响应）
+            const cacheKey = String(city || '').toLowerCase().trim();
+            const cached = _geocodeCache.get(cacheKey);
+            if (cached && (Date.now() - cached.ts) < 30 * 60 * 1000) {
+                console.info('[Geocode] 命中内存缓存（30min TTL）');
+                return cached.loc;
+            }
             // 常见海外城市中文名映射，避免被高德误解析为国内同名地点
             const overseasZh = {
                 '纽约': 'New York', '伦敦': 'London', '东京': 'Tokyo', '巴黎': 'Paris',
@@ -3607,6 +3627,7 @@
                         loc._provider = p.name;
                         // 使用原始中文名作为显示城市
                         if (overseasZh[city]) loc.city = city;
+                        _geocodeCache.set(cacheKey, { loc, ts: Date.now() });
                         return loc;
                     }
                 } catch (e) { console.warn(`[Geocode] ${p.name} 失败:`, e.message); }
@@ -3614,7 +3635,7 @@
             throw new Error('找不到该城市，请检查城市名称');
         },
 
-        async getWeather(location) {
+        async getWeather(location, signal) {
             // 内存缓存：5 分钟内同坐标直接复用，避免刷新按钮全量重打
             const cacheKey = `${(location.lat || 0).toFixed(3)},${(location.lon || 0).toFixed(3)}`;
             const cached = _weatherCache.get(cacheKey);
@@ -3631,6 +3652,7 @@
             const order = isChina
                 ? ['amap', 'openmeteo', 'qweather']
                 : ['openmeteo', 'qweather', 'amap'];
+            const errors = [];
             for (const key of order) {
                 const p = Providers[key];
                 if (!p || !p.available() || !p.getWeather) continue;
@@ -3640,7 +3662,7 @@
                     continue;
                 }
                 try {
-                    const data = await p.getWeather(location);
+                    const data = await p.getWeather(location, signal);
                     if (data) {
                         data._provider = p.name;
                         data._ipv6 = p.ipv6;
@@ -3648,9 +3670,18 @@
                         _weatherCache.set(cacheKey, { data, ts: now });
                         return data;
                     }
-                } catch (e) { console.warn(`[Weather] ${p.name} 失败:`, e.message); }
+                } catch (e) {
+                    // 用户主动取消（请求去重）不记录为错误
+                    if (e && e.name === 'AbortError') throw e;
+                    console.warn(`[Weather] ${p.name} 失败:`, e.message);
+                    errors.push(`${p.name}: ${e.message}`);
+                }
             }
-            throw new Error('所有数据源均无法获取天气，请稍后重试');
+            // P3：错误信息细化
+            if (errors.length) {
+                throw new Error(`天气数据获取失败（${errors.join('；')}）`);
+            }
+            throw new Error('所有数据源均不可用，请检查网络或稍后重试');
         }
     };
 
@@ -4155,34 +4186,65 @@
     let lastCity = null;
     let isLoading = false;
     let searchDebounceTimer = null;
+    // 请求去重：新请求发起时取消上一个进行中的请求，token 防止陈旧响应渲染
+    let _activeAbortController = null;
+    let _requestToken = 0;
+
+    // 取消进行中的请求（用于请求去重）
+    function _abortActiveRequest() {
+        if (_activeAbortController) {
+            _activeAbortController.abort();
+            _activeAbortController = null;
+        }
+    }
 
     async function loadByIP(silent = false) {
+        // 请求去重：取消上一个进行中的请求
+        _abortActiveRequest();
+        const myController = new AbortController();
+        _activeAbortController = myController;
+        const myToken = ++_requestToken;
         if (isLoading) return;
         isLoading = true;
         showLoading();
         try {
-            const loc = await WeatherService.locateIP();
+            const loc = await WeatherService.locateIP(myController.signal);
+            // 防陈旧响应：若已被新请求取代则静默退出
+            if (myToken !== _requestToken) return;
             // locateIP 内部已检测网络类型，复用其结果更新界面
             const isIPv6 = loc._ipv6 || false;
             netBadge.classList.toggle('ipv6', isIPv6);
             netBadge.setAttribute('data-status', isIPv6 ? 'IPv6 已连接' : 'IPv4 网络');
             netText.textContent = isIPv6 ? 'IPv6 已连接' : 'IPv4 网络';
-            const data = await WeatherService.getWeather(loc);
+            const data = await WeatherService.getWeather(loc, myController.signal);
+            if (myToken !== _requestToken) return;
             lastCity = loc.city;
             cityInput.value = loc.city;
             renderWeather(data);
             showToast(`已定位到 ${loc.city}`, 'success');
         } catch (e) {
+            // 用户主动取消（请求去重）不报错
+            if (e && e.name === 'AbortError') return;
+            if (myToken !== _requestToken) return;
             if (silent) showEmpty();
             else showError(e.message);
             showToast(e.message, 'error');
         } finally {
-            isLoading = false;
+            if (myToken === _requestToken) {
+                isLoading = false;
+                if (_activeAbortController === myController) _activeAbortController = null;
+            }
         }
     }
 
     async function loadWeather(city) {
-        if (!city || isLoading) return;
+        if (!city) return;
+        // 请求去重：取消上一个进行中的请求
+        _abortActiveRequest();
+        const myController = new AbortController();
+        _activeAbortController = myController;
+        const myToken = ++_requestToken;
+        if (isLoading) return;
         isLoading = true;
         clearTimeout(searchDebounceTimer);
         cityInput.value = city;
@@ -4190,17 +4252,24 @@
         cityInput.blur();
         showLoading();
         try {
-            const loc = await WeatherService.geocode(city);
-            const data = await WeatherService.getWeather(loc);
+            const loc = await WeatherService.geocode(city, myController.signal);
+            if (myToken !== _requestToken) return;
+            const data = await WeatherService.getWeather(loc, myController.signal);
+            if (myToken !== _requestToken) return;
             lastCity = city;
             renderWeather(data);
             saveHistory(city);
             renderHistory();
         } catch (e) {
+            if (e && e.name === 'AbortError') return;
+            if (myToken !== _requestToken) return;
             showError(e.message);
             showToast(e.message, 'error');
         } finally {
-            isLoading = false;
+            if (myToken === _requestToken) {
+                isLoading = false;
+                if (_activeAbortController === myController) _activeAbortController = null;
+            }
         }
     }
 

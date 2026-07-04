@@ -55,6 +55,63 @@ const KEY_ENV = {
 // 上游请求超时（毫秒）—— EdgeOne fetch 支持的 eo.timeoutSetting
 const UPSTREAM_TIMEOUT_MS = 10000;
 
+// 边缘缓存 TTL（秒）：天气/地理编码数据可短期共享缓存，减少上游压力
+// IP 定位接口不缓存（每用户 IP 不同）
+const CACHE_TTL = 120; // 2 分钟
+
+/**
+ * 判断请求路径是否可缓存
+ * - IP 定位（/api/amap/v3/ip、/api/ipnews/）不缓存
+ * - 天气、地理编码、AQI 可缓存
+ */
+function isCacheable(pathname) {
+    if (pathname.includes('/v3/ip')) return false;
+    if (pathname.startsWith('/api/ipnews/')) return false;
+    return true;
+}
+
+/**
+ * 构造边缘缓存 key（带区域隔离，避免不同地区命中同一缓存）
+ */
+function cacheKey(url) {
+    return 'skyweather:' + url;
+}
+
+/**
+ * 从 Cache API 读取缓存
+ */
+async function cacheGet(key) {
+    try {
+        const cache = await caches.open('skyweather-v1');
+        const res = await cache.match(key);
+        if (!res) return null;
+        // 检查 TTL
+        const cachedAt = res.headers.get('x-cached-at');
+        if (!cachedAt) return null;
+        const age = (Date.now() - parseInt(cachedAt, 10)) / 1000;
+        if (age > CACHE_TTL) return null;
+        return res;
+    } catch { return null; }
+}
+
+/**
+ * 写入边缘缓存（克隆响应并标记时间戳）
+ */
+async function cachePut(key, res) {
+    try {
+        const cache = await caches.open('skyweather-v1');
+        const cloned = res.clone();
+        const headers = new Headers(cloned.headers);
+        headers.set('x-cached-at', String(Date.now()));
+        const cached = new Response(cloned.body, {
+            status: cloned.status,
+            statusText: cloned.statusText,
+            headers,
+        });
+        await cache.put(key, cached);
+    } catch { /* 缓存写入失败不影响主流程 */ }
+}
+
 // ===================== 工具函数 =====================
 function json(status, obj) {
     return new Response(JSON.stringify(obj), {
@@ -130,7 +187,25 @@ async function handleGet(context) {
         return json(503, { error: `${envKey} not configured on server` });
     }
 
+    const waitUntil = context.waitUntil ? context.waitUntil.bind(context) : null;
+
     const upstreamUrl = buildUpstreamUrl(matched.upstream, matched.sub, url.searchParams, keyValue);
+
+    // 边缘缓存：天气/地理编码数据 2 分钟内多用户共享，减少上游压力
+    const canCache = isCacheable(url.pathname);
+    const cKey = cacheKey(upstreamUrl);
+    if (canCache) {
+        const cached = await cacheGet(cKey);
+        if (cached) {
+            // 命中缓存：附加 CORS 头后透传
+            const headers = new Headers(cached.headers);
+            headers.set('Access-Control-Allow-Origin', '*');
+            headers.set('Access-Control-Allow-Methods', 'GET, OPTIONS');
+            headers.set('Access-Control-Allow-Headers', 'Content-Type');
+            headers.set('X-Edge-Cache', 'HIT');
+            return new Response(cached.body, { status: cached.status, headers });
+        }
+    }
 
     try {
         const upstreamRes = await fetch(upstreamUrl, {
@@ -158,11 +233,21 @@ async function handleGet(context) {
         headers.set('Access-Control-Allow-Origin', '*');
         headers.set('Access-Control-Allow-Methods', 'GET, OPTIONS');
         headers.set('Access-Control-Allow-Headers', 'Content-Type');
+        headers.set('X-Edge-Cache', 'MISS');
 
-        return new Response(upstreamRes.body, {
+        const response = new Response(upstreamRes.body, {
             status: upstreamRes.status,
             headers,
         });
+
+        // 写入边缘缓存（仅缓存成功响应）
+        if (canCache && upstreamRes.ok) {
+            // 不阻塞响应，异步写入（EdgeOne waitUntil）
+            if (waitUntil) waitUntil(cachePut(cKey, response));
+            else cachePut(cKey, response).catch(() => {});
+        }
+
+        return response;
     } catch (err) {
         return json(502, { error: 'upstream error', detail: err && err.message ? err.message : String(err) });
     }
