@@ -168,25 +168,34 @@ async function handleGet(context) {
     }
 }
 
-// ===================== Handlers 导出 =====================
-// onRequestGet 仅匹配 GET；onRequestOptions 处理跨域预检
-export async function onRequestGet(context) {
-    return handleGet(context);
-}
+// ===================== Handler 导出 =====================
+// 统一使用 onRequest（官方推荐写法：export default function onRequest）处理所有方法。
+//
+// 注意：EdgeOne Pages 中 onRequest 匹配全部 HTTP 方法（GET/POST/OPTIONS/...），
+//   当它与 onRequestGet / onRequestOptions 同时导出时会接管所有请求，
+//   导致方法特定的 handler 永远不被分发（线上曾因此导致全部接口返回 405）。
+//   因此这里不再拆分 onRequestGet / onRequestOptions，改为在 onRequest 内部按 method 分发。
+export default async function onRequest(context) {
+    const method = context.request.method.toUpperCase();
 
-export function onRequestOptions() {
-    return new Response(null, {
-        status: 204,
-        headers: {
-            'Access-Control-Allow-Origin': '*',
-            'Access-Control-Allow-Methods': 'GET, OPTIONS',
-            'Access-Control-Allow-Headers': 'Content-Type',
-            'Access-Control-Max-Age': '86400',
-        },
-    });
-}
+    // OPTIONS → CORS 预检
+    if (method === 'OPTIONS') {
+        return new Response(null, {
+            status: 204,
+            headers: {
+                'Access-Control-Allow-Origin': '*',
+                'Access-Control-Allow-Methods': 'GET, OPTIONS',
+                'Access-Control-Allow-Headers': 'Content-Type',
+                'Access-Control-Max-Age': '86400',
+            },
+        });
+    }
 
-// 兜底：其它方法统一 405
-export function onRequest() {
+    // GET → 主处理逻辑
+    if (method === 'GET') {
+        return handleGet(context);
+    }
+
+    // 其它方法统一 405
     return json(405, { error: 'method not allowed' });
 }
