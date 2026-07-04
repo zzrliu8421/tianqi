@@ -7,12 +7,12 @@
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <title>SkyWeather · 云际天气</title>
-    <!-- Three.js importmap：通过 ES module 引入 Three.js 核心 + addons -->
+    <!-- Three.js importmap：优先用本地 vendor/，离线可用；CDN 作为兜底 -->
     <script type="importmap">
     {
       "imports": {
-        "three": "https://cdn.jsdelivr.net/npm/three@0.160.1/build/three.module.js",
-        "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.1/examples/jsm/"
+        "three": "./vendor/three.module.js",
+        "three/addons/": "./vendor/addons/"
       }
     }
     </script>

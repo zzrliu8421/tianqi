@@ -1,7 +1,7 @@
 {
   "appId": "com.skyweather.app",
   "appName": "SkyWeather",
-  "webDir": ".",
+  "webDir": "www",
   "server": {
     "androidScheme": "https",
     "hostname": "skyweather.local"

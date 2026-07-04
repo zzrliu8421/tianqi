@@ -9,9 +9,11 @@
   "files": [
     "index.html",
     "weather-renderer.js",
+    "mobile-bridge.js",
     "config.js",
     "server.js",
     "build.js",
+    "vendor/**/*",
     "electron/**/*",
     "edge-functions/**/*",
     "package.json",
@@ -22,15 +24,14 @@
     "target": [
       {
         "target": "nsis",
-        "arch": ["x64", "ia32"]
+        "arch": ["x64"]
       },
       {
         "target": "portable",
         "arch": ["x64"]
       }
     ],
-    "icon": "electron/build/icon.ico",
-    "artifactName": "SkyWeather-${version}-${arch}.${ext}"
+    "icon": "electron/build/icon.ico"
   },
   "nsis": {
     "oneClick": false,
@@ -38,7 +39,11 @@
     "allowToChangeInstallationDirectory": true,
     "createDesktopShortcut": true,
     "createStartMenuShortcut": true,
-    "shortcutName": "SkyWeather"
+    "shortcutName": "SkyWeather",
+    "artifactName": "SkyWeather-Setup-${version}-${arch}.${ext}"
+  },
+  "portable": {
+    "artifactName": "SkyWeather-Portable-${version}-${arch}.${ext}"
   },
   "mac": {
     "target": ["dmg"],

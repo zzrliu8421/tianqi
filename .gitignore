@@ -15,6 +15,12 @@ ios/
 dist-electron/
 dist/
 
+# vendor 由 copy-vendor.js 从 node_modules 拷贝生成（构建时自动）
+vendor/
+
+# www 由 prepare-cap.js 生成（Capacitor 同步前自动）
+www/
+
 # 调试日志
 *.log
 
