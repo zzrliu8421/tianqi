@@ -202,23 +202,36 @@
 
         body {
             font-family: var(--font-sans);
-            background:
-                radial-gradient(ellipse 80% 60% at 20% 20%, var(--bg-elevated), transparent 50%),
-                radial-gradient(ellipse 70% 50% at 80% 80%, var(--bg-surface), transparent 50%),
-                linear-gradient(180deg, var(--bg-base) 0%, var(--bg-surface) 100%);
-            background-attachment: fixed;
+            /* 仅保留纯色兜底；渐变与背景图由 body::before 固定层承载，
+               避免地址栏变化时 background-attachment: fixed 在移动端的跳动问题 */
+            background-color: var(--bg-base);
             color: var(--text-primary);
             overflow-x: hidden;
             overscroll-behavior: none;
             -webkit-overflow-scrolling: touch;
             min-height: 100dvh;
-            transition: background 1s var(--ease);
+            transition: background-color 1s var(--ease);
             -webkit-font-smoothing: antialiased;
             -moz-osx-font-smoothing: grayscale;
             line-height: 1.5;
         }
 
-        body.has-bg-image {
+        /* 主背景层 —— fixed 定位，不随滚动和地址栏显示/隐藏而变化 */
+        body::before {
+            content: '';
+            position: fixed;
+            inset: 0;
+            background:
+                radial-gradient(ellipse 80% 60% at 20% 20%, var(--bg-elevated), transparent 50%),
+                radial-gradient(ellipse 70% 50% at 80% 80%, var(--bg-surface), transparent 50%),
+                linear-gradient(180deg, var(--bg-base) 0%, var(--bg-surface) 100%);
+            pointer-events: none;
+            z-index: 0;
+            transition: background 1s var(--ease);
+        }
+
+        /* 背景图叠加（有背景图时替换主背景层） */
+        body.has-bg-image::before {
             background-image:
                 linear-gradient(180deg, rgba(11, 15, 25, 0.78) 0%, rgba(11, 15, 25, 0.88) 100%),
                 var(--bg-image, none),
@@ -227,9 +240,11 @@
                 linear-gradient(180deg, var(--bg-base) 0%, var(--bg-surface) 100%);
             background-size: cover, cover, auto, auto, auto;
             background-position: center, center, center, center, center;
+            background-repeat: no-repeat;
         }
 
-        body::before {
+        /* accent-glow 装饰层 —— 固定，叠加在主背景之上 */
+        body::after {
             content: '';
             position: fixed;
             inset: 0;
@@ -242,7 +257,7 @@
             transition: opacity 1s var(--ease), background 1s var(--ease);
         }
 
-        body.has-bg-image::before {
+        body.has-bg-image::after {
             opacity: 0.12;
         }
 
@@ -1918,27 +1933,33 @@
     const TARGET_FPS = 60;
     const FRAME_INTERVAL = 1000 / TARGET_FPS;
 
+    let lastCW = 0, lastCH = 0, lastDpr = 0;
     function resizeCanvas() {
         const dpr = Math.min(window.devicePixelRatio || 1, 2);
         const w = window.visualViewport ? window.visualViewport.width : window.innerWidth;
         const h = window.visualViewport ? window.visualViewport.height : window.innerHeight;
-        canvas.width = w * dpr;
-        canvas.height = h * dpr;
+        // 仅在尺寸真正变化时才重置画布，避免地址栏频繁变化导致的清空闪烁
+        if (Math.abs(w - lastCW) < 1 && Math.abs(h - lastCH) < 1 && dpr === lastDpr) return;
+        canvas.width = Math.max(1, Math.floor(w * dpr));
+        canvas.height = Math.max(1, Math.floor(h * dpr));
         canvas.style.width = w + 'px';
         canvas.style.height = h + 'px';
         ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+        lastCW = w; lastCH = h; lastDpr = dpr;
     }
     let resizeTimer = null;
     function handleResize() {
         clearTimeout(resizeTimer);
+        // 较长防抖以合并地址栏显示/隐藏引发的高频 resize
         resizeTimer = setTimeout(() => {
             resizeCanvas();
-            if (currentAnim) {
-                particles = makeParticles(currentAnim);
-            }
-        }, 80);
+            // 注意：不在此处重建粒子。
+            // 地址栏变化时重建粒子会导致动画整体跳变；
+            // 现有粒子通过 vpH()/vpW() 在每帧自适应新边界，过渡更平滑。
+        }, 200);
     }
     window.addEventListener('resize', handleResize);
+    window.addEventListener('orientationchange', handleResize);
     if (window.visualViewport) {
         window.visualViewport.addEventListener('resize', handleResize);
     }
