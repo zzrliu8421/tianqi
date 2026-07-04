@@ -216,11 +216,18 @@
             line-height: 1.5;
         }
 
-        /* 主背景层 —— fixed 定位，不随滚动和地址栏显示/隐藏而变化 */
+        /* 主背景层 —— fixed 定位 + 固定高度（100lvh），
+           即使地址栏显示/隐藏导致视口高度变化，背景层尺寸也保持不变，
+           从而百分比渐变不会拉伸/位移 */
         body::before {
             content: '';
             position: fixed;
-            inset: 0;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 100vh;            /* fallback：旧浏览器 */
+            height: 100lvh;           /* Large Viewport Height：地址栏隐藏时的最大高度，固定 */
+            height: var(--stable-vh, 100lvh); /* JS 兜底：不支持 lvh 时由脚本设置 */
             background:
                 radial-gradient(ellipse 80% 60% at 20% 20%, var(--bg-elevated), transparent 50%),
                 radial-gradient(ellipse 70% 50% at 80% 80%, var(--bg-surface), transparent 50%),
@@ -243,11 +250,16 @@
             background-repeat: no-repeat;
         }
 
-        /* accent-glow 装饰层 —— 固定，叠加在主背景之上 */
+        /* accent-glow 装饰层 —— 同样使用固定高度 */
         body::after {
             content: '';
             position: fixed;
-            inset: 0;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 100vh;
+            height: 100lvh;
+            height: var(--stable-vh, 100lvh);
             background:
                 radial-gradient(circle at 25% 25%, var(--accent-glow), transparent 35%),
                 radial-gradient(circle at 75% 75%, var(--accent-glow), transparent 35%);
@@ -1695,6 +1707,28 @@
 
 <script src="config.js"></script>
 <script>
+    // ===================== 稳定视口高度 =====================
+    // 为背景层提供固定高度，避免地址栏显示/隐藏时百分比渐变被拉伸。
+    // 优先依赖 CSS 100lvh；若浏览器不支持 lvh（或 lvh 行为异常），用 JS 设置 --stable-vh。
+    (function () {
+        function stableVH() {
+            // 取较大值：地址栏隐藏时的最大视口高度。
+            // screen.height 通常是设备屏幕 CSS 高度（>= innerHeight），
+            // 即使用户首次在地址栏显示时打开页面也能得到正确的"最大高度"。
+            var h = window.innerHeight;
+            if (screen && screen.height && screen.height > h) h = screen.height;
+            return h + 'px';
+        }
+        function apply() {
+            document.documentElement.style.setProperty('--stable-vh', stableVH());
+        }
+        apply();
+        // 仅在横竖屏切换时重新计算；普通 resize（地址栏变化）不更新，保持背景层尺寸稳定
+        window.addEventListener('orientationchange', function () {
+            setTimeout(apply, 500);
+        });
+    })();
+
     // ===================== SVG 图标库 =====================
     let svgIdCounter = 0;
     function uniqueId(prefix) { return `${prefix}-${++svgIdCounter}`; }
