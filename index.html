@@ -3004,8 +3004,13 @@
             ipv6: true,
             overseas: false,
             available: () => !!CONFIG.AMAP_KEY,
-            async locateIP() {
-                const data = await fetchJSON(`${CONFIG.API_BASE}/api/amap/v3/ip`);
+            // ip 参数：用户公网 IP。在边缘函数代理场景下必须显式传入，
+            // 否则高德会以边缘节点的出口 IP 作为定位依据，导致定位到节点所在地而非用户所在地。
+            async locateIP(ip) {
+                const url = ip
+                    ? `${CONFIG.API_BASE}/api/amap/v3/ip?ip=${encodeURIComponent(ip)}`
+                    : `${CONFIG.API_BASE}/api/amap/v3/ip`;
+                const data = await fetchJSON(url);
                 if (data.status !== '1' || !data.adcode) throw new Error('高德 IP 定位失败');
                 // 高德对直辖市可能返回空字符串或 []，需要用 province 兜底
                 const city = (data.city && data.city !== '[]') ? data.city : data.province;
@@ -3339,8 +3344,9 @@
                 const isChina = geoDBResult.countryCode === 'CN';
                 if (isChina && amapIP && amapIP.available()) {
                     // 中国大陆 IP：用高德重新定位，获取更精确的 adcode 和坐标
+                    // 传入 publicIP：避免边缘函数代理时高德误把边缘节点 IP 当作用户 IP
                     try {
-                        const amapResult = await amapIP.locateIP();
+                        const amapResult = await amapIP.locateIP(publicIP);
                         if (amapResult && amapResult.lat != null && amapResult.lon != null
                             && isFinite(amapResult.lat) && isFinite(amapResult.lon)) {
                             amapResult._provider = amapIP.name;
@@ -3369,7 +3375,10 @@
                 // 跳过已经尝试过的 GeoDB
                 if (p === geoDB) continue;
                 try {
-                    const loc = await p.locateIP();
+                    // amap_ip 同样需要 publicIP 才能避免边缘节点误判
+                    const loc = p === amapIP
+                        ? await p.locateIP(publicIP)
+                        : await p.locateIP();
                     if (loc && loc.lat != null && loc.lon != null && isFinite(loc.lat) && isFinite(loc.lon)) {
                         loc._provider = p.name;
                         loc._ipv6 = p.ipv6;
