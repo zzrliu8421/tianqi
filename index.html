@@ -2404,7 +2404,7 @@
     class RainDrop {
         constructor(layer) { this.layer = layer || 2; this.reset(true); }
         reset(initial = false) {
-            const W = window.innerWidth;
+            const W = vpW();
             const H = vpH();
             const intensity = animIntensity;
             const L = this.layer;
@@ -2415,12 +2415,16 @@
             this.opacity = lerp(0.12, 0.55, L / 2) * rand(0.7, 1.0);
             this.tailLen = this.speed * rand(1.4, 2.2) * (L === 2 ? 1.0 : 0.7);
             this.hasSplashed = false;
+            // 个体抖动种子：用平滑噪声替代每帧 rand，避免移动端低帧率抖动突兀
+            this.jitterSeed = rand(0, 1000);
         }
         update() {
             // 噪声扰动风速（阵风感）
             const gust = perlin2(this.y * 0.005, _windNoiseT) * 0.4;
             const effectiveWind = windSpeed + _tiltX;
-            this.slant = effectiveWind * 1.4 + rand(-0.12, 0.12);
+            // 用 perlin 噪声替代每帧 rand，得到平滑的抖动（移动端低帧率也自然）
+            const jitter = perlin2(this.jitterSeed, _windNoiseT * 2) * 0.24;
+            this.slant = effectiveWind * 1.4 + jitter;
             this.y += this.speed;
             this.x += this.slant + gust * (this.layer === 2 ? 0.6 : 0.3);
             const groundY = vpH() - 2;
@@ -2436,7 +2440,8 @@
                     effects.push(new ShockRing(this.x, groundY));
                 }
             }
-            if (this.y > vpH() + 30) this.reset();
+            // y 超出底部或 x 飞出屏幕两侧时重置（避免大风时雨滴飞出视野不回收）
+            if (this.y > vpH() + 30 || this.x < -120 || this.x > vpW() + 120) this.reset();
         }
         draw(c) {
             const a = this.opacity * _newAlpha;
@@ -2697,75 +2702,111 @@
         }
     }
 
-    // ---- 星星（夜晚才显示）—— 醒目闪烁的发光点 ----
+    // ---- 星星（夜晚才显示）—— 宁静优雅的繁星 ----
     class Star {
         constructor() { this.reset(true); }
         reset(initial = false) {
             this.x = rand(0, vpW());
-            this.y = rand(0, vpH() * 0.75);
+            this.y = rand(0, vpH() * 0.78);
+            // 四档分布：营造层次感（多数微弱，少数明亮）
             const roll = Math.random();
-            if (roll < 0.55) { this.tier = 0; this.r = rand(0.9, 1.6); }
-            else if (roll < 0.88) { this.tier = 1; this.r = rand(1.8, 2.6); }
-            else { this.tier = 2; this.r = rand(2.8, 3.8); }
-            this.baseOpacity = this.tier === 2 ? rand(0.95, 1.0) : (this.tier === 1 ? rand(0.75, 0.95) : rand(0.55, 0.85));
+            if (roll < 0.65) {
+                // 微弱小点（远景星海）
+                this.tier = 0;
+                this.r = rand(0.4, 0.9);
+                this.baseOpacity = rand(0.25, 0.55);
+            } else if (roll < 0.88) {
+                // 小星（中景）
+                this.tier = 1;
+                this.r = rand(1.0, 1.6);
+                this.baseOpacity = rand(0.5, 0.75);
+            } else if (roll < 0.97) {
+                // 中星（近景）
+                this.tier = 2;
+                this.r = rand(1.8, 2.4);
+                this.baseOpacity = rand(0.7, 0.9);
+            } else {
+                // 明亮主星（极少，才有十字光芒）
+                this.tier = 3;
+                this.r = rand(2.6, 3.4);
+                this.baseOpacity = rand(0.85, 1.0);
+            }
+            // 缓慢柔和的呼吸感闪烁
             this.twinklePhase = rand(0, TAU);
-            this.twinkleSpeed = rand(0.025, 0.08);
-            this.twinkleAmp = this.tier === 2 ? rand(0.5, 0.7) : (this.tier === 1 ? rand(0.35, 0.55) : rand(0.2, 0.4));
-            // 十字光芒随机倾斜角度
-            this.crossAngle = rand(0, Math.PI);
+            this.twinkleSpeed = rand(0.008, 0.025);  // 慢
+            this.twinkleAmp = rand(0.15, 0.35);       // 小幅度
+            // 色温：以纯白为主，极少量微妙变化
             const colorRoll = Math.random();
-            if (colorRoll < 0.6) this.color = [255, 255, 255];
-            else if (colorRoll < 0.85) this.color = [200, 220, 255];
-            else this.color = [255, 235, 190];
+            if (colorRoll < 0.82) this.color = [255, 255, 255];           // 纯白（主流）
+            else if (colorRoll < 0.93) this.color = [225, 235, 255];      // 极淡蓝白
+            else this.color = [255, 248, 230];                            // 极淡暖白
+            // 仅主星有十字光芒，且随机倾斜
+            this.hasCross = this.tier === 3;
+            this.crossAngle = this.hasCross ? rand(0, Math.PI) : 0;
+            // 主星十字光芒呼吸
+            this.crossPhase = rand(0, TAU);
         }
-        update() { this.twinklePhase += this.twinkleSpeed; return true; }
+        update() {
+            this.twinklePhase += this.twinkleSpeed;
+            if (this.hasCross) this.crossPhase += 0.015;
+            return true;
+        }
         draw(c) {
             const nightAlpha = 1 - _dayFactor;
             if (nightAlpha < 0.05) return;
+            // 柔和闪烁：从 (1-amp) 到 1.0
             const twinkle = (1 - this.twinkleAmp) + (Math.sin(this.twinklePhase) * 0.5 + 0.5) * this.twinkleAmp;
             const a = this.baseOpacity * twinkle * nightAlpha;
-            if (a < 0.05) return;
+            if (a < 0.03) return;
             const [cr, cg, cb] = this.color;
             const colStr = `${cr}, ${cg}, ${cb}`;
-            // 外层大光晕
-            const haloR = this.r * (this.tier === 2 ? 5 : 4);
+            // 柔和的大范围光晕（渐变平缓，无硬边）
+            const haloR = this.r * (this.tier >= 2 ? 6 : 4);
             const g1 = c.createRadialGradient(this.x, this.y, 0, this.x, this.y, haloR);
-            g1.addColorStop(0, `rgba(${colStr}, ${a * 0.4})`);
-            g1.addColorStop(0.3, `rgba(${colStr}, ${a * 0.15})`);
+            g1.addColorStop(0, `rgba(${colStr}, ${a * 0.35})`);
+            g1.addColorStop(0.25, `rgba(${colStr}, ${a * 0.12})`);
+            g1.addColorStop(0.6, `rgba(${colStr}, ${a * 0.03})`);
             g1.addColorStop(1, `rgba(${colStr}, 0)`);
             c.fillStyle = g1;
             c.beginPath(); c.arc(this.x, this.y, haloR, 0, TAU); c.fill();
-            // 中层光晕
-            const innerR = this.r * 1.8;
-            const g2 = c.createRadialGradient(this.x, this.y, 0, this.x, this.y, innerR);
-            g2.addColorStop(0, `rgba(${colStr}, ${a})`);
-            g2.addColorStop(0.5, `rgba(${colStr}, ${a * 0.5})`);
+            // 紧凑核心光晕（小而亮）
+            const coreR = this.r * 1.4;
+            const g2 = c.createRadialGradient(this.x, this.y, 0, this.x, this.y, coreR);
+            g2.addColorStop(0, `rgba(${colStr}, ${a * 0.95})`);
+            g2.addColorStop(0.4, `rgba(${colStr}, ${a * 0.4})`);
             g2.addColorStop(1, `rgba(${colStr}, 0)`);
             c.fillStyle = g2;
-            c.beginPath(); c.arc(this.x, this.y, innerR, 0, TAU); c.fill();
-            // 锐利中心点
-            c.fillStyle = `rgba(${colStr}, ${Math.min(1, a * 1.2)})`;
-            c.beginPath(); c.arc(this.x, this.y, this.r * 0.7, 0, TAU); c.fill();
-            // 十字光芒（带随机倾斜角度）
-            if (this.tier >= 1) {
-                const len = this.r * (this.tier === 2 ? 8 : 5);
-                const lineW = this.tier === 2 ? 1.0 : 0.7;
-                const lineA = a * (this.tier === 2 ? 0.85 : 0.6);
+            c.beginPath(); c.arc(this.x, this.y, coreR, 0, TAU); c.fill();
+            // 锐利中心点（极小，保证点状感）
+            c.fillStyle = `rgba(${colStr}, ${Math.min(1, a * 1.1)})`;
+            c.beginPath(); c.arc(this.x, this.y, this.r * 0.55, 0, TAU); c.fill();
+            // 仅主星：细长柔和的十字光芒（呼吸感）
+            if (this.hasCross) {
+                const breath = 0.7 + (Math.sin(this.crossPhase) * 0.5 + 0.5) * 0.3;
+                const len = this.r * 14 * breath;       // 细长
+                const lineW = 0.5;                        // 极细
+                const lineA = a * 0.4 * breath;          // 柔和
                 const cosA = Math.cos(this.crossAngle);
                 const sinA = Math.sin(this.crossAngle);
+                // 第一条光芒
                 const x1a = this.x - len * cosA, y1a = this.y - len * sinA;
                 const x1b = this.x + len * cosA, y1b = this.y + len * sinA;
                 const g3 = c.createLinearGradient(x1a, y1a, x1b, y1b);
                 g3.addColorStop(0, `rgba(${colStr}, 0)`);
+                g3.addColorStop(0.45, `rgba(${colStr}, ${lineA * 0.3})`);
                 g3.addColorStop(0.5, `rgba(${colStr}, ${lineA})`);
+                g3.addColorStop(0.55, `rgba(${colStr}, ${lineA * 0.3})`);
                 g3.addColorStop(1, `rgba(${colStr}, 0)`);
                 c.strokeStyle = g3; c.lineWidth = lineW;
                 c.beginPath(); c.moveTo(x1a, y1a); c.lineTo(x1b, y1b); c.stroke();
+                // 第二条光芒（垂直）
                 const x2a = this.x - len * (-sinA), y2a = this.y - len * cosA;
                 const x2b = this.x + len * (-sinA), y2b = this.y + len * cosA;
                 const g4 = c.createLinearGradient(x2a, y2a, x2b, y2b);
                 g4.addColorStop(0, `rgba(${colStr}, 0)`);
+                g4.addColorStop(0.45, `rgba(${colStr}, ${lineA * 0.3})`);
                 g4.addColorStop(0.5, `rgba(${colStr}, ${lineA})`);
+                g4.addColorStop(0.55, `rgba(${colStr}, ${lineA * 0.3})`);
                 g4.addColorStop(1, `rgba(${colStr}, 0)`);
                 c.strokeStyle = g4;
                 c.beginPath(); c.moveTo(x2a, y2a); c.lineTo(x2b, y2b); c.stroke();
@@ -2773,15 +2814,15 @@
         }
     }
 
-    // ---- 流星（夜晚偶尔划过）----
+    // ---- 流星（夜晚偶尔划过，柔和拖尾）----
     class Meteor {
         constructor() { this.reset(); this.cooldown = rand(0, 300); this.active = false; }
         reset() {
             this.x = rand(0, vpW() * 0.7);
             this.y = rand(0, vpH() * 0.3);
-            this.len = rand(80, 180);
-            this.angle = rand(Math.PI * 0.15, Math.PI * 0.35);
-            this.speed = rand(12, 20);
+            this.len = rand(120, 240);  // 更长
+            this.angle = rand(Math.PI * 0.12, Math.PI * 0.32);
+            this.speed = rand(8, 14);   // 稍慢，更优雅
             this.life = 1;
             this.active = true;
         }
@@ -2790,13 +2831,13 @@
                 this.cooldown--;
                 if (this.cooldown <= 0) {
                     this.reset();
-                    this.cooldown = rand(400, 1200);
+                    this.cooldown = rand(600, 1800);  // 更稀有
                 }
                 return true;
             }
             this.x += Math.cos(this.angle) * this.speed;
             this.y += Math.sin(this.angle) * this.speed;
-            this.life -= 0.025;
+            this.life -= 0.018;  // 更慢淡出
             if (this.life <= 0 || this.x > vpW() + 100 || this.y > vpH() * 0.7) {
                 this.active = false;
             }
@@ -2809,22 +2850,26 @@
             const a = this.life * nightAlpha;
             const tx = this.x - Math.cos(this.angle) * this.len;
             const ty = this.y - Math.sin(this.angle) * this.len;
+            // 柔和渐变拖尾（多段色停，更细腻）
             const grad = c.createLinearGradient(tx, ty, this.x, this.y);
             grad.addColorStop(0, 'rgba(255, 255, 255, 0)');
-            grad.addColorStop(0.7, `rgba(200, 220, 255, ${a * 0.5})`);
-            grad.addColorStop(1, `rgba(255, 255, 255, ${a})`);
+            grad.addColorStop(0.5, `rgba(220, 235, 255, ${a * 0.15})`);
+            grad.addColorStop(0.85, `rgba(230, 240, 255, ${a * 0.5})`);
+            grad.addColorStop(1, `rgba(255, 255, 255, ${a * 0.9})`);
             c.strokeStyle = grad;
-            c.lineWidth = 2;
+            c.lineWidth = 1.2;  // 更细
             c.lineCap = 'round';
             c.beginPath();
             c.moveTo(tx, ty); c.lineTo(this.x, this.y);
             c.stroke();
-            const g = c.createRadialGradient(this.x, this.y, 0, this.x, this.y, 8);
-            g.addColorStop(0, `rgba(255, 255, 255, ${a})`);
-            g.addColorStop(0.5, `rgba(200, 220, 255, ${a * 0.5})`);
+            // 头部柔和光晕（多层）
+            const g = c.createRadialGradient(this.x, this.y, 0, this.x, this.y, 12);
+            g.addColorStop(0, `rgba(255, 255, 255, ${a * 0.9})`);
+            g.addColorStop(0.3, `rgba(230, 240, 255, ${a * 0.4})`);
+            g.addColorStop(0.7, `rgba(200, 220, 255, ${a * 0.1})`);
             g.addColorStop(1, 'rgba(255, 255, 255, 0)');
             c.fillStyle = g;
-            c.beginPath(); c.arc(this.x, this.y, 8, 0, TAU); c.fill();
+            c.beginPath(); c.arc(this.x, this.y, 12, 0, TAU); c.fill();
         }
     }
 
@@ -3249,9 +3294,9 @@
                 // 镜头光斑链（仅白天）
                 near.push(new LensFlareChain());
                 // 星星 + 流星（夜晚显示，绘制到近景层避免被 blur 模糊）
-                const starN = Math.floor(lerp(80, 160, intensity) * scale);
+                const starN = Math.floor(lerp(180, 320, intensity) * scale);
                 for (let i = 0; i < starN; i++) near.push(new Star());
-                const meteorN = Math.floor(lerp(1, 3, intensity) * scale);
+                const meteorN = Math.floor(lerp(1, 2, intensity) * scale);
                 for (let i = 0; i < meteorN; i++) near.push(new Meteor());
                 break;
             }
@@ -3266,7 +3311,7 @@
                 // 多云白天也加太阳/月亮
                 if (currentAnim === 'partlyCloudy') {
                     near.push(new SunBody());
-                    const starN = Math.floor(lerp(40, 80, intensity) * scale);
+                    const starN = Math.floor(lerp(100, 180, intensity) * scale);
                     for (let i = 0; i < starN; i++) near.push(new Star());
                 }
                 break;

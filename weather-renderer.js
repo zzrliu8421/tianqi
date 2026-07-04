@@ -669,8 +669,12 @@ export class SkyWeatherRenderer {
         void main() {
           vLayer = layer;
           vec3 pos = position;
+          // 限制 uTime 范围，避免 mediump GPU 长时间运行后浮点精度损失/溢出
+          // 雨滴下落周期 = 500/(velocity*30)，对 uTime 取模后视觉无变化
+          float period = 500.0 / (velocity * 30.0);
+          float t = mod(uTime, period);
           // y 下落
-          pos.y = mod(pos.y - uTime * velocity * 30.0 + 200.0, 500.0) - 100.0;
+          pos.y = mod(pos.y - t * velocity * 30.0 + 200.0, 500.0) - 100.0;
           // x 风偏
           pos.x += sin(uTime * 0.5 + position.z * 0.01) * 5.0;
           vec4 mv = modelViewMatrix * vec4(pos, 1.0);
@@ -745,7 +749,10 @@ export class SkyWeatherRenderer {
         varying float vDepth;
         void main() {
           vec3 pos = position;
-          pos.y = mod(pos.y - uTime * velocity * 8.0 + 200.0, 500.0) - 100.0;
+          // 限制 uTime 范围，避免 mediump GPU 长时间运行后浮点精度损失
+          float period = 500.0 / (velocity * 8.0);
+          float t = mod(uTime, period);
+          pos.y = mod(pos.y - t * velocity * 8.0 + 200.0, 500.0) - 100.0;
           pos.x += sin(uTime * 0.3 + position.y * 0.02) * 8.0 + sin(uTime * 0.7 + position.x * 0.01) * 3.0;
           vRotation = rotation + uTime * 0.5;
           vec4 mv = modelViewMatrix * vec4(pos, 1.0);
@@ -1400,14 +1407,17 @@ export class SkyWeatherRenderer {
   _updateRain(dt) {
     if (!this.layers.rain || !this.layers.rain.visible) return;
     const mat = this.layers.rain.material;
-    mat.uniforms.uTime.value = this.elapsed;
+    // 限制 uTime 范围（% 100），避免长时间运行后浮点精度损失
+    // 着色器内会对 uTime 再按雨滴周期取模，所以这里取模不影响视觉
+    mat.uniforms.uTime.value = this.elapsed % 100;
     mat.uniforms.uOpacity.value = this.curVisibility.rain;
   }
 
   _updateSnow(dt) {
     if (!this.layers.snow || !this.layers.snow.visible) return;
     const mat = this.layers.snow.material;
-    mat.uniforms.uTime.value = this.elapsed;
+    // 限制 uTime 范围，避免长时间运行后浮点精度损失
+    mat.uniforms.uTime.value = this.elapsed % 100;
     mat.uniforms.uOpacity.value = this.curVisibility.snow;
   }
 
