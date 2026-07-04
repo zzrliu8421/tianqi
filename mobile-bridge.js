@@ -18,7 +18,6 @@
   window.skyApp = {
     platform: 'capacitor',
     isCapacitor: true,
-    isElectron: false,
     isWeb: false
   };
 

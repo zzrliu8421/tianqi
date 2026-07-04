@@ -2,7 +2,7 @@
 
 一个简洁、现代的跨平台天气应用，支持城市搜索、IP / GPS 定位、实时天气、24 小时预报、7 天预报、空气质量 AQI 以及**小米天气级 WebGL 沉浸式动态背景**。
 
-> 同一份前端代码同时支持：**Web 浏览器**、**Windows 桌面应用（Electron）**、**Android 应用（Capacitor）**。
+> 同一份前端代码同时支持：**Web 浏览器**、**Android 应用（Capacitor）**。
 
 ---
 
@@ -36,7 +36,6 @@
 - **动画**：**WebGL（Three.js）** 主渲染 + Canvas 2D 粒子降级方案 + CSS 动画
 - **跨平台打包**：
   - **Web**：静态文件 + server.js 代理
-  - **Windows**：Electron 28（GPU 硬件加速 WebGL）
   - **Android**：Capacitor 6（WebView 承载 + 原生能力桥接）
 - **天气数据源**：
   - [Open-Meteo](https://open-meteo.com/)：全球天气，免 API Key，作为默认兜底。
@@ -57,13 +56,9 @@
 ├── mobile-bridge.js       # Capacitor 移动端原生能力桥接
 ├── server.js              # 代理服务器：托管静态文件 + 代理上游 API（隐藏 Key）
 ├── build.js               # 构建脚本：根据环境变量生成 config.js（仅含布尔标志）
-├── electron/              # Electron 桌面应用配置
-│   ├── main.js            # 主进程：创建窗口 + 内嵌 server.js
-│   ├── preload.js         # preload：暴露 window.skyApp
-│   └── builder.json       # electron-builder 打包配置
 ├── capacitor.config.json  # Capacitor Android 配置
 ├── edgeone.json           # EdgeOne Pages 部署配置
-├── package.json           # 项目脚本定义（含 Web/Electron/Android 三端命令）
+├── package.json           # 项目脚本定义（含 Web/Android 命令）
 ├── .env.example           # 环境变量模板
 ├── .gitignore             # Git 忽略规则
 └── README.md              # 本文件
@@ -361,51 +356,6 @@ CLI 会读取本地 `.env` 注入到 `context.env`，行为与线上一致。默
 - 支持移动端浏览器与 PWA 添加到主屏
 - 尊重 `prefers-reduced-motion` 媒体查询，减少动态效果
 - WebGL 不可用时自动降级为 Canvas 2D 粒子动画
-
----
-
-## Windows 桌面应用（Electron）
-
-将 Web 版本打包为 Windows 原生桌面应用，享受独立窗口、GPU 加速与离线能力。
-
-### 1. 安装依赖
-
-```bash
-npm install
-```
-
-### 2. 开发模式（连接到正在运行的 server.js）
-
-```bash
-# 终端 1：启动代理服务器（提供 API Key 安全代理）
-npm start
-# 终端 2：启动 Electron
-npm run electron:dev
-```
-
-### 3. 打包为 Windows 可执行文件
-
-```bash
-npm run electron:build
-```
-
-构建产物位于 `dist-electron/`，包含：
-- `SkyWeather-Setup-x64.exe`：NSIS 安装包（推荐分发）
-- `SkyWeather-1.0.0-x64.exe`：便携版（免安装）
-
-### 4. Electron 架构说明
-
-```
-electron/
-├── main.js          # 主进程：创建窗口 + 内嵌启动 server.js 代理
-├── preload.js       # preload：通过 contextBridge 暴露 window.skyApp
-└── builder.json     # electron-builder 打包配置
-```
-
-- 主进程通过 `require('../server.js')` 内嵌启动代理服务器，所有 API Key 仍走服务端代理，与 Web 部署一致
-- 启用 GPU 硬件加速（`enable-gpu-rasterization` + `ignore-gpu-blocklist`），WebGL 必需
-- 单例锁，避免多开
-- macOS/Linux 同样支持（修改 `builder.json` 的 target 即可）
 
 ---
 

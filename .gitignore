@@ -11,10 +11,6 @@ node_modules/
 android/
 ios/
 
-# Electron 构建产物
-dist-electron/
-dist/
-
 # vendor 由 copy-vendor.js 从 node_modules 拷贝生成（构建时自动）
 vendor/
 
