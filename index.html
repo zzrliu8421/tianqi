@@ -2803,7 +2803,31 @@
         };
 
         // 通过公网 IP 服务判断真实出口 IP 类型
-        // api4 强制走 IPv4，api6 强制走 IPv6，双栈下优先获取 IPv4 地址
+        // 优先使用国内可访问的服务（ipify 在国内被墙）
+        try {
+            const [cfRes, ipipRes] = await Promise.allSettled([
+                fetch('https://www.cloudflare.com/cdn-cgi/trace').then(r => r.text()),
+                fetch('https://myip.ipip.net', { headers: { 'Accept': 'text/plain' } }).then(r => r.text())
+            ]);
+            const ips = [];
+            if (cfRes.status === 'fulfilled') {
+                const m = /ip=(\S+)/.exec(cfRes.value);
+                if (m && isPublicIP(m[1])) ips.push(m[1]);
+            }
+            if (ipipRes.status === 'fulfilled') {
+                const m = /(\d+\.\d+\.\d+\.\d+|[0-9a-fA-F:]{2,})/.exec(ipipRes.value || '');
+                if (m && isPublicIP(m[1])) ips.push(m[1]);
+            }
+            if (ips.length) {
+                const hasV6 = ips.some(ip => ip.includes(':'));
+                const hasV4 = ips.some(ip => !ip.includes(':'));
+                const isV6 = hasV6 && !hasV4;
+                setStatus(isV6 ? 'IPv6 已连接' : 'IPv4 网络', isV6);
+                return isV6;
+            }
+        } catch (e) { console.warn('[Network] 主检测失败', e.message); }
+
+        // 备用：ipify（国内可能不可用，海外可用）
         try {
             const [v4Res, v6Res] = await Promise.allSettled([
                 fetchJSON('https://api4.ipify.org?format=json'),
@@ -2818,7 +2842,7 @@
             }
         } catch (e) { console.warn('[Network] ipify 检测失败', e.message); }
 
-        // Fallback：RTCPeerConnection 本地候选检测
+        // Fallback：RTCPeerConnection 本地候选检测（最后一道防线，仅依赖公网候选）
         try {
             const pc = new RTCPeerConnection({ iceServers: [] });
             pc.createDataChannel('');
@@ -2833,12 +2857,12 @@
                 setTimeout(resolve, 1200);
             });
             pc.close();
+            // 仅使用公网候选，避免 fe80:: 等链路本地地址被误判为 IPv6
             const publicCandidates = Array.from(candidates).filter(isPublicIP);
-            const pool = publicCandidates.length ? publicCandidates : Array.from(candidates);
-            const hasV4 = pool.some(ip => !ip.includes(':'));
-            const hasV6 = pool.some(ip => ip.includes(':'));
+            const hasV4 = publicCandidates.some(ip => !ip.includes(':'));
+            const hasV6 = publicCandidates.some(ip => ip.includes(':'));
             const isV6 = hasV6 && !hasV4;
-            setStatus(isV6 ? 'IPv6 已连接' : 'IPv4 网络', isV6);
+            setStatus(isV6 ? 'IPv6 已连接' : (hasV4 || hasV6 ? 'IPv4 网络' : '网络检测失败'), isV6);
             return isV6;
         } catch {
             setStatus('网络检测失败');
