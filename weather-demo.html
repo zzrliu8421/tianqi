@@ -1,0 +1,2110 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="theme-color" content="#0b0f19">
+<title>天气动画演示 v3 · 接近小米天气</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap">
+<style>
+  :root {
+    --bg-base: #0b0f19;
+    --glass: rgba(255, 255, 255, 0.06);
+    --glass-strong: rgba(255, 255, 255, 0.12);
+    --border: rgba(255, 255, 255, 0.14);
+    --text: #f8fafc;
+    --text-dim: rgba(248, 250, 252, 0.65);
+    --text-muted: rgba(248, 250, 252, 0.40);
+    --accent: #38bdf8;
+    --accent-2: #818cf8;
+    --ease: cubic-bezier(0.4, 0, 0.2, 1);
+    --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+    --font-sans: "Inter", -apple-system, BlinkMacSystemFont, "PingFang SC", "Microsoft YaHei", system-ui, sans-serif;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body {
+    height: 100%;
+    background: var(--bg-base);
+    color: var(--text);
+    font-family: var(--font-sans);
+    overflow: hidden;
+    overscroll-behavior: none;
+    -webkit-font-smoothing: antialiased;
+  }
+  /* 动态天空背景（昼夜变化） */
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    z-index: 0;
+    background:
+      radial-gradient(ellipse 80% 60% at var(--sun-x, 78%) var(--sun-y, 18%), var(--bg-tint-1, rgba(56, 189, 248, 0.18)) 0%, transparent 60%),
+      radial-gradient(ellipse 70% 50% at 80% 100%, var(--bg-tint-2, rgba(129, 140, 248, 0.15)) 0%, transparent 60%),
+      linear-gradient(180deg, var(--bg-grad-top, #0b0f19) 0%, var(--bg-grad-bot, #050810) 100%);
+    transition: background 2s var(--ease);
+  }
+  body::after {
+    content: '';
+    position: fixed;
+    left: 0; right: 0; bottom: 0;
+    height: 35%;
+    z-index: 0;
+    background: radial-gradient(ellipse 60% 100% at 50% 100%, var(--horizon-glow, transparent) 0%, transparent 70%);
+    pointer-events: none;
+    transition: background 2s var(--ease);
+  }
+  /* 远景 Canvas（景深模糊） */
+  #stage-far {
+    position: fixed;
+    inset: 0;
+    z-index: 1;
+    display: block;
+    pointer-events: none;
+    filter: blur(3px);
+    opacity: 0.85;
+  }
+  /* 近景 Canvas（清晰） */
+  #stage {
+    position: fixed;
+    inset: 0;
+    z-index: 2;
+    display: block;
+    pointer-events: none;
+  }
+  #flash {
+    position: fixed;
+    inset: 0;
+    z-index: 3;
+    background: rgba(220, 220, 255, 0);
+    pointer-events: none;
+    transition: background 80ms linear;
+    mix-blend-mode: screen;
+  }
+  .app {
+    position: relative;
+    z-index: 4;
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    pointer-events: none;
+  }
+  .app > * { pointer-events: auto; }
+
+  header {
+    padding: 22px 26px 10px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 14px;
+    flex-wrap: wrap;
+  }
+  .title-block h1 {
+    font-size: clamp(1.25rem, 2.6vw, 1.75rem);
+    font-weight: 600;
+    letter-spacing: -0.02em;
+    line-height: 1.2;
+    background: linear-gradient(135deg, var(--text) 0%, var(--accent) 100%);
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+  }
+  .title-block p {
+    font-size: 0.78rem;
+    color: var(--text-dim);
+    margin-top: 4px;
+    letter-spacing: 0.02em;
+  }
+  .stats {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+    font-size: 0.72rem;
+    color: var(--text-muted);
+    font-variant-numeric: tabular-nums;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+  }
+  .stats .pill {
+    padding: 5px 10px;
+    border-radius: 999px;
+    background: var(--glass);
+    border: 1px solid var(--border);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+  }
+  .stats .dot {
+    width: 6px; height: 6px;
+    border-radius: 50%;
+    background: var(--accent);
+    display: inline-block;
+    margin-right: 6px;
+    box-shadow: 0 0 8px var(--accent);
+  }
+
+  .center-info {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 16px;
+    pointer-events: none;
+  }
+  .info-card {
+    text-align: center;
+    pointer-events: auto;
+    padding: 24px 32px;
+    border-radius: 22px;
+    background: rgba(11, 15, 25, 0.42);
+    border: 1px solid var(--border);
+    backdrop-filter: blur(24px);
+    -webkit-backdrop-filter: blur(24px);
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.4);
+    max-width: 460px;
+    transition: all 0.6s var(--ease-out);
+  }
+  .info-card .icon {
+    font-size: 48px;
+    margin-bottom: 8px;
+    filter: drop-shadow(0 4px 16px var(--accent-glow, rgba(56,189,248,0.5)));
+    transition: filter 0.8s var(--ease);
+  }
+  .info-card .name {
+    font-size: 1.4rem;
+    font-weight: 600;
+    letter-spacing: -0.01em;
+    margin-bottom: 5px;
+  }
+  .info-card .desc {
+    font-size: 0.82rem;
+    color: var(--text-dim);
+    line-height: 1.6;
+  }
+  .info-card .time-row {
+    margin-top: 10px;
+    font-size: 0.72rem;
+    color: var(--text-muted);
+    display: flex;
+    gap: 14px;
+    justify-content: center;
+    align-items: center;
+  }
+  .info-card .time-row .sep { opacity: 0.4; }
+  .info-card .tags {
+    display: flex;
+    gap: 6px;
+    justify-content: center;
+    margin-top: 12px;
+    flex-wrap: wrap;
+  }
+  .info-card .tag {
+    font-size: 0.68rem;
+    padding: 3px 9px;
+    border-radius: 999px;
+    background: var(--glass);
+    border: 1px solid var(--border);
+    color: var(--text-dim);
+    letter-spacing: 0.04em;
+  }
+
+  .controls {
+    padding: 12px 22px 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    align-items: center;
+  }
+  .weather-bar {
+    display: flex;
+    gap: 5px;
+    padding: 5px;
+    border-radius: 999px;
+    background: var(--glass);
+    border: 1px solid var(--border);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    flex-wrap: wrap;
+    justify-content: center;
+    max-width: 100%;
+  }
+  .weather-btn {
+    appearance: none;
+    border: 1px solid transparent;
+    background: transparent;
+    color: var(--text-dim);
+    font-family: inherit;
+    font-size: 0.78rem;
+    font-weight: 500;
+    padding: 8px 13px;
+    border-radius: 999px;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    transition: all 0.3s var(--ease);
+    white-space: nowrap;
+  }
+  .weather-btn:hover {
+    color: var(--text);
+    background: var(--glass-strong);
+  }
+  .weather-btn.active {
+    background: linear-gradient(135deg, var(--accent) 0%, var(--accent-2) 100%);
+    color: #0b0f19;
+    font-weight: 600;
+    box-shadow: 0 4px 20px var(--accent-glow, rgba(56, 189, 248, 0.4));
+  }
+  .weather-btn .ico { font-size: 1.05em; }
+
+  .sliders {
+    display: flex;
+    gap: 18px;
+    align-items: center;
+    flex-wrap: wrap;
+    justify-content: center;
+    padding: 10px 16px;
+    border-radius: 14px;
+    background: var(--glass);
+    border: 1px solid var(--border);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+  }
+  .slider-group {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 0.75rem;
+    color: var(--text-dim);
+  }
+  .slider-group label {
+    font-weight: 500;
+    min-width: 40px;
+  }
+  input[type="range"] {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 120px;
+    height: 4px;
+    background: var(--glass-strong);
+    border-radius: 999px;
+    outline: none;
+  }
+  input[type="range"]::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 14px; height: 14px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, var(--accent) 0%, var(--accent-2) 100%);
+    cursor: pointer;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.4);
+  }
+  input[type="range"]::-webkit-slider-thumb:hover { transform: scale(1.15); }
+  input[type="range"]::-moz-range-thumb {
+    width: 14px; height: 14px; border-radius: 50%; border: none;
+    background: linear-gradient(135deg, var(--accent) 0%, var(--accent-2) 100%);
+    cursor: pointer;
+  }
+  .val {
+    min-width: 32px;
+    text-align: right;
+    color: var(--text);
+    font-variant-numeric: tabular-nums;
+    font-weight: 500;
+  }
+  .toggle-btn {
+    appearance: none;
+    border: 1px solid var(--border);
+    background: var(--glass);
+    color: var(--text-dim);
+    font-family: inherit;
+    font-size: 0.72rem;
+    padding: 6px 12px;
+    border-radius: 999px;
+    cursor: pointer;
+    transition: all 0.25s var(--ease);
+  }
+  .toggle-btn:hover { color: var(--text); }
+  .toggle-btn.active {
+    background: var(--accent);
+    color: #0b0f19;
+    border-color: var(--accent);
+  }
+  .hint {
+    font-size: 0.68rem;
+    color: var(--text-muted);
+    letter-spacing: 0.04em;
+    text-align: center;
+    margin-top: 2px;
+  }
+
+  @media (max-width: 640px) {
+    header { padding: 12px 12px 4px; }
+    .stats .pill { padding: 4px 7px; font-size: 0.62rem; }
+    .controls { padding: 8px 8px 16px; gap: 8px; }
+    .weather-btn { padding: 6px 10px; font-size: 0.7rem; }
+    .sliders { gap: 10px; padding: 8px 12px; }
+    input[type="range"] { width: 80px; }
+    .info-card { padding: 16px 20px; }
+    .info-card .icon { font-size: 38px; }
+    .info-card .name { font-size: 1.15rem; }
+  }
+</style>
+</head>
+<body>
+<canvas id="stage-far"></canvas>
+<canvas id="stage"></canvas>
+<div id="flash"></div>
+
+<div class="app">
+  <header>
+    <div class="title-block">
+      <h1>Weather FX v3 · 拟真天气</h1>
+      <p>景深模糊 · 3D 体积云 · 重力感应 · 昼夜色调 · 平滑过渡</p>
+    </div>
+    <div class="stats">
+      <span class="pill"><span class="dot"></span>FPS <span id="fps">60</span></span>
+      <span class="pill">粒子 <span id="count">0</span></span>
+      <span class="pill" id="time-pill">--:--</span>
+    </div>
+  </header>
+
+  <div class="center-info">
+    <div class="info-card" id="info">
+      <div class="icon" id="info-icon">☀️</div>
+      <div class="name" id="info-name">晴朗</div>
+      <div class="desc" id="info-desc">阳光透过大气洒下温暖的光斑</div>
+      <div class="time-row">
+        <span id="period-tag">白天</span>
+        <span class="sep">·</span>
+        <span id="tilt-tag">水平 0°</span>
+      </div>
+      <div class="tags" id="info-tags"></div>
+    </div>
+  </div>
+
+  <div class="controls">
+    <div class="weather-bar" id="bar"></div>
+    <div class="sliders">
+      <div class="slider-group">
+        <label>强度</label>
+        <input type="range" id="intensity" min="0" max="100" value="60">
+        <span class="val" id="intensity-v">60</span>
+      </div>
+      <div class="slider-group">
+        <label>风速</label>
+        <input type="range" id="wind" min="-100" max="100" value="20">
+        <span class="val" id="wind-v">20</span>
+      </div>
+      <div class="slider-group">
+        <label>时刻</label>
+        <input type="range" id="hour" min="0" max="1440" value="720">
+        <span class="val" id="hour-v">12:00</span>
+      </div>
+      <button class="toggle-btn" id="tilt-toggle">重力感应 关</button>
+    </div>
+    <div class="hint">点击天气类型切换 · 拖动滑块实时调节 · 拖动时刻模拟昼夜</div>
+  </div>
+</div>
+
+<script>
+'use strict';
+
+/* ==========================================================
+   工具
+   ========================================================== */
+const rand = (a, b) => a + Math.random() * (b - a);
+const lerp = (a, b, t) => a + (b - a) * t;
+const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
+const TAU = Math.PI * 2;
+
+const stageFar = document.getElementById('stage-far');
+const stage = document.getElementById('stage');
+const ctxFar = stageFar.getContext('2d');
+const ctx = stage.getContext('2d');
+const flashEl = document.getElementById('flash');
+let DPR = Math.min(window.devicePixelRatio || 1, 2);
+let W = 0, H = 0;
+
+/* ==========================================================
+   柏林噪声
+   ========================================================== */
+const _perm = new Uint8Array(512);
+(function initPerm() {
+  const p = new Uint8Array(256);
+  for (let i = 0; i < 256; i++) p[i] = i;
+  for (let i = 255; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [p[i], p[j]] = [p[j], p[i]];
+  }
+  for (let i = 0; i < 512; i++) _perm[i] = p[i & 255];
+})();
+function _fade(t) { return t * t * t * (t * (t * 6 - 15) + 10); }
+function _grad(h, x, y) {
+  const u = (h & 1) ? x : -x;
+  const v = (h & 2) ? y : -y;
+  return u + v;
+}
+function perlin2(x, y) {
+  const X = Math.floor(x) & 255, Y = Math.floor(y) & 255;
+  x -= Math.floor(x); y -= Math.floor(y);
+  const u = _fade(x), v = _fade(y);
+  const A = _perm[X] + Y, B = _perm[X + 1] + Y;
+  return lerp(
+    lerp(_grad(_perm[A], x, y), _grad(_perm[B], x - 1, y), u),
+    lerp(_grad(_perm[A + 1], x, y - 1), _grad(_perm[B + 1], x - 1, y - 1), u),
+    v
+  );
+}
+
+/* ==========================================================
+   主题（每种天气的基础调性，会被昼夜色调调制）
+   ========================================================== */
+const THEMES = {
+  sunny: {
+    icon: '☀️', name: '晴朗', desc: '阳光穿透大气，镜头光斑沿光线分布，热扭曲使边缘颤动',
+    tags: ['景深模糊', '镜头光斑', '热扭曲', '昼夜变化'],
+    dayTop: '#1a2540', dayBot: '#0a1228',
+    nightTop: '#0a1020', nightBot: '#020410',
+    tint1: 'rgba(251, 191, 36, 0.22)', tint2: 'rgba(249, 115, 22, 0.12)',
+    horizon: 'rgba(251, 191, 36, 0.18)',
+    accent: '#fbbf24', accent2: '#f97316', glow: 'rgba(251, 191, 36, 0.5)'
+  },
+  partlyCloudy: {
+    icon: '⛅', name: '多云', desc: '阳光从云隙穿透，云朵边缘镀上金色，柔软如棉花糖',
+    tags: ['3D 体积云', '金边光照', '云隙光'],
+    dayTop: '#1e293b', dayBot: '#0f172a',
+    nightTop: '#0a1220', nightBot: '#020410',
+    tint1: 'rgba(148, 163, 184, 0.18)', tint2: 'rgba(251, 191, 36, 0.10)',
+    horizon: 'rgba(251, 191, 36, 0.10)',
+    accent: '#94a3b8', accent2: '#fbbf24', glow: 'rgba(148, 163, 184, 0.4)'
+  },
+  cloudy: {
+    icon: '☁️', name: '阴天', desc: '厚重 3D 云层缓缓压过天际，内部光照散射',
+    tags: ['3D 体积云', '内部光照', '景深模糊'],
+    dayTop: '#1e293b', dayBot: '#0f172a',
+    nightTop: '#0a1220', nightBot: '#020410',
+    tint1: 'rgba(148, 163, 184, 0.15)', tint2: 'rgba(203, 213, 225, 0.10)',
+    horizon: 'transparent',
+    accent: '#94a3b8', accent2: '#cbd5e1', glow: 'rgba(148, 163, 184, 0.35)'
+  },
+  rain: {
+    icon: '🌧️', name: '降雨', desc: '雨幕雾化远景，雨滴落地激起冲击波与多向水花',
+    tags: ['运动模糊', '景深分层', '冲击波环', '镜头水珠'],
+    dayTop: '#0b1220', dayBot: '#050a14',
+    nightTop: '#050810', nightBot: '#020308',
+    tint1: 'rgba(96, 165, 250, 0.20)', tint2: 'rgba(56, 189, 248, 0.12)',
+    horizon: 'rgba(96, 165, 250, 0.08)',
+    accent: '#60a5fa', accent2: '#38bdf8', glow: 'rgba(96, 165, 250, 0.45)'
+  },
+  storm: {
+    icon: '⛈️', name: '雷暴', desc: '暴雨倾盆，闪电撕裂夜空，余光二次闪烁，云层被照亮',
+    tags: ['多层闪电', '运动模糊', '电磁余韵'],
+    dayTop: '#050510', dayBot: '#000005',
+    nightTop: '#030308', nightBot: '#000002',
+    tint1: 'rgba(167, 139, 250, 0.22)', tint2: 'rgba(99, 102, 241, 0.15)',
+    horizon: 'transparent',
+    accent: '#a78bfa', accent2: '#c4b5fd', glow: 'rgba(167, 139, 250, 0.5)'
+  },
+  snow: {
+    icon: '❄️', name: '降雪', desc: '六角晶体四级分枝飘落，噪声扰动轨迹，积雪渐厚',
+    tags: ['四级晶体', '景深模糊', '噪声轨迹'],
+    dayTop: '#1e293b', dayBot: '#0f172a',
+    nightTop: '#0a1220', nightBot: '#020410',
+    tint1: 'rgba(226, 232, 240, 0.18)', tint2: 'rgba(255, 255, 255, 0.10)',
+    horizon: 'rgba(255, 255, 255, 0.06)',
+    accent: '#e2e8f0', accent2: '#ffffff', glow: 'rgba(226, 232, 240, 0.45)'
+  },
+  fog: {
+    icon: '🌫️', name: '雾', desc: '雾气随柏林噪声流动，远景在白雾中渐隐',
+    tags: ['噪声流动', '远景消隐', '景深模糊'],
+    dayTop: '#1e293b', dayBot: '#0f172a',
+    nightTop: '#0a1220', nightBot: '#020410',
+    tint1: 'rgba(203, 213, 225, 0.18)', tint2: 'rgba(226, 232, 240, 0.12)',
+    horizon: 'rgba(203, 213, 225, 0.15)',
+    accent: '#cbd5e1', accent2: '#e2e8f0', glow: 'rgba(203, 213, 225, 0.35)'
+  },
+  haze: {
+    icon: '😷', name: '霾', desc: '橙黄沙尘随噪声弥漫，空气沉闷厚重',
+    tags: ['沙尘悬浮', '噪声流动', '暖色调'],
+    dayTop: '#1c1917', dayBot: '#0c0a09',
+    nightTop: '#0a0807', nightBot: '#020201',
+    tint1: 'rgba(253, 186, 116, 0.22)', tint2: 'rgba(251, 146, 60, 0.15)',
+    horizon: 'rgba(253, 186, 116, 0.20)',
+    accent: '#fdba74', accent2: '#fb923c', glow: 'rgba(253, 186, 116, 0.4)'
+  },
+  wind: {
+    icon: '🌬️', name: '大风', desc: '飞叶随阵风节奏横扫，旋转扰动自然，气流线扭曲',
+    tags: ['阵风节奏', '飞叶旋转', '气流扭曲'],
+    dayTop: '#1a2332', dayBot: '#0a1220',
+    nightTop: '#0a1018', nightBot: '#020408',
+    tint1: 'rgba(56, 189, 248, 0.15)', tint2: 'rgba(148, 163, 184, 0.12)',
+    horizon: 'transparent',
+    accent: '#38bdf8', accent2: '#94a3b8', glow: 'rgba(56, 189, 248, 0.4)'
+  }
+};
+
+/* ==========================================================
+   昼夜色调计算（根据小时 0-24）
+   ========================================================== */
+function getDayFactor(hour) {
+  // 0 = 完全夜晚, 1 = 完全白天
+  // 6-18 为白天，过渡区 5-7 / 17-19
+  if (hour >= 7 && hour <= 17) return 1;
+  if (hour >= 19 || hour <= 5) return 0;
+  if (hour > 5 && hour < 7) return (hour - 5) / 2;
+  if (hour > 17 && hour < 19) return (19 - hour) / 2;
+  return 0;
+}
+function getSunPosition(hour) {
+  // 太阳从 6 点升起，18 点落下；夜晚月亮替代，可见
+  // 返回 {x, y} 0-1 屏幕比例
+  if (hour < 6 || hour > 18) {
+    // 夜晚：月亮轨迹（简化为固定高位）
+    const nightT = hour < 6 ? (hour + 6) / 12 : (hour - 18) / 12; // 0-1
+    return { x: 0.2 + nightT * 0.6, y: 0.15 + Math.sin(nightT * Math.PI) * 0.05, visible: false };
+  }
+  const t = (hour - 6) / 12; // 0-1
+  const x = 0.15 + t * 0.7; // 从左到右
+  const y = 0.5 - Math.sin(t * Math.PI) * 0.42; // 抛物线轨迹
+  return { x, y, visible: true };
+}
+function getPeriodName(hour) {
+  if (hour < 5) return '深夜';
+  if (hour < 7) return '黎明';
+  if (hour < 11) return '上午';
+  if (hour < 13) return '正午';
+  if (hour < 17) return '下午';
+  if (hour < 19) return '黄昏';
+  if (hour < 23) return '夜晚';
+  return '深夜';
+}
+
+/* ==========================================================
+   全局状态
+   ========================================================== */
+let currentType = 'sunny';
+let intensity = 0.6;
+let windSpeed = 0.2;
+let particlesFar = [];   // 远景粒子（绘制到 stage-far）
+let particlesNear = [];  // 近景粒子（绘制到 stage）
+let effects = [];
+let animationId = null;
+let lastTime = 0;
+let fpsCounter = { frames: 0, last: 0, value: 60 };
+let dynamicScale = 1.0;
+let lightningTimer = null;
+let cachedGroundGrad = null;
+let cachedSnowGrad = null;
+let cachedW = 0, cachedH = 0;
+let _t = 0;
+let _windNoiseT = 0;
+let _hour = 12;          // 当前时刻 0-24
+let _dayFactor = 1;      // 0 夜 / 1 昼
+let _sunPos = { x: 0.78, y: 0.18, visible: true };
+let _tiltX = 0;          // 设备倾斜（重力感应） -1~1
+let _tiltEnabled = false;
+let _transitioning = false;
+let _oldParticlesFar = [];
+let _oldParticlesNear = [];
+let _transitionAlpha = 0; // 0=无过渡, 1->0 旧粒子淡出
+let _newAlpha = 1;        // 新粒子淡入 0->1
+
+/* ==========================================================
+   尺寸
+   ========================================================== */
+function resizeCanvas() {
+  const newW = window.innerWidth, newH = window.innerHeight;
+  if (newW === cachedW && newH === cachedH) return;
+  cachedW = newW; cachedH = newH;
+  W = newW; H = newH;
+  DPR = Math.min(window.devicePixelRatio || 1, 2);
+  for (const cv of [stageFar, stage]) {
+    cv.width = Math.floor(W * DPR);
+    cv.height = Math.floor(H * DPR);
+    cv.style.width = W + 'px';
+    cv.style.height = H + 'px';
+  }
+  ctxFar.setTransform(DPR, 0, 0, DPR, 0, 0);
+  ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
+  cachedGroundGrad = null;
+  cachedSnowGrad = null;
+}
+let resizeTimer = null;
+window.addEventListener('resize', () => {
+  clearTimeout(resizeTimer);
+  resizeTimer = setTimeout(resizeCanvas, 200);
+});
+window.addEventListener('orientationchange', () => {
+  clearTimeout(resizeTimer);
+  resizeTimer = setTimeout(resizeCanvas, 200);
+});
+
+/* ==========================================================
+   特效：溅射 / 涟漪 / 冲击波 / 镜头水珠
+   ========================================================== */
+class Splash {
+  constructor(x, y, inten) {
+    this.x = x; this.y = y;
+    const n = 3 + Math.floor(rand(0, 5) * (0.5 + inten * 0.6));
+    this.drops = [];
+    for (let i = 0; i < n; i++) {
+      const ang = rand(-Math.PI * 0.9, -Math.PI * 0.1);
+      const sp = rand(1.2, 4) * (0.6 + inten * 0.5);
+      this.drops.push({
+        x: 0, y: 0,
+        vx: Math.cos(ang) * sp,
+        vy: Math.sin(ang) * sp - rand(0.3, 1.2),
+        life: 1, size: rand(0.5, 1.6), decay: rand(0.035, 0.06)
+      });
+    }
+    this.dead = false;
+  }
+  update() {
+    let alive = false;
+    for (const d of this.drops) {
+      if (d.life > 0) {
+        d.x += d.vx; d.y += d.vy;
+        d.vy += 0.2; d.vx *= 0.98;
+        d.life -= d.decay;
+        if (d.life > 0) alive = true;
+      }
+    }
+    if (!alive) this.dead = true;
+  }
+  draw(c) {
+    for (const d of this.drops) {
+      if (d.life <= 0) continue;
+      const a = d.life * 0.75;
+      c.fillStyle = `rgba(180, 215, 255, ${a})`;
+      c.beginPath();
+      c.arc(this.x + d.x, this.y + d.y, d.size, 0, TAU);
+      c.fill();
+      c.fillStyle = `rgba(230, 245, 255, ${a * 0.6})`;
+      c.beginPath();
+      c.arc(this.x + d.x - d.size * 0.3, this.y + d.y - d.size * 0.3, d.size * 0.3, 0, TAU);
+      c.fill();
+    }
+  }
+}
+
+class Ripple {
+  constructor(x, y) {
+    this.x = x; this.y = y;
+    this.r = 0; this.maxR = rand(10, 26);
+    this.life = 1; this.dead = false;
+  }
+  update() {
+    this.r += 0.7; this.life -= 0.035;
+    if (this.life <= 0 || this.r >= this.maxR) this.dead = true;
+  }
+  draw(c) {
+    c.strokeStyle = `rgba(180, 215, 255, ${this.life * 0.45})`;
+    c.lineWidth = 0.9;
+    c.beginPath();
+    c.ellipse(this.x, this.y, this.r, this.r * 0.4, 0, 0, TAU);
+    c.stroke();
+  }
+}
+
+class ShockRing {
+  constructor(x, y) {
+    this.x = x; this.y = y;
+    this.r = 1; this.maxR = rand(14, 30);
+    this.life = 1; this.dead = false;
+  }
+  update() {
+    this.r += 2.2; this.life -= 0.09;
+    if (this.life <= 0 || this.r >= this.maxR) this.dead = true;
+  }
+  draw(c) {
+    c.strokeStyle = `rgba(220, 235, 255, ${this.life * 0.6})`;
+    c.lineWidth = 1.2;
+    c.beginPath();
+    c.ellipse(this.x, this.y, this.r, this.r * 0.45, 0, 0, TAU);
+    c.stroke();
+  }
+}
+
+class LensDrop {
+  constructor() { this.reset(); }
+  reset() {
+    this.x = rand(0, W);
+    this.y = rand(0, H * 0.7);
+    this.r = rand(8, 22);
+    this.life = 1; this.fadeIn = 0;
+    this.holdT = rand(30, 80); this.holdCounter = 0;
+  }
+  update() {
+    if (this.fadeIn < 1) this.fadeIn += 0.05;
+    this.holdCounter++;
+    if (this.holdCounter > this.holdT) {
+      this.life -= 0.02;
+      if (this.life <= 0) this.reset();
+    }
+  }
+  draw(c) {
+    const a = Math.min(this.fadeIn, this.life) * 0.5;
+    const g = c.createRadialGradient(this.x, this.y, 0, this.x, this.y, this.r);
+    g.addColorStop(0, `rgba(200, 220, 255, ${a * 0.3})`);
+    g.addColorStop(0.7, `rgba(180, 200, 240, ${a * 0.1})`);
+    g.addColorStop(1, `rgba(180, 200, 240, 0)`);
+    c.fillStyle = g;
+    c.beginPath(); c.arc(this.x, this.y, this.r, 0, TAU); c.fill();
+    c.strokeStyle = `rgba(230, 245, 255, ${a * 0.5})`;
+    c.lineWidth = 0.8;
+    c.beginPath();
+    c.arc(this.x, this.y, this.r * 0.9, -Math.PI * 0.75, -Math.PI * 0.25);
+    c.stroke();
+  }
+}
+
+/* ==========================================================
+   雨：景深分层 + 运动模糊拖尾
+   ========================================================== */
+class RainDrop {
+  constructor(layer) { this.layer = layer; this.reset(true); }
+  reset(initial = false) {
+    const L = this.layer;
+    this.size = lerp(0.8, 3.0, L / 2) * rand(0.85, 1.15);
+    this.x = rand(-80, W + 80);
+    this.y = initial ? rand(-H, H) : rand(-120, -20);
+    this.speed = lerp(5, 14, L / 2) * rand(0.9, 1.1) * (0.7 + intensity * 0.6);
+    this.opacity = lerp(0.12, 0.55, L / 2) * rand(0.7, 1.0);
+    this.tailLen = this.speed * rand(1.4, 2.2) * (L === 2 ? 1.0 : 0.7);
+    this.hasSplashed = false;
+  }
+  update() {
+    const gust = perlin2(this.y * 0.005, _windNoiseT) * 0.4;
+    const effectiveWind = windSpeed + _tiltX;
+    this.slant = effectiveWind * 1.4 + rand(-0.12, 0.12);
+    this.y += this.speed;
+    this.x += this.slant + gust * (this.layer === 2 ? 0.6 : 0.3);
+    const groundY = H - 2;
+    if (this.y >= groundY && !this.hasSplashed && this.layer === 2) {
+      this.hasSplashed = true;
+      if (Math.random() < 0.6 + intensity * 0.25) effects.push(new Splash(this.x, groundY, intensity));
+      if (Math.random() < 0.55) effects.push(new Ripple(this.x, groundY));
+      if (Math.random() < 0.35) effects.push(new ShockRing(this.x, groundY));
+    }
+    if (this.y > H + 30) this.reset();
+  }
+  draw(c) {
+    const a = this.opacity * _newAlpha;
+    if (this.layer === 2) {
+      // 近景：水滴形态 + 高光 + 运动模糊（多层透明副本）
+      c.save();
+      c.translate(this.x, this.y);
+      c.rotate(Math.atan2(this.slant, this.speed));
+      // 运动模糊：3 层透明副本叠加
+      for (let k = 0; k < 3; k++) {
+        const offset = -k * 1.5;
+        const aK = a * (1 - k * 0.25);
+        const grad = c.createLinearGradient(0, -this.tailLen + offset, 0, this.size * 0.7 + offset);
+        grad.addColorStop(0, `rgba(147, 197, 253, 0)`);
+        grad.addColorStop(0.4, `rgba(147, 197, 253, ${aK * 0.5})`);
+        grad.addColorStop(0.85, `rgba(180, 215, 255, ${aK * 0.9})`);
+        grad.addColorStop(1, `rgba(220, 235, 255, ${aK})`);
+        c.fillStyle = grad;
+        c.beginPath();
+        c.moveTo(0, -this.tailLen + offset);
+        c.quadraticCurveTo(this.size * 0.6, -this.tailLen * 0.3 + offset, this.size * 0.5, offset);
+        c.quadraticCurveTo(this.size * 0.4, this.size * 0.7 + offset, 0, this.size * 0.7 + offset);
+        c.quadraticCurveTo(-this.size * 0.4, this.size * 0.7 + offset, -this.size * 0.5, offset);
+        c.quadraticCurveTo(-this.size * 0.6, -this.tailLen * 0.3 + offset, 0, -this.tailLen + offset);
+        c.fill();
+      }
+      // 高光
+      c.fillStyle = `rgba(240, 250, 255, ${a * 0.55})`;
+      c.beginPath();
+      c.ellipse(this.size * 0.15, -this.tailLen * 0.25, this.size * 0.13, this.size * 0.32, 0, 0, TAU);
+      c.fill();
+      c.restore();
+    } else {
+      // 中/远景：线段拖尾
+      const tx = this.x + this.slant * this.tailLen / this.speed;
+      const ty = this.y - this.tailLen;
+      const grad = c.createLinearGradient(this.x, this.y, tx, ty);
+      grad.addColorStop(0, `rgba(147, 197, 253, ${a})`);
+      grad.addColorStop(1, `rgba(147, 197, 253, 0)`);
+      c.strokeStyle = grad;
+      c.lineWidth = this.size;
+      c.lineCap = 'round';
+      c.beginPath();
+      c.moveTo(this.x, this.y); c.lineTo(tx, ty);
+      c.stroke();
+    }
+  }
+}
+
+/* ==========================================================
+   雪：四级分枝 + 噪声轨迹
+   ========================================================== */
+class SnowFlake {
+  constructor(layer) { this.layer = layer; this.reset(true); }
+  reset(initial = false) {
+    const L = this.layer;
+    this.r = lerp(1.0, 5.5, L / 2) * rand(0.8, 1.2);
+    this.x = rand(-30, W + 30);
+    this.y = initial ? rand(-H * 0.2, H) : rand(-80, -10);
+    this.speed = lerp(0.25, 1.6, L / 2) * rand(0.85, 1.15);
+    this.phase = rand(0, TAU);
+    this.phaseSpeed = rand(0.008, 0.028);
+    this.opacity = lerp(0.35, 0.95, L / 2) * rand(0.8, 1.0);
+    this.rotation = rand(0, TAU);
+    this.rotationSpeed = rand(-1, 1) * 0.012;
+    this.wobbleAmp = rand(0.25, 1.4);
+    this.branches = this.r > 2.8 ? (Math.random() < 0.22 ? 8 : 6) : 0;
+    this.innerRatio = rand(0.28, 0.5);
+    this.hasSubs = this.r > 3.5;
+    this.hasQuats = this.r > 4.2;
+    this.noiseSeedX = rand(0, 1000);
+  }
+  update() {
+    this.y += this.speed;
+    this.phase += this.phaseSpeed;
+    const effectiveWind = windSpeed + _tiltX * 0.6;
+    this.rotation += this.rotationSpeed + perlin2(this.noiseSeedX, this.y * 0.01) * 0.008;
+    const noise = perlin2(this.noiseSeedX, this.y * 0.008) * 1.2;
+    this.x += effectiveWind * 0.5 + Math.sin(this.phase) * this.wobbleAmp + noise * 0.3;
+    if (this.y > H + 20) this.reset();
+    if (this.x < -50 || this.x > W + 50) this.reset();
+  }
+  draw(c) {
+    c.save();
+    c.translate(this.x, this.y);
+    c.rotate(this.rotation);
+    c.globalAlpha = this.opacity * _newAlpha;
+    if (this.branches > 0) {
+      c.strokeStyle = '#ffffff';
+      c.lineWidth = Math.max(0.4, this.r * 0.13);
+      c.lineCap = 'round'; c.lineJoin = 'round';
+      for (let i = 0; i < this.branches; i++) {
+        const angle = (TAU / this.branches) * i;
+        c.save();
+        c.rotate(angle);
+        c.beginPath();
+        c.moveTo(0, 0); c.lineTo(this.r, 0); c.stroke();
+        const bLen = this.r * this.innerRatio;
+        const bPos = this.r * 0.45;
+        c.beginPath();
+        c.moveTo(bPos, 0); c.lineTo(bPos + bLen * 0.7, -bLen * 0.55);
+        c.moveTo(bPos, 0); c.lineTo(bPos + bLen * 0.7, bLen * 0.55);
+        c.stroke();
+        if (this.hasSubs) {
+          const bPos2 = this.r * 0.75, bLen2 = bLen * 0.5;
+          c.beginPath();
+          c.moveTo(bPos2, 0); c.lineTo(bPos2 + bLen2 * 0.6, -bLen2 * 0.55);
+          c.moveTo(bPos2, 0); c.lineTo(bPos2 + bLen2 * 0.6, bLen2 * 0.55);
+          c.stroke();
+          const bPos3 = this.r * 0.9, bLen3 = bLen2 * 0.45;
+          c.beginPath();
+          c.moveTo(bPos3, 0); c.lineTo(bPos3 + bLen3, -bLen3 * 0.5);
+          c.moveTo(bPos3, 0); c.lineTo(bPos3 + bLen3, bLen3 * 0.5);
+          c.stroke();
+          if (this.hasQuats) {
+            const bPos4 = this.r * 0.97, bLen4 = bLen3 * 0.4;
+            c.beginPath();
+            c.moveTo(bPos4, 0); c.lineTo(bPos4 + bLen4, -bLen4 * 0.5);
+            c.moveTo(bPos4, 0); c.lineTo(bPos4 + bLen4, bLen4 * 0.5);
+            c.stroke();
+          }
+        }
+        c.restore();
+      }
+      const cg = c.createRadialGradient(0, 0, 0, 0, 0, this.r * 0.4);
+      cg.addColorStop(0, 'rgba(255, 255, 255, 1)');
+      cg.addColorStop(0.5, 'rgba(255, 255, 255, 0.5)');
+      cg.addColorStop(1, 'rgba(255, 255, 255, 0)');
+      c.fillStyle = cg;
+      c.beginPath(); c.arc(0, 0, this.r * 0.4, 0, TAU); c.fill();
+    } else {
+      const g = c.createRadialGradient(0, 0, 0, 0, 0, this.r * 1.5);
+      g.addColorStop(0, 'rgba(255, 255, 255, 0.95)');
+      g.addColorStop(0.3, 'rgba(255, 255, 255, 0.6)');
+      g.addColorStop(0.7, 'rgba(255, 255, 255, 0.2)');
+      g.addColorStop(1, 'rgba(255, 255, 255, 0)');
+      c.fillStyle = g;
+      c.beginPath(); c.arc(0, 0, this.r * 1.5, 0, TAU); c.fill();
+    }
+    c.globalAlpha = 1;
+    c.restore();
+  }
+}
+
+/* ==========================================================
+   晴：太阳本体（昼夜位置） + 镜头光斑链 + 体积光 + 多层尘埃
+   ========================================================== */
+class SunBody {
+  constructor() { this.phase = 0; }
+  update() { this.phase += 0.012; }
+  draw(c) {
+    this.x = W * _sunPos.x;
+    this.y = H * _sunPos.y;
+    const breath = 0.85 + Math.sin(this.phase) * 0.15;
+    const distort = Math.sin(_t * 3) * 1.5;
+    // 夜晚太阳变成月亮
+    const isMoon = !_sunPos.visible || _dayFactor < 0.3;
+    if (isMoon) {
+      // 月亮：冷色调，光晕弱
+      const r1 = 120 * breath;
+      const g1 = c.createRadialGradient(this.x, this.y, 0, this.x, this.y, r1);
+      g1.addColorStop(0, 'rgba(226, 232, 240, 0.28)');
+      g1.addColorStop(0.3, 'rgba(203, 213, 225, 0.10)');
+      g1.addColorStop(1, 'rgba(203, 213, 225, 0)');
+      c.fillStyle = g1;
+      c.beginPath(); c.arc(this.x + distort, this.y, r1, 0, TAU); c.fill();
+      const r2 = 50 * breath;
+      const g2 = c.createRadialGradient(this.x, this.y, 0, this.x, this.y, r2);
+      g2.addColorStop(0, 'rgba(241, 245, 249, 0.85)');
+      g2.addColorStop(0.5, 'rgba(226, 232, 240, 0.4)');
+      g2.addColorStop(1, 'rgba(203, 213, 225, 0)');
+      c.fillStyle = g2;
+      c.beginPath(); c.arc(this.x, this.y, r2, 0, TAU); c.fill();
+      const r3 = 28 * breath;
+      const g3 = c.createRadialGradient(this.x - r3 * 0.25, this.y - r3 * 0.25, 0, this.x, this.y, r3);
+      g3.addColorStop(0, '#f8fafc');
+      g3.addColorStop(0.5, '#e2e8f0');
+      g3.addColorStop(1, '#94a3b8');
+      c.fillStyle = g3;
+      c.beginPath(); c.arc(this.x, this.y, r3, 0, TAU); c.fill();
+      // 陨石坑
+      c.fillStyle = 'rgba(100, 116, 139, 0.45)';
+      c.beginPath(); c.arc(this.x - r3 * 0.3, this.y - r3 * 0.2, r3 * 0.2, 0, TAU); c.fill();
+      c.beginPath(); c.arc(this.x + r3 * 0.28, this.y + r3 * 0.18, r3 * 0.13, 0, TAU); c.fill();
+      c.beginPath(); c.arc(this.x - r3 * 0.1, this.y + r3 * 0.38, r3 * 0.09, 0, TAU); c.fill();
+      c.beginPath(); c.arc(this.x + r3 * 0.4, this.y - r3 * 0.32, r3 * 0.07, 0, TAU); c.fill();
+      // 月晕（淡蓝白环）
+      c.strokeStyle = `rgba(226, 232, 240, ${0.18 + Math.sin(_t * 1.5) * 0.05})`;
+      c.lineWidth = 1;
+      c.beginPath(); c.arc(this.x, this.y, r3 + 6, 0, TAU); c.stroke();
+      c.strokeStyle = `rgba(203, 213, 225, ${0.10})`;
+      c.lineWidth = 0.6;
+      c.beginPath(); c.arc(this.x, this.y, r3 + 12, 0, TAU); c.stroke();
+    } else {
+      // 白天太阳
+      const sunColor1 = 'rgba(251, 191, 36';
+      const sunColor2 = 'rgba(254, 240, 138';
+      const sunCore = ['#ffffff', '#fef9c3', '#fbbf24'];
+      const r1 = 240 * breath;
+      const g1 = c.createRadialGradient(this.x, this.y, 0, this.x, this.y, r1);
+      g1.addColorStop(0, `${sunColor1}, ${0.38 * _dayFactor + 0.15})`);
+      g1.addColorStop(0.3, `${sunColor1}, ${0.16 * _dayFactor + 0.05})`);
+      g1.addColorStop(1, `${sunColor1}, 0)`);
+      c.fillStyle = g1;
+      c.beginPath(); c.arc(this.x + distort, this.y, r1, 0, TAU); c.fill();
+      const r2 = 90 * breath;
+      const g2 = c.createRadialGradient(this.x, this.y, 0, this.x, this.y, r2);
+      g2.addColorStop(0, `${sunColor2}, 0.92)`);
+      g2.addColorStop(0.5, `${sunColor1}, 0.5)`);
+      g2.addColorStop(1, `${sunColor1}, 0)`);
+      c.fillStyle = g2;
+      c.beginPath(); c.arc(this.x, this.y, r2, 0, TAU); c.fill();
+      const r3 = 36 * breath;
+      const g3 = c.createRadialGradient(this.x - r3 * 0.25, this.y - r3 * 0.25, 0, this.x, this.y, r3);
+      g3.addColorStop(0, sunCore[0]);
+      g3.addColorStop(0.4, sunCore[1]);
+      g3.addColorStop(0.8, sunCore[2]);
+      g3.addColorStop(1, '#f59e0b');
+      c.fillStyle = g3;
+      c.beginPath(); c.arc(this.x, this.y, r3, 0, TAU); c.fill();
+      c.strokeStyle = `rgba(254, 240, 138, ${(0.3 + Math.sin(_t * 2) * 0.1) * _dayFactor})`;
+      c.lineWidth = 1.5;
+      c.beginPath(); c.arc(this.x, this.y, r3 + 2 + distort * 0.3, 0, TAU); c.stroke();
+    }
+  }
+}
+
+// 星星（夜晚才显示）—— 醒目闪烁的发光点
+class Star {
+  constructor() { this.reset(true); }
+  reset(initial = false) {
+    this.x = rand(0, W);
+    this.y = rand(0, H * 0.75);
+    // 三档大小：多数小点，少数中等，极少明亮主星（整体放大）
+    const roll = Math.random();
+    if (roll < 0.55) { this.tier = 0; this.r = rand(0.9, 1.6); }
+    else if (roll < 0.88) { this.tier = 1; this.r = rand(1.8, 2.6); }
+    else { this.tier = 2; this.r = rand(2.8, 3.8); }
+    // 基础亮度大幅提高
+    this.baseOpacity = this.tier === 2 ? rand(0.95, 1.0) : (this.tier === 1 ? rand(0.75, 0.95) : rand(0.55, 0.85));
+    this.twinklePhase = rand(0, TAU);
+    this.twinkleSpeed = rand(0.025, 0.08);
+    // 闪烁幅度（越亮的星闪烁越明显）
+    this.twinkleAmp = this.tier === 2 ? rand(0.5, 0.7) : (this.tier === 1 ? rand(0.35, 0.55) : rand(0.2, 0.4));
+    // 十字光芒旋转角度（部分倾斜）
+    this.crossAngle = rand(0, Math.PI);  // 0-180° 随机角度
+    // 微弱色温变化（白/淡蓝/淡黄）
+    const colorRoll = Math.random();
+    if (colorRoll < 0.6) this.color = [255, 255, 255];
+    else if (colorRoll < 0.85) this.color = [200, 220, 255];  // 蓝白
+    else this.color = [255, 235, 190];  // 暖白
+  }
+  update() { this.twinklePhase += this.twinkleSpeed; }
+  draw(c) {
+    const nightAlpha = 1 - _dayFactor;
+    if (nightAlpha < 0.05) return;
+    // 强对比闪烁：从 (1-amp) 到 1.0 的脉动
+    const twinkle = (1 - this.twinkleAmp) + (Math.sin(this.twinklePhase) * 0.5 + 0.5) * this.twinkleAmp;
+    const a = this.baseOpacity * twinkle * nightAlpha;
+    if (a < 0.05) return;
+    const [cr, cg, cb] = this.color;
+    const colStr = `${cr}, ${cg}, ${cb}`;
+    // 外层大光晕（柔光氛围）
+    const haloR = this.r * (this.tier === 2 ? 5 : 4);
+    const g1 = c.createRadialGradient(this.x, this.y, 0, this.x, this.y, haloR);
+    g1.addColorStop(0, `rgba(${colStr}, ${a * 0.4})`);
+    g1.addColorStop(0.3, `rgba(${colStr}, ${a * 0.15})`);
+    g1.addColorStop(1, `rgba(${colStr}, 0)`);
+    c.fillStyle = g1;
+    c.beginPath();
+    c.arc(this.x, this.y, haloR, 0, TAU);
+    c.fill();
+    // 中层光晕（紧凑明亮）
+    const innerR = this.r * 1.8;
+    const g2 = c.createRadialGradient(this.x, this.y, 0, this.x, this.y, innerR);
+    g2.addColorStop(0, `rgba(${colStr}, ${a})`);
+    g2.addColorStop(0.5, `rgba(${colStr}, ${a * 0.5})`);
+    g2.addColorStop(1, `rgba(${colStr}, 0)`);
+    c.fillStyle = g2;
+    c.beginPath();
+    c.arc(this.x, this.y, innerR, 0, TAU);
+    c.fill();
+    // 锐利中心点（实心，最亮）
+    c.fillStyle = `rgba(${colStr}, ${Math.min(1, a * 1.2)})`;
+    c.beginPath();
+    c.arc(this.x, this.y, this.r * 0.7, 0, TAU);
+    c.fill();
+    // 中等及以上的星星：十字光芒（更长更明显，带随机倾斜角度）
+    if (this.tier >= 1) {
+      const len = this.r * (this.tier === 2 ? 8 : 5);
+      const lineW = this.tier === 2 ? 1.0 : 0.7;
+      const lineA = a * (this.tier === 2 ? 0.85 : 0.6);
+      // 根据旋转角度计算十字两端坐标
+      const cosA = Math.cos(this.crossAngle);
+      const sinA = Math.sin(this.crossAngle);
+      // 第一条光芒线（旋转后的"水平"方向）
+      const x1a = this.x - len * cosA, y1a = this.y - len * sinA;
+      const x1b = this.x + len * cosA, y1b = this.y + len * sinA;
+      const g1 = c.createLinearGradient(x1a, y1a, x1b, y1b);
+      g1.addColorStop(0, `rgba(${colStr}, 0)`);
+      g1.addColorStop(0.5, `rgba(${colStr}, ${lineA})`);
+      g1.addColorStop(1, `rgba(${colStr}, 0)`);
+      c.strokeStyle = g1;
+      c.lineWidth = lineW;
+      c.beginPath();
+      c.moveTo(x1a, y1a); c.lineTo(x1b, y1b);
+      c.stroke();
+      // 第二条光芒线（与第一条垂直）
+      const x2a = this.x - len * (-sinA), y2a = this.y - len * cosA;
+      const x2b = this.x + len * (-sinA), y2b = this.y + len * cosA;
+      const g2 = c.createLinearGradient(x2a, y2a, x2b, y2b);
+      g2.addColorStop(0, `rgba(${colStr}, 0)`);
+      g2.addColorStop(0.5, `rgba(${colStr}, ${lineA})`);
+      g2.addColorStop(1, `rgba(${colStr}, 0)`);
+      c.strokeStyle = g2;
+      c.beginPath();
+      c.moveTo(x2a, y2a); c.lineTo(x2b, y2b);
+      c.stroke();
+    }
+  }
+}
+
+// 流星（夜晚偶尔划过）
+class Meteor {
+  constructor() { this.reset(); this.cooldown = rand(0, 300); this.active = false; }
+  reset() {
+    this.x = rand(0, W * 0.7);
+    this.y = rand(0, H * 0.3);
+    this.len = rand(80, 180);
+    this.angle = rand(Math.PI * 0.15, Math.PI * 0.35);  // 右下方向
+    this.speed = rand(12, 20);
+    this.life = 1;
+    this.active = true;
+  }
+  update() {
+    if (!this.active) {
+      this.cooldown--;
+      if (this.cooldown <= 0) {
+        this.reset();
+        this.cooldown = rand(400, 1200);  // 下次出现间隔
+      }
+      return;
+    }
+    this.x += Math.cos(this.angle) * this.speed;
+    this.y += Math.sin(this.angle) * this.speed;
+    this.life -= 0.025;
+    if (this.life <= 0 || this.x > W + 100 || this.y > H * 0.7) {
+      this.active = false;
+    }
+  }
+  draw(c) {
+    if (!this.active) return;
+    const nightAlpha = 1 - _dayFactor;
+    if (nightAlpha < 0.05) return;
+    const a = this.life * nightAlpha;
+    const tx = this.x - Math.cos(this.angle) * this.len;
+    const ty = this.y - Math.sin(this.angle) * this.len;
+    // 拖尾渐变
+    const grad = c.createLinearGradient(tx, ty, this.x, this.y);
+    grad.addColorStop(0, 'rgba(255, 255, 255, 0)');
+    grad.addColorStop(0.7, `rgba(200, 220, 255, ${a * 0.5})`);
+    grad.addColorStop(1, `rgba(255, 255, 255, ${a})`);
+    c.strokeStyle = grad;
+    c.lineWidth = 2;
+    c.lineCap = 'round';
+    c.beginPath();
+    c.moveTo(tx, ty); c.lineTo(this.x, this.y);
+    c.stroke();
+    // 头部光点
+    const g = c.createRadialGradient(this.x, this.y, 0, this.x, this.y, 8);
+    g.addColorStop(0, `rgba(255, 255, 255, ${a})`);
+    g.addColorStop(0.5, `rgba(200, 220, 255, ${a * 0.5})`);
+    g.addColorStop(1, 'rgba(255, 255, 255, 0)');
+    c.fillStyle = g;
+    c.beginPath();
+    c.arc(this.x, this.y, 8, 0, TAU);
+    c.fill();
+  }
+}
+
+class LensFlareChain {
+  constructor() { this.phase = 0; }
+  update() { this.phase += 0.01; }
+  draw(c) {
+    if (!_sunPos.visible) return;
+    const sunX = W * _sunPos.x, sunY = H * _sunPos.y;
+    const lensX = W * 0.3, lensY = H * 0.6;
+    const dx = lensX - sunX, dy = lensY - sunY;
+    const breath = 0.7 + Math.sin(this.phase) * 0.3;
+    const flares = [
+      { t: 0.15, r: 18, color: 'rgba(254, 240, 138, ', a: 0.35 },
+      { t: 0.35, r: 28, color: 'rgba(251, 191, 36, ', a: 0.25 },
+      { t: 0.55, r: 12, color: 'rgba(255, 255, 255, ', a: 0.5 },
+      { t: 0.7, r: 36, color: 'rgba(167, 139, 250, ', a: 0.18 },
+      { t: 0.85, r: 8, color: 'rgba(254, 240, 138, ', a: 0.4 },
+      { t: 1.0, r: 22, color: 'rgba(96, 165, 250, ', a: 0.22 }
+    ];
+    for (const f of flares) {
+      const x = sunX + dx * f.t, y = sunY + dy * f.t;
+      const r = f.r * breath;
+      const g = c.createRadialGradient(x, y, 0, x, y, r);
+      g.addColorStop(0, f.color + (f.a * breath * _dayFactor) + ')');
+      g.addColorStop(0.5, f.color + (f.a * 0.4 * breath * _dayFactor) + ')');
+      g.addColorStop(1, f.color + '0)');
+      c.fillStyle = g;
+      c.beginPath(); c.arc(x, y, r, 0, TAU); c.fill();
+    }
+    const ringX = sunX + dx * 0.55, ringY = sunY + dy * 0.55;
+    c.strokeStyle = `rgba(254, 240, 138, ${0.25 * breath * _dayFactor})`;
+    c.lineWidth = 1.5;
+    c.beginPath(); c.arc(ringX, ringY, 30 * breath, 0, TAU); c.stroke();
+    c.strokeStyle = `rgba(254, 240, 138, ${0.12 * breath * _dayFactor})`;
+    c.lineWidth = 0.8;
+    c.beginPath(); c.arc(ringX, ringY, 45 * breath, 0, TAU); c.stroke();
+  }
+}
+
+class SunRay {
+  constructor() { this.reset(true); }
+  reset() {
+    if (_sunPos.visible) {
+      this.originX = W * (_sunPos.x + rand(-0.13, 0.17));
+      this.originY = H * Math.max(0, _sunPos.y - rand(0, 0.05));
+    } else {
+      this.originX = W * 0.5; this.originY = -20;
+    }
+    this.angle = rand(0.55 * Math.PI, 0.75 * Math.PI);
+    this.len = rand(H * 0.5, H * 1.0);
+    this.width = rand(60, 110 + intensity * 60);
+    this.opacity = rand(0.04, 0.10 + intensity * 0.04);
+    this.phase = rand(0, TAU);
+    this.phaseSpeed = rand(0.005, 0.015);
+  }
+  update() { this.phase += this.phaseSpeed; }
+  draw(c) {
+    const a = this.opacity * (0.6 + Math.sin(this.phase) * 0.4) * _dayFactor;
+    const dx = Math.cos(this.angle) * this.len;
+    const dy = Math.sin(this.angle) * this.len;
+    const perpX = -dy / this.len * this.width * 0.5;
+    const perpY = dx / this.len * this.width * 0.5;
+    const grad = c.createLinearGradient(this.originX, this.originY, this.originX + dx, this.originY + dy);
+    grad.addColorStop(0, `rgba(254, 240, 138, ${a})`);
+    grad.addColorStop(0.5, `rgba(251, 191, 36, ${a * 0.5})`);
+    grad.addColorStop(1, 'rgba(251, 191, 36, 0)');
+    c.fillStyle = grad;
+    c.beginPath();
+    c.moveTo(this.originX - perpX, this.originY - perpY);
+    c.lineTo(this.originX + perpX, this.originY + perpY);
+    c.lineTo(this.originX + dx, this.originY + dy);
+    c.closePath(); c.fill();
+  }
+}
+
+class SunMote {
+  constructor(layer) { this.layer = layer || 1; this.reset(true); }
+  reset(initial = false) {
+    const L = this.layer;
+    this.x = rand(0, W);
+    this.y = initial ? rand(0, H) : H + rand(0, 50);
+    this.r = lerp(0.8, 3.5, L / 2) * rand(0.8, 1.2);
+    this.speed = lerp(0.15, 0.7, L / 2) * rand(0.8, 1.2);
+    this.drift = rand(-0.3, 0.3);
+    this.phase = rand(0, TAU);
+    this.phaseSpeed = rand(0.01, 0.03);
+    this.opacity = lerp(0.25, 0.8, L / 2) * rand(0.7, 1.0);
+  }
+  update() {
+    this.y -= this.speed;
+    this.phase += this.phaseSpeed;
+    this.x += this.drift + Math.sin(this.phase) * 0.4 + perlin2(this.x * 0.005, _t * 0.3) * 0.3;
+    if (this.y < -20) this.reset();
+  }
+  draw(c) {
+    const a = this.opacity * (0.6 + Math.sin(this.phase * 2) * 0.4) * _dayFactor * _newAlpha;
+    const g = c.createRadialGradient(this.x, this.y, 0, this.x, this.y, this.r * 2.5);
+    g.addColorStop(0, `rgba(254, 240, 138, ${a})`);
+    g.addColorStop(0.4, `rgba(251, 191, 36, ${a * 0.5})`);
+    g.addColorStop(1, 'rgba(251, 191, 36, 0)');
+    c.fillStyle = g;
+    c.beginPath(); c.arc(this.x, this.y, this.r * 2.5, 0, TAU); c.fill();
+  }
+}
+
+/* ==========================================================
+   3D 体积云：多层叠加 + 内部光照 + 噪声形状 + 金边
+   ========================================================== */
+class CloudPuff {
+  constructor(layer, heavy = false, golden = false) {
+    this.layer = layer;
+    this.heavy = heavy;
+    this.golden = golden;
+    this.reset(true);
+  }
+  reset(initial = false) {
+    const L = this.layer;
+    this.x = initial ? rand(-100, W + 100) : (windSpeed >= 0 ? -200 : W + 200);
+    this.y = rand(H * 0.05, H * 0.55);
+    this.scale = lerp(0.7, 1.4, L / 2) * rand(0.85, 1.15) * (this.heavy ? 1.3 : 1.0);
+    this.speed = lerp(0.06, 0.28, L / 2) * rand(0.8, 1.2) * (windSpeed + 0.3);
+    this.baseOpacity = lerp(0.12, 0.38, L / 2) * (this.heavy ? 1.4 : 1.0);
+    this.opacity = this.baseOpacity;
+    const n = 6 + Math.floor(rand(0, 4));  // 6-9 个团块更立体
+    this.blobs = [];
+    const baseR = rand(55, 95) * this.scale;
+    for (let i = 0; i < n; i++) {
+      this.blobs.push({
+        ox: rand(-baseR * 1.3, baseR * 1.3),
+        oy: rand(-baseR * 0.35, baseR * 0.35),
+        rx: baseR * rand(0.55, 1.0),
+        ry: baseR * rand(0.35, 0.55),
+        depth: rand(0, 1)  // 内部深度，影响光照
+      });
+    }
+    // 按 depth 排序（前面在后画）
+    this.blobs.sort((a, b) => a.depth - b.depth);
+    this.tint = this.heavy ? '148, 163, 184' : '220, 230, 245';
+    this.noiseSeed = rand(0, 1000);
+  }
+  update() {
+    const gust = perlin2(this.noiseSeed, _windNoiseT) * 0.3;
+    this.x += this.speed + gust * 0.5;
+    if (windSpeed >= 0 && this.x > W + 250) this.reset();
+    if (windSpeed < 0 && this.x < -250) this.reset();
+  }
+  draw(c) {
+    const op = this.opacity * _newAlpha * (0.5 + _dayFactor * 0.5); // 夜晚云朵变暗
+    // 阴影层（云底）
+    for (const b of this.blobs) {
+      const g = c.createRadialGradient(this.x + b.ox, this.y + b.oy + b.ry * 0.4, 0, this.x + b.ox, this.y + b.oy + b.ry * 0.4, b.rx);
+      g.addColorStop(0, `rgba(0, 0, 0, ${op * 0.35})`);
+      g.addColorStop(1, 'rgba(0, 0, 0, 0)');
+      c.fillStyle = g;
+      c.beginPath();
+      c.ellipse(this.x + b.ox, this.y + b.oy + b.ry * 0.4, b.rx, b.ry, 0, 0, TAU);
+      c.fill();
+    }
+    // 主体层（带羽化，内部按 depth 调亮度模拟体积）
+    for (const b of this.blobs) {
+      const bright = 1 - b.depth * 0.3;  // 后面的团块更暗
+      const g = c.createRadialGradient(this.x + b.ox, this.y + b.oy, 0, this.x + b.ox, this.y + b.oy, b.rx);
+      g.addColorStop(0, `rgba(${this.tint}, ${op * bright})`);
+      g.addColorStop(0.6, `rgba(${this.tint}, ${op * 0.6 * bright})`);
+      g.addColorStop(1, `rgba(${this.tint}, 0)`);
+      c.fillStyle = g;
+      c.beginPath();
+      c.ellipse(this.x + b.ox, this.y + b.oy, b.rx, b.ry, 0, 0, TAU);
+      c.fill();
+    }
+    // 内部光照层（顶部受光，模拟散射）
+    if (!this.heavy) {
+      for (const b of this.blobs) {
+        const g = c.createRadialGradient(this.x + b.ox - b.rx * 0.2, this.y + b.oy - b.ry * 0.5, 0, this.x + b.ox - b.rx * 0.2, this.y + b.oy - b.ry * 0.5, b.rx * 0.7);
+        g.addColorStop(0, `rgba(255, 255, 255, ${op * 0.6})`);
+        g.addColorStop(1, 'rgba(255, 255, 255, 0)');
+        c.fillStyle = g;
+        c.beginPath();
+        c.ellipse(this.x + b.ox - b.rx * 0.2, this.y + b.oy - b.ry * 0.5, b.rx * 0.7, b.ry * 0.5, 0, 0, TAU);
+        c.fill();
+      }
+    }
+    // 金边层（太阳照射方向）
+    if (this.golden && _sunPos.visible) {
+      const sunDirX = _sunPos.x * W - this.x;
+      const sunDirY = _sunPos.y * H - this.y;
+      const len = Math.hypot(sunDirX, sunDirY);
+      const nx = sunDirX / len, ny = sunDirY / len;
+      for (const b of this.blobs) {
+        const g = c.createRadialGradient(this.x + b.ox + nx * b.rx * 0.4, this.y + b.oy + ny * b.ry * 0.3, 0, this.x + b.ox + nx * b.rx * 0.4, this.y + b.oy + ny * b.ry * 0.3, b.rx * 0.8);
+        g.addColorStop(0, `rgba(251, 191, 36, ${op * 0.5 * _dayFactor})`);
+        g.addColorStop(0.5, `rgba(251, 191, 36, ${op * 0.18 * _dayFactor})`);
+        g.addColorStop(1, 'rgba(251, 191, 36, 0)');
+        c.fillStyle = g;
+        c.beginPath();
+        c.ellipse(this.x + b.ox + nx * b.rx * 0.4, this.y + b.oy + ny * b.ry * 0.3, b.rx * 0.8, b.ry * 0.6, 0, 0, TAU);
+        c.fill();
+      }
+    }
+  }
+}
+
+/* ==========================================================
+   雾/霾：噪声流动 + 远景消隐
+   ========================================================== */
+class FogVeil {
+  constructor(layer, isHaze) {
+    this.layer = layer;
+    this.isHaze = isHaze;
+    this.reset(true);
+  }
+  reset(initial = false) {
+    const L = this.layer;
+    this.x = initial ? rand(-100, W + 100) : (windSpeed >= 0 ? -300 : W + 300);
+    this.y = rand(H * 0.2, H * 0.95);
+    this.rx = lerp(180, 420, L / 2) * rand(0.85, 1.15);
+    this.ry = this.rx * rand(0.3, 0.55);
+    this.speed = lerp(0.04, 0.18, L / 2) * rand(0.8, 1.2) * (windSpeed * 0.5 + 0.4);
+    this.opacity = lerp(0.06, 0.18, L / 2) * rand(0.8, 1.1);
+    this.phase = rand(0, TAU);
+    this.phaseSpeed = rand(0.003, 0.012);
+    this.baseY = this.y;
+    this.noiseSeed = rand(0, 1000);
+  }
+  update() {
+    const noise = perlin2(this.noiseSeed, _windNoiseT) * 0.4;
+    this.x += this.speed + noise * 0.3;
+    this.phase += this.phaseSpeed;
+    this.y = this.baseY + Math.sin(this.phase) * 10;
+    if (windSpeed >= 0 && this.x > W + this.rx) this.reset();
+    if (windSpeed < 0 && this.x < -this.rx) this.reset();
+  }
+  draw(c) {
+    const col = this.isHaze ? '180, 140, 100' : '203, 213, 225';
+    const op = this.opacity * _newAlpha;
+    const g = c.createRadialGradient(this.x, this.y, 0, this.x, this.y, this.rx);
+    g.addColorStop(0, `rgba(${col}, ${op})`);
+    g.addColorStop(0.5, `rgba(${col}, ${op * 0.6})`);
+    g.addColorStop(1, `rgba(${col}, 0)`);
+    c.fillStyle = g;
+    c.beginPath();
+    c.ellipse(this.x, this.y, this.rx, this.ry, 0, 0, TAU);
+    c.fill();
+  }
+}
+
+function drawFogRecession(targetCtx) {
+  if (!cachedGroundGrad) {
+    cachedGroundGrad = targetCtx.createLinearGradient(0, 0, 0, H);
+    const isHaze = currentType === 'haze';
+    const col = isHaze ? '180, 140, 100' : '203, 213, 225';
+    const op = isHaze ? 0.18 : 0.12;
+    cachedGroundGrad.addColorStop(0, `rgba(${col}, 0)`);
+    cachedGroundGrad.addColorStop(0.5, `rgba(${col}, ${op * 0.5})`);
+    cachedGroundGrad.addColorStop(1, `rgba(${col}, ${op})`);
+  }
+  targetCtx.fillStyle = cachedGroundGrad;
+  targetCtx.fillRect(0, 0, W, H);
+}
+
+/* ==========================================================
+   闪电：多层时序 + 余韵
+   ========================================================== */
+class Lightning {
+  constructor() {
+    this.x = rand(W * 0.2, W * 0.8);
+    this.segments = [];
+    this.branches = [];
+    this.life = 1;
+    this.dead = false;
+    this.afterglow = 0;
+    this.secondaryFlash = 0;
+    this.secondaryTimer = rand(80, 200);
+    this.build();
+    triggerFlash(0.4);
+  }
+  build() {
+    const startY = rand(-20, H * 0.1);
+    const endY = rand(H * 0.6, H * 0.95);
+    this.segments = this._gen(this.x, startY, this.x + rand(-50, 50), endY, 4);
+  }
+  _gen(x1, y1, x2, y2, depth) {
+    if (depth === 0) return [[x1, y1, x2, y2]];
+    const mx = (x1 + x2) / 2 + rand(-25, 25) * depth;
+    const my = (y1 + y2) / 2 + rand(-8, 8) * depth;
+    const segs = [...this._gen(x1, y1, mx, my, depth - 1), ...this._gen(mx, my, x2, y2, depth - 1)];
+    if (depth > 1 && Math.random() < 0.4) {
+      const bLen = rand(40, 100) * depth;
+      const ang = rand(-Math.PI / 2.5, Math.PI / 2.5);
+      const bx = mx + Math.cos(ang) * bLen;
+      const by = my + Math.sin(ang) * bLen + bLen * 0.4;
+      this.branches.push(...this._gen(mx, my, bx, by, depth - 1));
+    }
+    return segs;
+  }
+  update() {
+    this.life -= 0.05;
+    this.afterglow = Math.max(this.life, 0) * 0.3;
+    this.secondaryTimer--;
+    if (this.secondaryTimer <= 0 && this.secondaryFlash <= 0 && this.life > 0.2) {
+      this.secondaryFlash = 0.6;
+      this.secondaryTimer = 999;
+      triggerFlash(0.25);
+    }
+    if (this.secondaryFlash > 0) this.secondaryFlash -= 0.08;
+    if (this.life <= 0 && this.secondaryFlash <= 0) this.dead = true;
+  }
+  draw(c) {
+    const a = clamp(this.life, 0, 1);
+    const totalA = a + this.secondaryFlash * 0.5;
+    if (totalA <= 0) return;
+    c.strokeStyle = `rgba(167, 139, 250, ${totalA * 0.5 + this.afterglow * 0.3})`;
+    c.lineWidth = 7; c.lineCap = 'round'; c.lineJoin = 'round';
+    c.beginPath();
+    for (const s of this.segments) { c.moveTo(s[0], s[1]); c.lineTo(s[2], s[3]); }
+    for (const s of this.branches) { c.moveTo(s[0], s[1]); c.lineTo(s[2], s[3]); }
+    c.stroke();
+    c.strokeStyle = `rgba(196, 181, 253, ${totalA * 0.8})`;
+    c.lineWidth = 3.5; c.stroke();
+    c.strokeStyle = `rgba(255, 255, 255, ${totalA})`;
+    c.lineWidth = 1.4; c.stroke();
+    if (a > 0.5) {
+      const sx = this.segments[0][0], sy = this.segments[0][1];
+      const g = c.createRadialGradient(sx, sy, 0, sx, sy, 60);
+      g.addColorStop(0, `rgba(220, 220, 255, ${a * 0.5})`);
+      g.addColorStop(1, 'rgba(220, 220, 255, 0)');
+      c.fillStyle = g;
+      c.beginPath(); c.arc(sx, sy, 60, 0, TAU); c.fill();
+    }
+  }
+}
+
+function triggerFlash(strength) {
+  flashEl.style.background = `rgba(220, 215, 255, ${strength})`;
+  setTimeout(() => {
+    flashEl.style.background = `rgba(220, 215, 255, ${strength * 0.4})`;
+    setTimeout(() => { flashEl.style.background = 'rgba(220, 215, 255, 0)'; }, 100);
+  }, 60);
+}
+
+function scheduleLightning() {
+  clearTimeout(lightningTimer);
+  const delay = rand(1500, 4500);
+  lightningTimer = setTimeout(() => {
+    if (currentType === 'storm') {
+      effects.push(new Lightning());
+      scheduleLightning();
+    }
+  }, delay);
+}
+
+/* ==========================================================
+   风：飞叶 + 飞沙 + 气流扭曲
+   ========================================================== */
+class Leaf {
+  constructor() { this.reset(true); }
+  reset(initial = false) {
+    this.x = initial ? rand(0, W) : (windSpeed >= 0 ? -30 : W + 30);
+    this.y = rand(H * 0.1, H * 0.95);
+    this.size = rand(6, 14);
+    this.speed = rand(3, 7) * (Math.abs(windSpeed) + 0.5);
+    this.dir = windSpeed >= 0 ? 1 : -1;
+    this.rotation = rand(0, TAU);
+    this.rotSpeed = rand(-0.15, 0.15);
+    this.phase = rand(0, TAU);
+    this.phaseSpeed = rand(0.05, 0.12);
+    this.wobble = rand(20, 60);
+    this.baseY = this.y;
+    this.noiseSeed = rand(0, 1000);
+    const palette = ['#d97706', '#b45309', '#92400e', '#a16207', '#78350f', '#65a30d', '#ca8a04'];
+    this.color = palette[Math.floor(rand(0, palette.length))];
+    this.shape = Math.random() < 0.5 ? 'oval' : 'maple';
+  }
+  update() {
+    const gust = 1 + perlin2(this.noiseSeed, _windNoiseT) * 0.6;
+    this.x += this.speed * this.dir * gust;
+    this.phase += this.phaseSpeed;
+    this.rotation += this.rotSpeed + perlin2(this.noiseSeed + 100, _windNoiseT) * 0.04;
+    this.y = this.baseY + Math.sin(this.phase) * this.wobble;
+    if ((this.dir > 0 && this.x > W + 50) || (this.dir < 0 && this.x < -50)) this.reset();
+  }
+  draw(c) {
+    c.save();
+    c.translate(this.x, this.y);
+    c.rotate(this.rotation);
+    c.fillStyle = this.color;
+    c.globalAlpha = 0.88 * _newAlpha;
+    if (this.shape === 'oval') {
+      c.beginPath();
+      c.ellipse(0, 0, this.size, this.size * 0.5, 0, 0, TAU);
+      c.fill();
+      c.strokeStyle = 'rgba(0,0,0,0.35)';
+      c.lineWidth = 0.7;
+      c.beginPath();
+      c.moveTo(-this.size, 0); c.lineTo(this.size, 0);
+      for (let i = -2; i <= 2; i++) {
+        if (i === 0) continue;
+        const px = i * this.size * 0.3;
+        c.moveTo(px, 0); c.lineTo(px + this.size * 0.2, (i > 0 ? 1 : -1) * this.size * 0.25);
+      }
+      c.stroke();
+    } else {
+      c.beginPath();
+      for (let i = 0; i < 5; i++) {
+        const a = (TAU / 5) * i - Math.PI / 2;
+        c.lineTo(Math.cos(a) * this.size, Math.sin(a) * this.size);
+        const a2 = a + TAU / 10;
+        c.lineTo(Math.cos(a2) * this.size * 0.45, Math.sin(a2) * this.size * 0.45);
+      }
+      c.closePath();
+      c.fill();
+      c.strokeStyle = 'rgba(0,0,0,0.4)';
+      c.lineWidth = 0.8;
+      c.beginPath();
+      c.moveTo(0, 0); c.lineTo(0, this.size * 1.2);
+      c.stroke();
+    }
+    c.globalAlpha = 1;
+    c.restore();
+  }
+}
+
+class Dust {
+  constructor() { this.reset(true); }
+  reset(initial = false) {
+    this.x = initial ? rand(0, W) : (windSpeed >= 0 ? -10 : W + 10);
+    this.y = rand(0, H);
+    this.size = rand(0.5, 2);
+    this.speed = rand(5, 10) * (Math.abs(windSpeed) + 0.5);
+    this.dir = windSpeed >= 0 ? 1 : -1;
+    this.opacity = rand(0.2, 0.5);
+    this.noiseSeed = rand(0, 1000);
+  }
+  update() {
+    const gust = 1 + perlin2(this.noiseSeed, _windNoiseT) * 0.4;
+    this.x += this.speed * this.dir * gust;
+    this.y += perlin2(this.noiseSeed + 50, _windNoiseT) * 0.8;
+    if ((this.dir > 0 && this.x > W + 10) || (this.dir < 0 && this.x < -10)) this.reset();
+  }
+  draw(c) {
+    c.fillStyle = `rgba(200, 180, 140, ${this.opacity * _newAlpha})`;
+    c.beginPath(); c.arc(this.x, this.y, this.size, 0, TAU); c.fill();
+  }
+}
+
+class WindLine {
+  constructor() { this.reset(true); }
+  reset(initial = false) {
+    this.x = initial ? rand(0, W) : (windSpeed >= 0 ? -100 : W + 100);
+    this.y = rand(0, H);
+    this.len = rand(80, 200);
+    this.speed = rand(8, 16) * (Math.abs(windSpeed) + 0.5);
+    this.dir = windSpeed >= 0 ? 1 : -1;
+    this.opacity = rand(0.06, 0.16);
+    this.noiseSeed = rand(0, 1000);
+    this.wobble = rand(8, 20);
+  }
+  update() {
+    this.x += this.speed * this.dir;
+    if ((this.dir > 0 && this.x > W + 200) || (this.dir < 0 && this.x < -200)) this.reset();
+  }
+  draw(c) {
+    const cx = this.x + this.len * this.dir * 0.5;
+    const cy = this.y + perlin2(this.noiseSeed, _windNoiseT) * this.wobble;
+    const ex = this.x + this.len * this.dir;
+    const ey = this.y + perlin2(this.noiseSeed + 30, _windNoiseT) * this.wobble;
+    const grad = c.createLinearGradient(this.x, this.y, ex, ey);
+    grad.addColorStop(0, `rgba(200, 220, 240, 0)`);
+    grad.addColorStop(0.5, `rgba(200, 220, 240, ${this.opacity * _newAlpha})`);
+    grad.addColorStop(1, `rgba(200, 220, 240, 0)`);
+    c.strokeStyle = grad;
+    c.lineWidth = 1;
+    c.beginPath();
+    c.moveTo(this.x, this.y); c.quadraticCurveTo(cx, cy, ex, ey);
+    c.stroke();
+  }
+}
+
+/* ==========================================================
+   粒子工厂（分类 far/near）
+   ========================================================== */
+function makeParticles(type) {
+  const far = [];
+  const near = [];
+  const I = intensity;
+  const scaleMobile = window.innerWidth < 768 ? 0.6 : 1.0;
+  const S = scaleMobile * dynamicScale;
+  switch (type) {
+    case 'sunny': {
+      near.push(new SunBody());
+      near.push(new LensFlareChain());
+      const rayN = Math.floor(lerp(3, 7, I) * S);
+      for (let i = 0; i < rayN; i++) near.push(new SunRay());
+      const moteN1 = Math.floor(lerp(15, 35, I) * S);
+      for (let i = 0; i < moteN1; i++) near.push(new SunMote(2));
+      const moteN2 = Math.floor(lerp(15, 35, I) * S);
+      for (let i = 0; i < moteN2; i++) far.push(new SunMote(1));
+      // 星星（夜晚显示，绘制到近景层避免被 blur 模糊）
+      const starN = Math.floor(lerp(80, 160, I) * S);
+      for (let i = 0; i < starN; i++) near.push(new Star());
+      // 流星（夜晚偶尔划过）
+      const meteorN = Math.floor(lerp(1, 3, I) * S);
+      for (let i = 0; i < meteorN; i++) near.push(new Meteor());
+      break;
+    }
+    case 'partlyCloudy': {
+      near.push(new SunBody());
+      near.push(new LensFlareChain());
+      const rayN = Math.floor(lerp(2, 4, I) * S);
+      for (let i = 0; i < rayN; i++) near.push(new SunRay());
+      const moteN = Math.floor(lerp(10, 25, I) * S);
+      for (let i = 0; i < moteN; i++) near.push(new SunMote(rand(1, 2)));
+      const cloudN = Math.floor(lerp(3, 6, I) * S);
+      for (let i = 0; i < cloudN; i++) {
+        const L = rand(0, 1);
+        (L < 0.5 ? far : near).push(new CloudPuff(L, false, true));
+      }
+      break;
+    }
+    case 'cloudy': {
+      const cloudN = Math.floor(lerp(5, 10, I) * S);
+      for (let i = 0; i < cloudN; i++) {
+        const L = rand(0, 1);
+        (L < 0.5 ? far : near).push(new CloudPuff(L, true, false));
+      }
+      break;
+    }
+    case 'rain': {
+      const fogN = Math.floor(lerp(2, 5, I) * S);
+      for (let i = 0; i < fogN; i++) far.push(new FogVeil(0, false));
+      const base = lerp(70, 160, I) * S;
+      for (let i = 0; i < Math.floor(base * 0.45); i++) far.push(new RainDrop(0));
+      for (let i = 0; i < Math.floor(base * 0.35); i++) far.push(new RainDrop(1));
+      for (let i = 0; i < Math.floor(base * 0.20); i++) near.push(new RainDrop(2));
+      const lensN = Math.floor(lerp(2, 5, I) * S);
+      for (let i = 0; i < lensN; i++) near.push(new LensDrop());
+      break;
+    }
+    case 'storm': {
+      const fogN = Math.floor(lerp(3, 6, I) * S);
+      for (let i = 0; i < fogN; i++) far.push(new FogVeil(0, false));
+      const base = lerp(100, 200, I) * S;
+      for (let i = 0; i < Math.floor(base * 0.45); i++) far.push(new RainDrop(0));
+      for (let i = 0; i < Math.floor(base * 0.35); i++) far.push(new RainDrop(1));
+      for (let i = 0; i < Math.floor(base * 0.20); i++) near.push(new RainDrop(2));
+      const lensN = Math.floor(lerp(3, 6, I) * S);
+      for (let i = 0; i < lensN; i++) near.push(new LensDrop());
+      const cloudN = Math.floor(lerp(4, 7, I) * S);
+      for (let i = 0; i < cloudN; i++) {
+        const L = rand(0, 1);
+        (L < 0.5 ? far : near).push(new CloudPuff(L, true, false));
+      }
+      break;
+    }
+    case 'snow': {
+      const base = lerp(50, 130, I) * S;
+      for (let i = 0; i < Math.floor(base * 0.45); i++) far.push(new SnowFlake(0));
+      for (let i = 0; i < Math.floor(base * 0.35); i++) far.push(new SnowFlake(1));
+      for (let i = 0; i < Math.floor(base * 0.20); i++) near.push(new SnowFlake(2));
+      break;
+    }
+    case 'fog': {
+      const n = Math.floor(lerp(10, 22, I) * S);
+      for (let i = 0; i < n; i++) {
+        const L = rand(0, 1);
+        (L < 0.5 ? far : near).push(new FogVeil(L, false));
+      }
+      break;
+    }
+    case 'haze': {
+      const n = Math.floor(lerp(12, 26, I) * S);
+      for (let i = 0; i < n; i++) {
+        const L = rand(0, 1);
+        (L < 0.5 ? far : near).push(new FogVeil(L, true));
+      }
+      const dN = Math.floor(lerp(30, 60, I) * S);
+      for (let i = 0; i < dN; i++) {
+        const L = rand(0, 1);
+        (L < 0.5 ? far : near).push(new Dust());
+      }
+      break;
+    }
+    case 'wind': {
+      const leafN = Math.floor(lerp(8, 20, I) * S);
+      for (let i = 0; i < leafN; i++) {
+        const L = rand(0, 1);
+        (L < 0.4 ? far : near).push(new Leaf());
+      }
+      const dustN = Math.floor(lerp(40, 80, I) * S);
+      for (let i = 0; i < dustN; i++) {
+        const L = rand(0, 1);
+        (L < 0.5 ? far : near).push(new Dust());
+      }
+      const lineN = Math.floor(lerp(8, 16, I) * S);
+      for (let i = 0; i < lineN; i++) near.push(new WindLine());
+      break;
+    }
+  }
+  return { far, near };
+}
+
+/* ==========================================================
+   地面效果
+   ========================================================== */
+function drawGroundReflection(targetCtx) {
+  if (!cachedGroundGrad) {
+    cachedGroundGrad = targetCtx.createLinearGradient(0, H * 0.7, 0, H);
+    cachedGroundGrad.addColorStop(0, 'rgba(96, 165, 250, 0)');
+    cachedGroundGrad.addColorStop(0.6, 'rgba(96, 165, 250, 0.06)');
+    cachedGroundGrad.addColorStop(1, 'rgba(96, 165, 250, 0.16)');
+  }
+  targetCtx.fillStyle = cachedGroundGrad;
+  targetCtx.fillRect(0, H * 0.7, W, H * 0.3);
+}
+
+function drawSnowGround(targetCtx) {
+  if (!cachedSnowGrad) {
+    cachedSnowGrad = targetCtx.createLinearGradient(0, H * 0.75, 0, H);
+    cachedSnowGrad.addColorStop(0, 'rgba(255, 255, 255, 0)');
+    cachedSnowGrad.addColorStop(1, 'rgba(255, 255, 255, 0.22)');
+  }
+  targetCtx.fillStyle = cachedSnowGrad;
+  targetCtx.fillRect(0, H * 0.75, W, H * 0.25);
+}
+
+/* ==========================================================
+   主循环（双 Canvas 分别绘制）
+   ========================================================== */
+function tick(now) {
+  animationId = requestAnimationFrame(tick);
+  const dt = now - lastTime;
+  if (dt < 14) return;
+  lastTime = now;
+  _t += dt / 1000;
+  _windNoiseT += dt * 0.0003;
+
+  fpsCounter.frames++;
+  if (now - fpsCounter.last >= 1000) {
+    fpsCounter.value = fpsCounter.frames;
+    fpsCounter.frames = 0;
+    fpsCounter.last = now;
+    document.getElementById('fps').textContent = fpsCounter.value;
+    if (fpsCounter.value < 40 && dynamicScale > 0.4) {
+      dynamicScale -= 0.15;
+      dynamicScale = Math.max(0.4, dynamicScale);
+      particlesFar = particlesFar.slice(0, Math.floor(particlesFar.length * 0.7));
+      particlesNear = particlesNear.slice(0, Math.floor(particlesNear.length * 0.7));
+    } else if (fpsCounter.value > 55 && dynamicScale < 1.0) {
+      dynamicScale += 0.05;
+      dynamicScale = Math.min(1.0, dynamicScale);
+    }
+  }
+
+  // 过渡淡入
+  if (_newAlpha < 1) _newAlpha = Math.min(1, _newAlpha + 0.02);
+  // 旧粒子淡出
+  if (_transitioning) {
+    _transitionAlpha = Math.max(0, _transitionAlpha - 0.025);
+    if (_transitionAlpha <= 0) {
+      _oldParticlesFar = [];
+      _oldParticlesNear = [];
+      _transitioning = false;
+    }
+  }
+
+  // 雪天拖影
+  if (currentType === 'snow') {
+    ctxFar.fillStyle = 'rgba(11, 15, 25, 0.18)';
+    ctxFar.fillRect(0, 0, W, H);
+    ctx.fillStyle = 'rgba(11, 15, 25, 0.18)';
+    ctx.fillRect(0, 0, W, H);
+  } else {
+    ctxFar.clearRect(0, 0, W, H);
+    ctx.clearRect(0, 0, W, H);
+  }
+
+  // 雾/霾远景消隐（绘制到远景 Canvas）
+  if (currentType === 'fog' || currentType === 'haze') {
+    drawFogRecession(ctxFar);
+  }
+
+  // 地面效果
+  if (currentType === 'rain' || currentType === 'storm') {
+    drawGroundReflection(ctxFar);
+    drawGroundReflection(ctx);
+  }
+  if (currentType === 'snow') {
+    drawSnowGround(ctxFar);
+    drawSnowGround(ctx);
+  }
+
+  // 远景粒子
+  for (const p of particlesFar) {
+    p.update();
+    p.draw(ctxFar);
+  }
+  // 旧远景粒子（过渡中）
+  if (_transitioning) {
+    ctxFar.globalAlpha = _transitionAlpha;
+    for (const p of _oldParticlesFar) {
+      p.update();
+      p.draw(ctxFar);
+    }
+    ctxFar.globalAlpha = 1;
+  }
+
+  // 近景粒子
+  for (const p of particlesNear) {
+    p.update();
+    p.draw(ctx);
+  }
+  // 旧近景粒子
+  if (_transitioning) {
+    ctx.globalAlpha = _transitionAlpha;
+    for (const p of _oldParticlesNear) {
+      p.update();
+      p.draw(ctx);
+    }
+    ctx.globalAlpha = 1;
+  }
+
+  // 特效（绘制到近景）
+  for (let i = effects.length - 1; i >= 0; i--) {
+    const e = effects[i];
+    e.update();
+    e.draw(ctx);
+    if (e.dead) {
+      effects[i] = effects[effects.length - 1];
+      effects.pop();
+    }
+  }
+
+  document.getElementById('count').textContent =
+    particlesFar.length + particlesNear.length + effects.length +
+    (_oldParticlesFar.length + _oldParticlesNear.length);
+}
+
+function startAnimation(type, isTransition = true) {
+  if (animationId) cancelAnimationFrame(animationId);
+  clearTimeout(lightningTimer);
+  // 平滑过渡：保存旧粒子
+  if (isTransition && (particlesFar.length || particlesNear.length)) {
+    _oldParticlesFar = particlesFar;
+    _oldParticlesNear = particlesNear;
+    _transitionAlpha = 1;
+    _transitioning = true;
+  }
+  currentType = type;
+  const { far, near } = makeParticles(type);
+  particlesFar = far;
+  particlesNear = near;
+  effects = [];
+  _newAlpha = isTransition ? 0 : 1;
+  flashEl.style.background = 'rgba(220, 215, 255, 0)';
+  if (type === 'storm') scheduleLightning();
+  lastTime = performance.now();
+  fpsCounter.last = lastTime;
+  animationId = requestAnimationFrame(tick);
+}
+
+/* ==========================================================
+   主题切换（含昼夜色调调制）
+   ========================================================== */
+function applyTheme(type) {
+  const t = THEMES[type];
+  // 根据 _dayFactor 在 day/night 之间插值
+  const df = _dayFactor;
+  function mixColor(c1, c2) {
+    // 简单 hex 插值
+    const p1 = [parseInt(c1.slice(1,3),16), parseInt(c1.slice(3,5),16), parseInt(c1.slice(5,7),16)];
+    const p2 = [parseInt(c2.slice(1,3),16), parseInt(c2.slice(3,5),16), parseInt(c2.slice(5,7),16)];
+    const r = Math.round(lerp(p2[0], p1[0], df));
+    const g = Math.round(lerp(p2[1], p1[1], df));
+    const b = Math.round(lerp(p2[2], p1[2], df));
+    return `#${r.toString(16).padStart(2,'0')}${g.toString(16).padStart(2,'0')}${b.toString(16).padStart(2,'0')}`;
+  }
+  const bgTop = mixColor(t.dayTop, t.nightTop);
+  const bgBot = mixColor(t.dayBot, t.nightBot);
+  document.documentElement.style.setProperty('--bg-grad-top', bgTop);
+  document.documentElement.style.setProperty('--bg-grad-bot', bgBot);
+  document.documentElement.style.setProperty('--bg-tint-1', t.tint1);
+  document.documentElement.style.setProperty('--bg-tint-2', t.tint2);
+  document.documentElement.style.setProperty('--horizon-glow', t.horizon);
+  document.documentElement.style.setProperty('--accent', t.accent);
+  document.documentElement.style.setProperty('--accent-2', t.accent2);
+  document.documentElement.style.setProperty('--accent-glow', t.glow);
+  document.documentElement.style.setProperty('--sun-x', `${_sunPos.x * 100}%`);
+  document.documentElement.style.setProperty('--sun-y', `${_sunPos.y * 100}%`);
+  document.querySelector('meta[name="theme-color"]').setAttribute('content', bgTop);
+
+  document.getElementById('info-icon').textContent = t.icon;
+  document.getElementById('info-name').textContent = t.name;
+  document.getElementById('info-desc').textContent = t.desc;
+  const tagsEl = document.getElementById('info-tags');
+  tagsEl.innerHTML = '';
+  for (const tag of t.tags) {
+    const s = document.createElement('span');
+    s.className = 'tag';
+    s.textContent = tag;
+    tagsEl.appendChild(s);
+  }
+}
+
+function updateTimeDisplay() {
+  const h = Math.floor(_hour);
+  const m = Math.floor((_hour - h) * 60);
+  const hh = String(h).padStart(2, '0');
+  const mm = String(m).padStart(2, '0');
+  document.getElementById('hour-v').textContent = `${hh}:${mm}`;
+  document.getElementById('time-pill').textContent = `${hh}:${mm}`;
+  document.getElementById('period-tag').textContent = getPeriodName(h);
+}
+
+function updateTiltDisplay() {
+  const deg = Math.round(_tiltX * 90);
+  document.getElementById('tilt-tag').textContent = `水平 ${deg >= 0 ? '+' : ''}${deg}°`;
+}
+
+/* ==========================================================
+   UI
+   ========================================================== */
+const order = ['sunny', 'partlyCloudy', 'cloudy', 'rain', 'storm', 'snow', 'fog', 'haze', 'wind'];
+const bar = document.getElementById('bar');
+for (const key of order) {
+  const t = THEMES[key];
+  const btn = document.createElement('button');
+  btn.className = 'weather-btn';
+  btn.dataset.type = key;
+  btn.innerHTML = `<span class="ico">${t.icon}</span>${t.name}`;
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('.weather-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    applyTheme(key);
+    startAnimation(key);
+  });
+  bar.appendChild(btn);
+}
+
+const intSlider = document.getElementById('intensity');
+const intVal = document.getElementById('intensity-v');
+const windSlider = document.getElementById('wind');
+const windVal = document.getElementById('wind-v');
+const hourSlider = document.getElementById('hour');
+const tiltToggle = document.getElementById('tilt-toggle');
+
+let rebuildTimer = null;
+function rebuildSoon() {
+  clearTimeout(rebuildTimer);
+  rebuildTimer = setTimeout(() => {
+    const { far, near } = makeParticles(currentType);
+    particlesFar = far;
+    particlesNear = near;
+  }, 150);
+}
+
+intSlider.addEventListener('input', (e) => {
+  intensity = e.target.value / 100;
+  intVal.textContent = e.target.value;
+  rebuildSoon();
+});
+windSlider.addEventListener('input', (e) => {
+  windSpeed = e.target.value / 100;
+  windVal.textContent = e.target.value;
+});
+hourSlider.addEventListener('input', (e) => {
+  _hour = e.target.value / 60;  // 0-1440 → 0-24
+  _dayFactor = getDayFactor(_hour);
+  _sunPos = getSunPosition(_hour);
+  updateTimeDisplay();
+  applyTheme(currentType);
+});
+
+// 重力感应
+tiltToggle.addEventListener('click', async () => {
+  if (!_tiltEnabled) {
+    // iOS 13+ 需要请求权限
+    if (typeof DeviceOrientationEvent !== 'undefined' && typeof DeviceOrientationEvent.requestPermission === 'function') {
+      try {
+        const perm = await DeviceOrientationEvent.requestPermission();
+        if (perm !== 'granted') {
+          alert('需要重力感应权限才能启用此功能');
+          return;
+        }
+      } catch (err) {
+        alert('设备不支持重力感应');
+        return;
+      }
+    } else if (!('DeviceOrientationEvent' in window)) {
+      alert('设备不支持重力感应');
+      return;
+    }
+    _tiltEnabled = true;
+    tiltToggle.classList.add('active');
+    tiltToggle.textContent = '重力感应 开';
+    window.addEventListener('deviceorientation', handleTilt);
+  } else {
+    _tiltEnabled = false;
+    tiltToggle.classList.remove('active');
+    tiltToggle.textContent = '重力感应 关';
+    _tiltX = 0;
+    updateTiltDisplay();
+    window.removeEventListener('deviceorientation', handleTilt);
+  }
+});
+
+function handleTilt(e) {
+  // gamma: 左右倾斜 -90~90
+  if (e.gamma !== null && e.gamma !== undefined) {
+    _tiltX = clamp(e.gamma / 45, -1, 1);
+    updateTiltDisplay();
+  }
+}
+
+/* ==========================================================
+   启动
+   ========================================================== */
+resizeCanvas();
+_hour = new Date().getHours() + new Date().getMinutes() / 60;
+_dayFactor = getDayFactor(_hour);
+_sunPos = getSunPosition(_hour);
+hourSlider.value = Math.round(_hour * 60);
+updateTimeDisplay();
+updateTiltDisplay();
+applyTheme('sunny');
+document.querySelector('.weather-btn[data-type="sunny"]').classList.add('active');
+startAnimation('sunny', false);
+
+document.addEventListener('visibilitychange', () => {
+  if (document.hidden) {
+    if (animationId) { cancelAnimationFrame(animationId); animationId = null; }
+    clearTimeout(lightningTimer);
+  } else {
+    if (!animationId) {
+      lastTime = performance.now();
+      animationId = requestAnimationFrame(tick);
+      if (currentType === 'storm') scheduleLightning();
+    }
+  }
+});
+</script>
+</body>
+</html>
