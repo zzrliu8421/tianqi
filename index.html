@@ -5001,11 +5001,11 @@
             const loc = await WeatherService.locateIP(myController.signal);
             // 防陈旧响应：若已被新请求取代则静默退出
             if (myToken !== _requestToken) return;
-            // locateIP 内部已检测网络类型，复用其结果更新界面
-            const isIPv6 = loc._ipv6 || false;
-            netBadge.classList.toggle('ipv6', isIPv6);
-            netBadge.setAttribute('data-status', isIPv6 ? 'IPv6 已连接' : 'IPv4 网络');
-            netText.textContent = isIPv6 ? 'IPv6 已连接' : 'IPv4 网络';
+            // 徽章网络类型复用 fetchPublicIP 的检测结果（loc._ipv6 仅表示 Provider 是否支持 IPv6，不代表当前网络）
+            const { isIPv6: netIsIPv6 } = await fetchPublicIP();
+            netBadge.classList.toggle('ipv6', netIsIPv6);
+            netBadge.setAttribute('data-status', netIsIPv6 ? 'IPv6 已连接' : 'IPv4 网络');
+            netText.textContent = netIsIPv6 ? 'IPv6 已连接' : 'IPv4 网络';
             const data = await WeatherService.getWeather(loc, myController.signal);
             if (myToken !== _requestToken) return;
             lastCity = loc.city;
