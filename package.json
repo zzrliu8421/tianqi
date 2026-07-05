@@ -2,7 +2,7 @@
     "name": "skyweather",
     "version": "1.0.0",
     "private": true,
-    "description": "SkyWeather · 云际天气 - 跨平台天气应用（Web/Android）",
+    "description": "SkyWeather · 云际天气 - 跨平台天气应用（Web + Flutter Android）",
     "scripts": {
         "build": "node build.js",
         "check": "node build.js check",
@@ -10,22 +10,9 @@
         "dev": "node server.js",
         "postinstall": "node copy-vendor.js",
         "copy-vendor": "node copy-vendor.js",
-        "sync:web": "node build.js",
-        "prepare:cap": "node prepare-cap.js",
-        "cap:sync": "node prepare-cap.js && cap sync",
-        "cap:run:android": "node prepare-cap.js && cap sync android && cap run android",
-        "cap:open:android": "cap open android",
-        "cap:add:android": "cap add android"
+        "sync:web": "node build.js"
     },
     "dependencies": {
         "three": "^0.160.1"
-    },
-    "devDependencies": {
-        "@capacitor/android": "^6.0.0",
-        "@capacitor/cli": "^6.0.0",
-        "@capacitor/core": "^6.0.0",
-        "@capacitor/geolocation": "^6.0.0",
-        "@capacitor/splash-screen": "^6.0.0",
-        "@capacitor/status-bar": "^6.0.0"
     }
 }
