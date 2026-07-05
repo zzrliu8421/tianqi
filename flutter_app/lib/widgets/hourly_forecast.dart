@@ -6,11 +6,11 @@ import '../models/weather.dart';
 import '../utils/wmo_weather.dart';
 import 'weather_icon.dart';
 
-class HourlyForecast extends StatelessWidget {
+class HourlyForecastList extends StatelessWidget {
   final List<HourlyForecast> hourly;
   final CurrentWeather? current;
 
-  const HourlyForecast({
+  const HourlyForecastList({
     super.key,
     required this.hourly,
     this.current,

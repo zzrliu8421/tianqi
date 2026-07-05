@@ -241,8 +241,9 @@ class _DetailGrid extends StatelessWidget {
     final windLevel = getWindLevel(current.windSpeed);
     final windDir = degToDirection(current.windDirectionDeg);
     final (uvLevel, _) = getUVLevel(current.uv);
+    // weather_api.dart 已将米转 km，此处直接展示
     final visibilityKm = current.visibility != null
-        ? (current.visibility! / 1000).toStringAsFixed(1)
+        ? current.visibility!.toStringAsFixed(1)
         : '--';
     final precip = current.precipProbability?.toString() ?? '--';
 
