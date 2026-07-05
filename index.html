@@ -2097,6 +2097,24 @@
     let _snowGradCache = null;
     let _snowGradKey = '';
 
+    // 板块上边缘缓存：雨滴溅落在板块上边缘而非视窗底部
+    let _cardTopEdges = [];
+    let _cardEdgeUpdateTime = 0;
+    function updateCardTopEdges() {
+        _cardTopEdges = [];
+        const container = document.getElementById('weather-display');
+        if (!container) return;
+        const cards = container.querySelectorAll('.glass');
+        const H = _cachedVpH || window.innerHeight;
+        for (const card of cards) {
+            const rect = card.getBoundingClientRect();
+            // 只收集在视口内、且不在顶部贴边的板块上边缘
+            if (rect.bottom > 60 && rect.top < H - 40 && rect.top > 40) {
+                _cardTopEdges.push(rect.top);
+            }
+        }
+    }
+
     // 稳定视口尺寸：取地址栏隐藏时的最大视口高度，不随地址栏显示/隐藏变化。
     // 这样 canvas 尺寸、粒子边界、地面反射位置都保持稳定，避免地址栏变化导致的动画跳变。
     // 地址栏显示时 canvas 底部会被地址栏遮挡（用户看不到），隐藏时完全显示。
@@ -2417,31 +2435,46 @@
             this.hasSplashed = false;
             // 个体抖动种子：用平滑噪声替代每帧 rand，避免移动端低帧率抖动突兀
             this.jitterSeed = rand(0, 1000);
+            // 近景雨滴随机分配溅落目标：板块上边缘或视窗底部
+            if (L === 2) {
+                if (_cardTopEdges.length > 0 && Math.random() < 0.65) {
+                    // 随机选择一个板块上边缘溅落
+                    const edge = _cardTopEdges[Math.floor(Math.random() * _cardTopEdges.length)];
+                    // 确保溅落点在当前 y 之下（初始化时 y 可能在板块下方）
+                    this.splashY = edge > this.y ? edge : H - 2;
+                } else {
+                    this.splashY = H - 2;  // 视窗底部
+                }
+            } else {
+                this.splashY = H + 30;  // 中远景不溅落
+            }
         }
         update() {
             // 噪声扰动风速（阵风感）
-            const gust = perlin2(this.y * 0.005, _windNoiseT) * 0.4;
-            // windSpeed 单位是 km/h（0~100+），需缩放为合理像素偏移；
-            // _tiltX 范围 -1~1，单独缩放，避免被 windSpeed 淹没
-            const windPx = windSpeed * 0.05;   // 30 km/h → 1.5 px/帧
-            const tiltPx = _tiltX * 3;          // 满倾斜 → 3 px/帧
+            const gust = perlin2(this.y * 0.005, _windNoiseT) * 0.3;
+            // windSpeed (km/h) 缩放为合理像素偏移，限制最大值防大风时雨滴飘出视窗
+            const windPx = Math.min(windSpeed * 0.03, 2.0);  // 30 km/h → 0.9px, 100+ km/h → 2.0px(上限)
+            const tiltPx = _tiltX * 2;          // 满倾斜 → 2 px/帧
             // 用 perlin 噪声替代每帧 rand，得到平滑的抖动（移动端低帧率也自然）
-            const jitter = perlin2(this.jitterSeed, _windNoiseT * 2) * 0.24;
+            const jitter = perlin2(this.jitterSeed, _windNoiseT * 2) * 0.2;
             this.slant = windPx + tiltPx + jitter;
             this.y += this.speed;
-            this.x += this.slant + gust * (this.layer === 2 ? 0.6 : 0.3);
-            const groundY = vpH() - 2;
-            if (this.y >= groundY && !this.hasSplashed && this.layer === 2) {
+            this.x += this.slant + gust * (this.layer === 2 ? 0.5 : 0.25);
+            // 雨滴碰到溅落目标（板块上边缘或视窗底部）时溅落
+            if (!this.hasSplashed && this.layer === 2 && this.y >= this.splashY) {
                 this.hasSplashed = true;
                 if (Math.random() < 0.6 + animIntensity * 0.25) {
-                    effects.push(new Splash(this.x, groundY, animIntensity));
+                    effects.push(new Splash(this.x, this.splashY, animIntensity));
                 }
                 if (Math.random() < 0.55) {
-                    effects.push(new Ripple(this.x, groundY));
+                    effects.push(new Ripple(this.x, this.splashY));
                 }
                 if (Math.random() < 0.35) {
-                    effects.push(new ShockRing(this.x, groundY));
+                    effects.push(new ShockRing(this.x, this.splashY));
                 }
+                // 溅落后立即重置（雨滴消失），避免穿过板块
+                this.reset();
+                return;
             }
             // y 超出底部或 x 飞出屏幕两侧时重置（避免大风时雨滴飞出视野不回收）
             if (this.y > vpH() + 30 || this.x < -120 || this.x > vpW() + 120) this.reset();
@@ -3364,16 +3397,23 @@
         if (window.skyRenderer && window.skyRenderer._ready) {
             try {
                 window.skyRenderer.setWeather(type, animIntensity, windSpeed);
-            } catch (e) { console.warn('[SkyWeather WebGL] setWeather 失败，回退 Canvas 2D:', e); }
-            // 同步停止旧 Canvas 2D 循环
-            if (animationId) { cancelAnimationFrame(animationId); animationId = null; }
-            currentAnim = type;
-            return;
+                // 同步停止旧 Canvas 2D 循环
+                if (animationId) { cancelAnimationFrame(animationId); animationId = null; }
+                currentAnim = type;
+                return;
+            } catch (e) {
+                console.warn('[SkyWeather WebGL] setWeather 失败，回退 Canvas 2D:', e);
+                // 继续执行 Canvas 2D 路径
+            }
         }
         if (animationId) cancelAnimationFrame(animationId);
         if (lightningTimer) { clearTimeout(lightningTimer); lightningTimer = null; }
-        // 同种天气切换（如切换城市查询）也需重建粒子，以应用新的 intensity/windSpeed；
-        // 平滑过渡机制会处理视觉连续性，不会突兀
+        // 同种天气切换（如切换城市查询）：不重建粒子，windSpeed/animIntensity 已在调用前更新
+        // 粒子在 update()/reset() 中会自动读取新值，避免重建粒子+过渡导致的卡顿
+        // 仅当动画循环已停止时才需要重建
+        if (currentAnim === type && !force && animationId) {
+            return;
+        }
         // 平滑过渡：保留旧粒子淡出
         const oldFar = particlesFar;
         const oldNear = particlesNear;
@@ -3413,6 +3453,11 @@
             _animT = now * 0.001;
             _windNoiseT = _animT * 0.3;
             updateFpsAdaptive(now);
+            // 定期更新板块上边缘位置（雨滴溅落目标），500ms 一次
+            if (now - _cardEdgeUpdateTime > 500) {
+                updateCardTopEdges();
+                _cardEdgeUpdateTime = now;
+            }
 
             // 过渡 alpha 更新
             if (_transitioning) {
