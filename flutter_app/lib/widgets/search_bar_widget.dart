@@ -2,7 +2,8 @@
 /// 搜索框 + 搜索按钮 + 刷新按钮 + 搜索历史 + 快速城市
 
 import 'package:flutter/material.dart';
-import 'package:shared_preferences/shared_preferences.dart';
+
+import '../services/local_storage.dart';
 
 class SearchBarWidget extends StatefulWidget {
   final void Function(String city) onSearch;
@@ -51,14 +52,14 @@ class _SearchBarWidgetState extends State<SearchBarWidget> {
   }
 
   Future<void> _loadHistory() async {
-    final prefs = await SharedPreferences.getInstance();
+    final prefs = await LocalStorage.getInstance();
     setState(() {
-      _history = prefs.getStringList(_historyKey) ?? [];
+      _history = prefs.getStringList(_historyKey);
     });
   }
 
   Future<void> _saveHistory(String city) async {
-    final prefs = await SharedPreferences.getInstance();
+    final prefs = await LocalStorage.getInstance();
     final list = <String>[city, ..._history.where((c) => c != city)];
     final trimmed = list.take(_maxHistory).toList();
     await prefs.setStringList(_historyKey, trimmed);
@@ -66,7 +67,7 @@ class _SearchBarWidgetState extends State<SearchBarWidget> {
   }
 
   Future<void> _clearHistory() async {
-    final prefs = await SharedPreferences.getInstance();
+    final prefs = await LocalStorage.getInstance();
     await prefs.remove(_historyKey);
     setState(() => _history = []);
   }
