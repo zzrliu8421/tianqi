@@ -1077,7 +1077,12 @@ export class SkyWeatherRenderer {
   // -------------------- 公共接口 --------------------
   setWeather(type, intensity = 0.5, windSpeed = 0) {
     if (!WEATHER_THEMES[type]) type = 'sunny';
-    if (type === this.targetType) return;
+    // 同种天气切换（如切换城市查询）：仍需更新强度和风速
+    if (type === this.targetType) {
+      this.intensity = intensity;
+      this.windSpeed = windSpeed;
+      return;
+    }
     this.targetType = type;
     this.intensity = intensity;
     this.windSpeed = windSpeed;

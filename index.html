@@ -304,7 +304,7 @@
             pointer-events: none;
             z-index: 1;
             opacity: 0.85;
-            filter: blur(3px);
+            filter: blur(1.5px);
             will-change: transform;
             /* WebGL 启用时隐藏旧 Canvas 2D */
         }
@@ -2421,10 +2421,13 @@
         update() {
             // 噪声扰动风速（阵风感）
             const gust = perlin2(this.y * 0.005, _windNoiseT) * 0.4;
-            const effectiveWind = windSpeed + _tiltX;
+            // windSpeed 单位是 km/h（0~100+），需缩放为合理像素偏移；
+            // _tiltX 范围 -1~1，单独缩放，避免被 windSpeed 淹没
+            const windPx = windSpeed * 0.05;   // 30 km/h → 1.5 px/帧
+            const tiltPx = _tiltX * 3;          // 满倾斜 → 3 px/帧
             // 用 perlin 噪声替代每帧 rand，得到平滑的抖动（移动端低帧率也自然）
             const jitter = perlin2(this.jitterSeed, _windNoiseT * 2) * 0.24;
-            this.slant = effectiveWind * 1.4 + jitter;
+            this.slant = windPx + tiltPx + jitter;
             this.y += this.speed;
             this.x += this.slant + gust * (this.layer === 2 ? 0.6 : 0.3);
             const groundY = vpH() - 2;
@@ -2493,7 +2496,7 @@
     class SnowFlake {
         constructor(layer) { this.layer = layer || 2; this.reset(true); }
         reset(initial = false) {
-            const W = window.innerWidth;
+            const W = vpW();
             const H = vpH();
             const L = this.layer;
             this.r = lerp(1.0, 5.5, L / 2) * rand(0.8, 1.2);
@@ -2515,12 +2518,14 @@
         update() {
             this.y += this.speed;
             this.phase += this.phaseSpeed;
-            const effectiveWind = windSpeed + _tiltX * 0.6;
+            // windSpeed (km/h) 缩放为合理像素偏移，与雨滴保持一致
+            const windPx = windSpeed * 0.025;  // 雪花更轻，偏移更小
+            const tiltPx = _tiltX * 1.8;
             this.rotation += this.rotationSpeed + perlin2(this.noiseSeedX, this.y * 0.01) * 0.008;
             const noise = perlin2(this.noiseSeedX, this.y * 0.008) * 1.2;
-            this.x += effectiveWind * 0.5 + Math.sin(this.phase) * this.wobbleAmp + noise * 0.3;
+            this.x += windPx + tiltPx + Math.sin(this.phase) * this.wobbleAmp + noise * 0.3;
             if (this.y > vpH() + 20) this.reset();
-            if (this.x < -50 || this.x > window.innerWidth + 50) this.reset();
+            if (this.x < -50 || this.x > vpW() + 50) this.reset();
         }
         draw(c) {
             c.save();
@@ -2877,7 +2882,7 @@
     class SunRay {
         constructor() { this.reset(true); }
         reset(initial = false) {
-            const W = window.innerWidth;
+            const W = vpW();
             const H = vpH();
             // 光束从右上角射出
             this.originX = W * rand(0.7, 1.0);
@@ -2917,7 +2922,7 @@
     class SunMote {
         constructor() { this.reset(true); }
         reset(initial = false) {
-            const W = window.innerWidth;
+            const W = vpW();
             const H = vpH();
             this.x = rand(W * 0.3, W);
             this.y = initial ? rand(0, H) : rand(H + 20, H + 60);
@@ -2951,7 +2956,7 @@
     class CloudPuff {
         constructor() { this.reset(true); }
         reset(initial = false) {
-            const W = window.innerWidth;
+            const W = vpW();
             const H = vpH();
             const intensity = animIntensity;
             const isHeavy = currentAnim === 'cloudy';
@@ -2977,7 +2982,7 @@
         }
         update() {
             this.x += this.speed * (1 + perlin2(this.y * 0.01, _windNoiseT) * 0.2);
-            if (this.x > window.innerWidth + 350) this.reset();
+            if (this.x > vpW() + 350) this.reset();
         }
         draw(c) {
             const cx = this.x + this.w / 2;
@@ -3028,7 +3033,7 @@
     class FogVeil {
         constructor(layer) { this.layer = layer || 0; this.reset(true); }
         reset(initial = false) {
-            const W = window.innerWidth;
+            const W = vpW();
             const H = vpH();
             const intensity = animIntensity;
             const L = this.layer;
@@ -3049,7 +3054,7 @@
             this.x += this.speed * (1 + noiseSpeed);
             this.phase += this.phaseSpeed;
             this.y += Math.sin(this.phase) * 0.4 + perlin2(this.noiseSeed, this.phase) * 0.3;
-            if (this.x > window.innerWidth + 500) this.reset();
+            if (this.x > vpW() + 500) this.reset();
         }
         draw(c) {
             const baseColor = this.isHaze ? '180, 140, 100' : '203, 213, 225';
@@ -3083,7 +3088,7 @@
     // ---- 闪电 ----
     class Lightning {
         constructor() {
-            const W = window.innerWidth;
+            const W = vpW();
             const H = vpH();
             this.startX = rand(W * 0.15, W * 0.85);
             this.startY = 0;
@@ -3119,7 +3124,7 @@
                     this.flash2Fired = true;
                     this.flash2Life = 1;
                     // 二次闪更短小
-                    const W = window.innerWidth, H = vpH();
+                    const W = vpW(), H = vpH();
                     this.segments2 = [];
                     const sx = this.startX + rand(-50, 50);
                     const buildShort = (x, y, length, depth) => {
@@ -3206,7 +3211,7 @@
     function drawGroundReflection(c) {
         if (currentAnim !== 'rain' && currentAnim !== 'storm') return;
         const H = vpH();
-        const W = window.innerWidth;
+        const W = vpW();
         const reflectH = 30 + animIntensity * 20;
         const key = `r_${H}_${reflectH.toFixed(2)}_${animIntensity.toFixed(3)}`;
         if (_groundGradKey !== key) {
@@ -3225,7 +3230,7 @@
     function drawSnowGround(c) {
         if (currentAnim !== 'snow') return;
         const H = vpH();
-        const W = window.innerWidth;
+        const W = vpW();
         const snowH = 10 + animIntensity * 15;
         const key = `s_${H}_${snowH.toFixed(2)}_${animIntensity.toFixed(3)}`;
         if (_snowGradKey !== key) {
@@ -3367,7 +3372,8 @@
         }
         if (animationId) cancelAnimationFrame(animationId);
         if (lightningTimer) { clearTimeout(lightningTimer); lightningTimer = null; }
-        if (currentAnim === type && !force) return;
+        // 同种天气切换（如切换城市查询）也需重建粒子，以应用新的 intensity/windSpeed；
+        // 平滑过渡机制会处理视觉连续性，不会突兀
         // 平滑过渡：保留旧粒子淡出
         const oldFar = particlesFar;
         const oldNear = particlesNear;
@@ -5241,6 +5247,15 @@
             renderer._ready = true;
             window.skyRenderer = renderer;
             document.body.classList.add('has-webgl');
+            // 取消可能正在运行的 Canvas 2D 循环，避免两套动画并存
+            if (typeof animationId !== 'undefined' && animationId) {
+                cancelAnimationFrame(animationId);
+                animationId = null;
+            }
+            if (typeof lightningTimer !== 'undefined' && lightningTimer) {
+                clearTimeout(lightningTimer);
+                lightningTimer = null;
+            }
             // 应用当前昼夜状态
             renderer.setDayFactor(_dayFactor);
             // 如果已经有天气，立即应用
