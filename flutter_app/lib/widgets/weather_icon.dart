@@ -29,7 +29,7 @@ class WeatherIcon extends StatelessWidget {
       color: iconColor,
       shadows: [
         Shadow(
-          color: iconColor.withOpacity(0.5),
+          color: iconColor.withValues(alpha: 0.5),
           blurRadius: 12,
         ),
       ],

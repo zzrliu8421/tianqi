@@ -33,7 +33,7 @@ class AqiCard extends StatelessWidget {
         children: [
           Row(
             children: [
-              Icon(Icons.ec, size: 18, color: info.color),
+              Icon(Icons.air, size: 18, color: info.color),
               const SizedBox(width: 6),
               const Text(
                 '空气质量',
@@ -47,9 +47,9 @@ class AqiCard extends StatelessWidget {
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                 decoration: BoxDecoration(
-                  color: info.color.withOpacity(0.18),
+                  color: info.color.withValues(alpha: 0.18),
                   borderRadius: BorderRadius.circular(10),
-                  border: Border.all(color: info.color.withOpacity(0.5)),
+                  border: Border.all(color: info.color.withValues(alpha: 0.5)),
                 ),
                 child: Text(
                   info.level,
@@ -225,7 +225,7 @@ class _AqiRingPainter extends CustomPainter {
       dot,
       6,
       Paint()
-        ..color = Colors.white.withOpacity(0.4)
+        ..color = Colors.white.withValues(alpha: 0.4)
         ..style = PaintingStyle.stroke
         ..strokeWidth = 1.5,
     );

@@ -84,12 +84,12 @@ class HourlyForecastList extends StatelessWidget {
                         padding: const EdgeInsets.symmetric(vertical: 10),
                         decoration: BoxDecoration(
                           color: isHighlight
-                              ? const Color(0xFF38BDF8).withOpacity(0.18)
+                              ? const Color(0xFF38BDF8).withValues(alpha: 0.18)
                               : const Color(0x08FFFFFF),
                           borderRadius: BorderRadius.circular(14),
                           border: Border.all(
                             color: isHighlight
-                                ? const Color(0xFF38BDF8).withOpacity(0.5)
+                                ? const Color(0xFF38BDF8).withValues(alpha: 0.5)
                                 : const Color(0x10FFFFFF),
                           ),
                         ),
@@ -122,7 +122,7 @@ class HourlyForecastList extends StatelessWidget {
                                 Icon(
                                   Icons.water_drop,
                                   size: 10,
-                                  color: const Color(0xFF38BDF8).withOpacity(0.8),
+                                  color: const Color(0xFF38BDF8).withValues(alpha: 0.8),
                                 ),
                                 const SizedBox(width: 2),
                                 Text(

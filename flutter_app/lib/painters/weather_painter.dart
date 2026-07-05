@@ -497,9 +497,9 @@ class WeatherPainter extends CustomPainter {
         center: Alignment.center,
         radius: 1.0,
         colors: [
-          const Color(0xFFFBBF24).withOpacity(0.55 * opacity),
-          const Color(0xFFFBBF24).withOpacity(0.18 * opacity),
-          const Color(0xFFFBBF24).withOpacity(0.0),
+          const Color(0xFFFBBF24).withValues(alpha: 0.55 * opacity),
+          const Color(0xFFFBBF24).withValues(alpha: 0.18 * opacity),
+          const Color(0xFFFBBF24).withValues(alpha: 0.0),
         ],
       ).createShader(Rect.fromCircle(center: center, radius: glowRadius));
     canvas.drawCircle(center, glowRadius, glowPaint);
@@ -510,7 +510,7 @@ class WeatherPainter extends CustomPainter {
     final inner = discRadius * 1.25;
     final outer = discRadius * 1.95;
     final rayPaint = Paint()
-      ..color = const Color(0xFFFDE68A).withOpacity(0.6 * opacity)
+      ..color = const Color(0xFFFDE68A).withValues(alpha: 0.6 * opacity)
       ..style = PaintingStyle.stroke
       ..strokeWidth = 2.0
       ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 1.5);
@@ -529,8 +529,8 @@ class WeatherPainter extends CustomPainter {
         center: Alignment.center,
         radius: 1.0,
         colors: [
-          const Color(0xFFFFE9B0).withOpacity(opacity),
-          const Color(0xFFFBBF24).withOpacity(opacity),
+          const Color(0xFFFFE9B0).withValues(alpha: opacity),
+          const Color(0xFFFBBF24).withValues(alpha: opacity),
         ],
       ).createShader(Rect.fromCircle(center: center, radius: discRadius));
     canvas.drawCircle(center, discRadius, discPaint);
@@ -546,8 +546,8 @@ class WeatherPainter extends CustomPainter {
         center: Alignment.center,
         radius: 1.0,
         colors: [
-          const Color(0xFFE2E8F0).withOpacity(0.35),
-          const Color(0xFFE2E8F0).withOpacity(0.0),
+          const Color(0xFFE2E8F0).withValues(alpha: 0.35),
+          const Color(0xFFE2E8F0).withValues(alpha: 0.0),
         ],
       ).createShader(Rect.fromCircle(center: center, radius: radius * 3.5));
     canvas.drawCircle(center, radius * 3.5, glowPaint);
@@ -569,7 +569,7 @@ class WeatherPainter extends CustomPainter {
   void _drawStars(Canvas canvas, Size size, List<_Star> stars) {
     final paint = Paint()..color = Colors.white;
     for (final s in stars) {
-      paint.color = Colors.white.withOpacity(s.opacity(progress));
+      paint.color = Colors.white.withValues(alpha: s.opacity(progress));
       canvas.drawCircle(
         Offset(s.x * size.width, s.y * size.height),
         s.size,
@@ -606,7 +606,7 @@ class WeatherPainter extends CustomPainter {
     double opacity = 1.0,
   }) {
     final paint = Paint()
-      ..color = color.withOpacity(opacity)
+      ..color = color.withValues(alpha: opacity)
       ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 2.0);
     for (final c in clouds) {
       final cloudWidth = _cloudBaseWidth * c.scale;
@@ -628,7 +628,7 @@ class WeatherPainter extends CustomPainter {
     // 漂浮光点
     final paint = Paint()..color = const Color(0xFFFDE68A);
     for (final d in p.lightDots) {
-      paint.color = const Color(0xFFFDE68A).withOpacity(d.opacity(progress));
+      paint.color = const Color(0xFFFDE68A).withValues(alpha: d.opacity(progress));
       canvas.drawCircle(
         Offset(d.x * size.width, d.curY(progress) * size.height),
         d.radius,
@@ -666,7 +666,7 @@ class WeatherPainter extends CustomPainter {
 
     // 雨滴
     final dropPaint = Paint()
-      ..color = const Color(0xFFCBD5E1).withOpacity(0.7)
+      ..color = const Color(0xFFCBD5E1).withValues(alpha: 0.7)
       ..style = PaintingStyle.stroke
       ..strokeWidth = 1.4;
     const wind = 0.22; // 风偏倾角因子
@@ -699,7 +699,7 @@ class WeatherPainter extends CustomPainter {
 
     // 雨滴（更密集）
     final dropPaint = Paint()
-      ..color = const Color(0xFFCBD5E1).withOpacity(0.7)
+      ..color = const Color(0xFFCBD5E1).withValues(alpha: 0.7)
       ..style = PaintingStyle.stroke
       ..strokeWidth = 1.3;
     const wind = 0.28;
@@ -716,14 +716,14 @@ class WeatherPainter extends CustomPainter {
     // 闪电折线
     if (flash > 0.01 && p.lightningBolt != null) {
       final boltPaint = Paint()
-        ..color = Colors.white.withOpacity(flash)
+        ..color = Colors.white.withValues(alpha: flash)
         ..style = PaintingStyle.stroke
         ..strokeWidth = 2.5
         ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 1.5);
       canvas.drawPath(p.lightningBolt!, boltPaint);
       // 闪电核心更亮
       final corePaint = Paint()
-        ..color = Colors.white.withOpacity(flash)
+        ..color = Colors.white.withValues(alpha: flash)
         ..style = PaintingStyle.stroke
         ..strokeWidth = 1.2;
       canvas.drawPath(p.lightningBolt!, corePaint);
@@ -733,7 +733,7 @@ class WeatherPainter extends CustomPainter {
     if (flash > 0.01) {
       canvas.drawRect(
         Offset.zero & size,
-        Paint()..color = Colors.white.withOpacity(flash * 0.35),
+        Paint()..color = Colors.white.withValues(alpha: flash * 0.35),
       );
     }
   }
@@ -767,7 +767,7 @@ class WeatherPainter extends CustomPainter {
     for (final s in p.snowFlakes) {
       final cy = s.curY(progress) * size.height;
       final cx = s.curX(progress, size.width);
-      paint.color = Colors.white.withOpacity(0.85);
+      paint.color = Colors.white.withValues(alpha: 0.85);
       canvas.drawCircle(Offset(cx, cy), s.radius, paint);
     }
   }
@@ -788,10 +788,10 @@ class WeatherPainter extends CustomPainter {
           begin: Alignment.centerLeft,
           end: Alignment.centerRight,
           colors: [
-            baseColor.withOpacity(0.0),
-            baseColor.withOpacity(layer.opacity),
-            baseColor.withOpacity(layer.opacity),
-            baseColor.withOpacity(0.0),
+            baseColor.withValues(alpha: 0.0),
+            baseColor.withValues(alpha: layer.opacity),
+            baseColor.withValues(alpha: layer.opacity),
+            baseColor.withValues(alpha: 0.0),
           ],
         ).createShader(Rect.fromLTWH(0, y - h / 2, size.width, h));
       canvas.drawRect(
@@ -803,7 +803,7 @@ class WeatherPainter extends CustomPainter {
       final totalRange = size.width + 240.0;
       final offset = layer.curOffset(progress, totalRange);
       final blobPaint = Paint()
-        ..color = baseColor.withOpacity(layer.opacity * 0.6)
+        ..color = baseColor.withValues(alpha: layer.opacity * 0.6)
         ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 18.0);
       for (int i = 0; i < 4; i++) {
         final bx = ((offset + i * (size.width / 3)) % totalRange) - 120.0;
@@ -828,7 +828,7 @@ class WeatherPainter extends CustomPainter {
       final radius = e * 7.0;
       if (radius < 0.5) continue;
       final opacity = (1.0 - e) * 0.5;
-      paint.color = Colors.white.withOpacity(opacity);
+      paint.color = Colors.white.withValues(alpha: opacity);
       canvas.drawCircle(Offset(s.x * size.width, groundY), radius, paint);
     }
   }

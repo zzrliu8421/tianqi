@@ -133,7 +133,7 @@ class DailyForecastList extends StatelessWidget {
                               Icon(
                                 Icons.water_drop,
                                 size: 11,
-                                color: const Color(0xFF38BDF8).withOpacity(0.8),
+                                color: const Color(0xFF38BDF8).withValues(alpha: 0.8),
                               ),
                               const SizedBox(width: 2),
                               Text(

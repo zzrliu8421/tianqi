@@ -54,7 +54,7 @@ class _WeatherBackgroundState extends State<WeatherBackground>
               end: Alignment.bottomCenter,
               colors: [
                 weatherBgColor(widget.type),
-                weatherAccentColor(widget.type).withOpacity(0.35),
+                weatherAccentColor(widget.type).withValues(alpha: 0.35),
                 weatherBgColor(widget.type),
               ],
             ),

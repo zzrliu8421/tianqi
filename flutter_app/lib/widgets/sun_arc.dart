@@ -68,7 +68,7 @@ class SunArc extends StatelessWidget {
                 Container(
                   padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                   decoration: BoxDecoration(
-                    color: const Color(0xFFFBBF24).withOpacity(0.18),
+                    color: const Color(0xFFFBBF24).withValues(alpha: 0.18),
                     borderRadius: BorderRadius.circular(10),
                   ),
                   child: const Text(
@@ -80,7 +80,7 @@ class SunArc extends StatelessWidget {
                 Container(
                   padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                   decoration: BoxDecoration(
-                    color: const Color(0xFF818CF8).withOpacity(0.18),
+                    color: const Color(0xFF818CF8).withValues(alpha: 0.18),
                     borderRadius: BorderRadius.circular(10),
                   ),
                   child: const Text(
@@ -234,8 +234,8 @@ class _SunArcPainter extends CustomPainter {
     final glowPaint = Paint()
       ..shader = RadialGradient(
         colors: [
-          sunColor.withOpacity(0.6),
-          sunColor.withOpacity(0),
+          sunColor.withValues(alpha: 0.6),
+          sunColor.withValues(alpha: 0),
         ],
       ).createShader(Rect.fromCircle(center: Offset(sunX, sunY), radius: 28));
     canvas.drawCircle(Offset(sunX, sunY), 28, glowPaint);

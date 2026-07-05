@@ -139,9 +139,9 @@ class CurrentWeatherCard extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
       decoration: BoxDecoration(
-        color: color.withOpacity(0.18),
+        color: color.withValues(alpha: 0.18),
         borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: color.withOpacity(0.5)),
+        border: Border.all(color: color.withValues(alpha: 0.5)),
       ),
       child: Text(
         text,
@@ -212,7 +212,7 @@ class _TemperatureRange extends StatelessWidget {
                         shape: BoxShape.circle,
                         boxShadow: [
                           BoxShadow(
-                            color: const Color(0xFFF8FAFC).withOpacity(0.5),
+                            color: const Color(0xFFF8FAFC).withValues(alpha: 0.5),
                             blurRadius: 6,
                           ),
                         ],
