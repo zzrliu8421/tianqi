@@ -7,9 +7,9 @@ config.js
 # 依赖
 node_modules/
 
-# Capacitor Android 原生工程（由 cap add android 生成）
-android/
-ios/
+# Capacitor Android 原生工程（由 cap add android 生成，仅根目录）
+/android/
+/ios/
 
 # vendor 由 copy-vendor.js 从 node_modules 拷贝生成（构建时自动）
 vendor/

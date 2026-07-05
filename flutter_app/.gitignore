@@ -43,3 +43,6 @@ app.*.map.json
 /android/app/debug
 /android/app/profile
 /android/app/release
+
+# Flutter 引擎 native 库（由构建脚本从 AAR 提取，体积过大不进 git）
+/android/app/src/main/jniLibs/**/*.so
