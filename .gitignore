@@ -14,8 +14,11 @@ ios/
 # vendor 由 copy-vendor.js 从 node_modules 拷贝生成（构建时自动）
 vendor/
 
-# www 由 prepare-cap.js 生成（Capacitor 同步前自动）
-www/
+# Flutter 构建产物
+flutter_app/build/
+flutter_app/.dart_tool/
+flutter_app/.flutter-plugins
+flutter_app/.flutter-plugins-dependencies
 
 # 调试日志
 *.log
