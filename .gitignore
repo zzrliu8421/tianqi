@@ -7,18 +7,12 @@ config.js
 # 依赖
 node_modules/
 
-# Capacitor Android 原生工程（由 cap add android 生成，仅根目录）
-/android/
-/ios/
+# Capacitor Android 原生工程（由 cap add android 生成）
+android/
+ios/
 
 # vendor 由 copy-vendor.js 从 node_modules 拷贝生成（构建时自动）
 vendor/
-
-# Flutter 构建产物
-flutter_app/build/
-flutter_app/.dart_tool/
-flutter_app/.flutter-plugins
-flutter_app/.flutter-plugins-dependencies
 
 # 调试日志
 *.log
