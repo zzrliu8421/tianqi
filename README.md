@@ -1,19 +1,17 @@
 # SkyWeather · 云际天气
 
-一个简洁、现代的跨平台天气应用，支持城市搜索、IP / GPS 定位、实时天气、24 小时预报、7 天预报、空气质量 AQI 以及**小米天气级 WebGL 沉浸式动态背景**。
-
-> 同一份前端代码同时支持：**Web 浏览器**、**Android 应用（Capacitor）**。
+一个简洁、现代的天气应用，支持城市搜索、IP 定位（IPv4 / IPv6）、实时天气、24 小时预报、7 天预报、空气质量 AQI，以及基于 **WebGL（Three.js）** 的沉浸式动态天气背景（8 种天气 + 昼夜 + 后期辉光，移动端按设备画像自动选择画质档位）。
 
 ---
 
 ## 功能特性
 
-- **多方式定位**：支持城市搜索、GPS 定位、IP 自动定位（IPv4 / IPv6 兼容）。
+- **多方式定位**：支持城市搜索、IP 自动定位（IPv4 / IPv6 兼容；浏览器 GPS 定位尚未接入）。
 - **实时天气**：当前温度、体感温度、天气现象、风速、湿度、气压、紫外线等。
-- **空气质量 AQI**：PM2.5、PM10、NO₂、SO₂、O₃ 等污染物数据（需配置和风天气 Key）。
+- **空气质量 AQI**：PM2.5、PM10、NO₂、SO₂、O₃ 等污染物数据；Open-Meteo 免 Key 提供基础 AQI，配置和风天气 Key 后可获得更完整的数据。
 - **24 小时预报**：逐小时温度、天气、降水概率、风速。
 - **7 天预报**：每日最高 / 最低温度、天气、降水概率、日出日落。
-- **动态天气背景**：基于 **WebGL（Three.js）** 的小米天气级沉浸式动画，包含：
+- **动态天气背景**：基于 **WebGL（Three.js）** 的沉浸式动画，包含：
   - **god rays 体积光** + 双层光晕 + 大气散射（晴天）
   - **分层视差云**（4 层深度分布 + 闪电时云层瞬时照亮）
   - **真实雨滴** + 落地飞溅 + 地面水膜反射（雨天）
@@ -21,12 +19,14 @@
   - **体积雾** + fbm 噪声流动 + 雾/霾色彩切换（雾/霾）
   - **闪电分形** + 整屏闪光 + 二次闪 + 云层照亮（雷暴）
   - **昼夜主题** + 颜色插值的平滑天气过渡
-  - 后期处理：UnrealBloomPass 辉光 + 自定义景深/色调/暗角
+  - 后期处理：UnrealBloomPass 辉光 + 色调分级/暗角（低画质档位自动关闭 Bloom）
   - **降级机制**：WebGL 不可用时自动回退到 Canvas 2D 粒子动画
+- **移动端画质档位**：按 GPU 型号 / 核心数 / 内存 / DPR 初选 `high/medium/low`，运行时按实测帧率升降级；降级顺序为分辨率 → Bloom → 云层 → 粒子。
+- **无障碍基础**：`aria-live` 结果播报、搜索历史键盘可操作（↑/↓/Enter）、焦点可见样式、正文对比度达到 WCAG AA。
 - **自适应主题**：根据天气状态自动切换晴天、多云、雨天、雪天、雷暴、雾霾等主题。
 - **搜索历史**：本地存储最近搜索城市，最多 8 条，支持一键清空。
 - **随机背景图**：可切换 Bing / 随机风景背景。
-- **PWA 友好**：支持 `apple-mobile-web-app`、theme-color、viewport-fit 等移动端适配。
+- **移动端适配**：`apple-mobile-web-app`、theme-color、viewport-fit、safe-area 适配。注意：这不是完整 PWA（未提供 manifest / service worker）。
 
 ---
 
@@ -34,9 +34,7 @@
 
 - **纯前端**：HTML5 + CSS3（自定义属性 / 玻璃拟态）+ 原生 JavaScript（ES6+）
 - **动画**：**WebGL（Three.js）** 主渲染 + Canvas 2D 粒子降级方案 + CSS 动画
-- **跨平台打包**：
-  - **Web**：静态文件 + server.js 代理
-  - **Android**：Capacitor 6（WebView 承载 + 原生能力桥接）
+- **部署**：静态文件 + server.js 代理（自建服务器）/ EdgeOne Pages 边缘函数
 - **天气数据源**：
   - [Open-Meteo](https://open-meteo.com/)：全球天气，免 API Key，作为默认兜底。
   - [高德地图 Web 服务](https://lbs.amap.com/)：中国地区地理编码 / 天气 / IP 定位。
@@ -52,15 +50,17 @@
 ```
 .
 ├── index.html              # 主页面（HTML + CSS + 业务逻辑）
-├── weather-renderer.js    # WebGL 渲染器（Three.js，小米天气级动画）
-├── mobile-bridge.js       # Capacitor 移动端原生能力桥接
-├── server.js              # 代理服务器：托管静态文件 + 代理上游 API（隐藏 Key）
+├── weather-renderer.js    # WebGL 渲染器（Three.js，画质档位 + 自适应降级）
+├── server.js              # 代理服务器：托管静态文件 + 代理上游 API（白名单/限流/gzip）
 ├── build.js               # 构建脚本：根据环境变量生成 config.js（仅含布尔标志）
-├── capacitor.config.json  # Capacitor Android 配置
+├── copy-vendor.js         # 只拷贝渲染器实际依赖的 Three.js 子集到 vendor/
+├── edge-functions/        # EdgeOne 边缘函数（与 server.js 同路由表）
+├── docs/                  # 项目评估与改造记录
+├── LICENSE                # MIT
 ├── edgeone.json           # EdgeOne Pages 部署配置
-├── package.json           # 项目脚本定义（含 Web/Android 命令）
+├── package.json           # 项目脚本定义
 ├── .env.example           # 环境变量模板
-├── .gitignore             # Git 忽略规则
+├── .gitignore             # Git 忽略规则（.env、config.js、vendor/ 均不入库）
 └── README.md              # 本文件
 ```
 
@@ -93,6 +93,21 @@
 
 > Open-Meteo、ipify 等免 Key 公开 API 仍由前端直接访问。
 
+代理侧另外做了三件事（两套实现一致）：
+
+- **路径白名单**：只放行前端真正用到的上游路径（高德 `v3/ip|geocode|weatherInfo`、和风 `v2/city/lookup` 与 `v7/weather|air`、IPnews `api/v1/json/*`），其余返回 403，避免被当成通用中继刷额度；
+- **Origin 校验 + 限流**：带 `Origin` 且与站点不同源时拒绝；Node 版按客户端 IP 每分钟 90 次限流（429 + `Retry-After`）；
+- **静态目录防泄露**：任何点开头的路径段与 `node_modules/` 一律 404；文本资源支持 gzip 与长缓存。
+
+### ⚠️ 密钥泄露应急（如果你是从旧版本升级）
+
+如果这个仓库曾经把 Key 写进过前端（旧版 `build.js` 会生成含真实 Key 的 `config.js`，旧分支也提交过明文 Key），**请把当前 Key 视为已泄露**：
+
+1. 到高德 / 和风 / IPnews 控制台**重新生成 Key**，旧的直接删除；
+2. 新 Key 只写进 `.env` 或平台环境变量，不要提交；
+3. 在高德控制台配置**域名白名单与配额上限**；
+4. 若旧提交仍在公开仓库里，用 `git filter-repo` 清理并强推，或至少确认这些提交已不可达（本仓库已清理掉旧的 `origin/main` 引用）。
+
 ---
 
 ## 快速开始
@@ -122,6 +137,7 @@ cp .env.example .env
 | `PORT` | 代理服务器端口，默认 8787 | 可选 |
 | `HOST` | 代理服务器监听地址，默认 0.0.0.0 | 可选 |
 | `API_BASE` | 前端访问代理的基地址，默认空（同源） | 可选 |
+| `ALLOWED_ORIGINS` | 跨域部署白名单（逗号分隔完整 Origin），仅"方式 B"需要 | 可选 |
 
 ### 3. 本地预览（推荐：代理模式）
 
@@ -209,7 +225,7 @@ server {
 
    生成的 `config.js` 会包含 `API_BASE: 'https://api.your-domain.com'`，前端请求会拼成 `https://api.your-domain.com/api/amap/...`。
 
-2. **代理侧**：在另一台服务器上运行 `server.js`，配置好 `.env` 与 CORS 即可（`server.js` 已默认开启 `Access-Control-Allow-Origin: *`）。
+2. **代理侧**：在另一台服务器上运行 `server.js`，并在 `.env` 中设置 `ALLOWED_ORIGINS` 为前端的完整 Origin（如 `https://weather.example.com`）。代理默认只接受同源请求，只把 *.example.com 之类通配留给平台层，不在这里放开；响应会按请求 Origin 回显 `Access-Control-Allow-Origin`。
 
 ### 方式 C：纯静态部署（不再使用代理）
 
@@ -319,7 +335,7 @@ CLI 会读取本地 `.env` 注入到 `context.env`，行为与线上一致。默
 
 #### 安全与限制说明
 
-- **CORS**：边缘函数已在所有响应中附加 `Access-Control-Allow-Origin: *`，跨域调用可直接使用
+- **CORS**：边缘函数对通过 Origin 校验的请求附加 `Access-Control-Allow-Origin: *`；异源请求在业务逻辑前就被 403 拒绝，因此 `*` 不会放开未授权站点（如确需跨域，请在边缘函数环境变量里配置 `ALLOWED_ORIGINS`）
 - **超时**：单次上游请求超时 10s（通过 EdgeOne 特有的 `eo.timeoutSetting` 配置）；EdgeOne 边缘函数单次执行 CPU 时间限制 200ms（不含 I/O 等待）
 - **CPU 限制**：边缘函数单次执行 CPU 时间片 200ms，本项目代理逻辑远低于此限制
 - **代码包大小**：单个函数代码包 ≤ 5MB，本文件远低于此限制
@@ -353,71 +369,21 @@ CLI 会读取本地 `.env` 注入到 `context.env`，行为与线上一致。默
 ## 浏览器支持
 
 - Chrome / Edge / Firefox / Safari 最新版（需支持 WebGL 2）
-- 支持移动端浏览器与 PWA 添加到主屏
-- 尊重 `prefers-reduced-motion` 媒体查询，减少动态效果
+- 支持移动端浏览器（可"添加到主屏"，但未实现 manifest / service worker）
+- 尊重 `prefers-reduced-motion`：Canvas 2D 路径停止动画，WebGL 路径切到低画质 + 20fps + 动画减速
 - WebGL 不可用时自动降级为 Canvas 2D 粒子动画
-
----
-
-## Android 应用（Capacitor）
-
-将 Web 版本打包为 Android 原生应用，使用 WebView 承载，并桥接原生能力。
-
-### 1. 安装依赖 + 添加 Android 平台
-
-```bash
-npm install
-npx cap add android
-```
-
-### 2. 同步 Web 资源到 Android 工程
-
-每次修改 `index.html` / `weather-renderer.js` / `mobile-bridge.js` 后，都需要重新同步：
-
-```bash
-npm run cap:sync
-```
-
-### 3. 在 Android Studio 中打开
-
-```bash
-npm run cap:open:android
-```
-
-然后在 Android Studio 中点击 ▶ 运行到设备/模拟器，或 Build → Generate Signed APK 生成发布包。
-
-### 4. Capacitor 配置说明
-
-`capacitor.config.json` 关键配置：
-
-| 字段 | 值 | 说明 |
-|---|---|---|
-| `appId` | `com.skyweather.app` | Android 包名 |
-| `appName` | `SkyWeather` | 应用显示名 |
-| `webDir` | `.` | Web 资源根目录（即 `index.html` 所在位置） |
-| `server.androidScheme` | `https` | 使用 HTTPS scheme（CORS 友好） |
-| `StatusBar.overlaysWebView` | `true` | 状态栏沉浸式覆盖 |
-
-### 5. 原生能力桥接
-
-`mobile-bridge.js` 在 Capacitor 环境下自动启用：
-- **StatusBar**：深色主题，沉浸式覆盖 WebView
-- **SplashScreen**：启动后淡出
-- **Geolocation**：用 Capacitor 原生定位替代浏览器定位（权限弹窗更友好）
-- **App.backButton**：Android 返回键映射到浏览器历史后退
-
-### 6. 注意事项
-
-- Capacitor WebView 需要 Android 5.0+（API 21+）
-- WebGL 在 Android WebView 中支持良好（Chromium 内核）
-- 如需离线运行，需把 `importmap` 中的 Three.js CDN 替换为本地路径
-- 发布到应用商店需要签名，参考 [Capacitor 签名指南](https://capacitorjs.com/docs/android/deploying-to-google-play)
+- 标签页切到后台时暂停渲染；页面卸载时释放 GPU 资源（`dispose()`）
 
 ---
 
 ## 许可证
 
-本项目仅用于学习与交流，请遵守各数据提供方的使用条款。
+代码以 [MIT License](LICENSE) 发布（Copyright (c) 2026 zzrliu8421）。第三方数据与素材仍适用各自条款，请遵守：
+
+- Open-Meteo 数据为 CC-BY，且免费额度限非商业用途；
+- 高德 / 和风 / IPnews 需遵守各自开放平台协议与配额；
+- Three.js 为 MIT，`vendor/` 中保留其许可声明；
+- 页面"随机背景图"来自第三方接口，版权未明确，公开发布或参赛展示前建议替换为 CC0 / 自摄素材。
 
 ---
 

@@ -13,6 +13,13 @@
  *   2. 按前端请求路径分流，附加对应 Key 后用 fetch 转发到上游
  *   3. 透传上游响应（含 Content-Type / Cache-Control），自动附加 CORS 头
  *
+ * 安全加固（与 server.js 路由表一致）：
+ *   - 上游路径白名单：只放行前端实际调用的固定路径，其余返回 403 path not allowed
+ *   - Origin 校验：带 Origin 头且其 host 与请求 Host 不一致时返回 403
+ *   - 限流：若运行时能拿到客户端 IP（X-Forwarded-For / X-Real-IP），每 IP 每分钟 90 次，
+ *     超限 429 + Retry-After；拿不到客户端 IP 时跳过限流（边缘侧以平台 WAF 为主）
+ *   - 安全响应头：X-Content-Type-Options: nosniff
+ *
  * 路由表（与 server.js 保持一致）：
  *   GET /api/status               → 返回服务端已配置的 provider 布尔值
  *   GET /api/amap/<path>          → https://restapi.amap.com/<path>?<query>&key=AMAP_KEY
@@ -50,6 +57,41 @@ const KEY_ENV = {
     qweather_geo: 'QWEATHER_KEY',
     qweather_dev: 'QWEATHER_KEY',
     ipnews: 'IPNEWS_KEY',
+};
+
+// ===================== 安全策略 =====================
+
+// 上游路径白名单：只放行前端实际使用的路径（防止代理被当作开放跳板刷第三方额度）
+const ALLOWED_PATHS = {
+    amap: new Set([
+        '/v3/ip',
+        '/v3/geocode/geo',
+        '/v3/geocode/regeo',
+        '/v3/weather/weatherInfo',
+    ]),
+    qweather_geo: new Set([
+        '/v2/city/lookup',
+    ]),
+    qweather_dev: new Set([
+        '/v7/weather/now',
+        '/v7/weather/24h',
+        '/v7/weather/7d',
+        '/v7/air/now',
+    ]),
+};
+
+// ipnews 路径形如 api/v1/json/<ip>，只允许 IP 字符（十六进制、点、冒号）
+const IPNEWS_PATH_RE = /^api\/v1\/json\/[0-9a-fA-F:.]+$/;
+const IPNEWS_MAX_PATTERN_LENGTH = 128;
+
+// 限流：每客户端 IP 每分钟 90 次（边缘实例内存计数，尽力而为）
+const RATE_LIMIT_MAX = 90;
+const RATE_LIMIT_WINDOW_MS = 60 * 1000;
+const rateBuckets = new Map();
+
+// 安全响应头
+const SECURITY_HEADERS = {
+    'X-Content-Type-Options': 'nosniff',
 };
 
 // 上游请求超时（毫秒）—— EdgeOne fetch 支持的 eo.timeoutSetting
@@ -113,38 +155,142 @@ async function cachePut(key, res) {
 }
 
 // ===================== 工具函数 =====================
-function json(status, obj) {
-    return new Response(JSON.stringify(obj), {
-        status,
-        headers: {
-            'Content-Type': 'application/json; charset=utf-8',
-            'Cache-Control': 'no-store',
-            'Access-Control-Allow-Origin': '*',
-            'Access-Control-Allow-Methods': 'GET, OPTIONS',
-            'Access-Control-Allow-Headers': 'Content-Type',
-        },
+
+/**
+ * 返回 JSON 响应，统一附加安全头
+ */
+function json(status, obj, extraHeaders) {
+    const headers = new Headers({
+        'Content-Type': 'application/json; charset=utf-8',
+        'Cache-Control': 'no-store',
+        'Access-Control-Allow-Origin': '*',
+        'Access-Control-Allow-Methods': 'GET, OPTIONS',
+        'Access-Control-Allow-Headers': 'Content-Type',
     });
+    if (extraHeaders) {
+        for (const [k, v] of Object.entries(extraHeaders)) headers.set(k, v);
+    }
+    for (const [k, v] of Object.entries(SECURITY_HEADERS)) headers.set(k, v);
+    return new Response(JSON.stringify(obj), { status, headers });
+}
+
+/**
+ * Origin 校验：无 Origin 放行（非浏览器/服务端调用），有 Origin 则必须与请求 Host 同源
+ */
+function isOriginAllowed(request, env) {
+    const origin = request.headers.get('origin');
+    if (!origin) return true;
+    const allowed = String((env && env.ALLOWED_ORIGINS) || '')
+        .split(',')
+        .map(s => s.trim().toLowerCase())
+        .filter(Boolean);
+    if (allowed.includes(origin.toLowerCase())) return true;
+    let originHost = null;
+    let requestHost = null;
+    try { originHost = new URL(origin).host.toLowerCase(); } catch { originHost = null; }
+    try { requestHost = new URL(request.url).host.toLowerCase(); } catch { requestHost = null; }
+    return !!originHost && !!requestHost && originHost === requestHost;
+}
+
+/**
+ * 把 IPv4-mapped / 带 zone 的地址归一化；IPv6 折叠到 /64，避免单用户占满多个计数键
+ */
+function normalizeClientIp(rawIp) {
+    if (!rawIp) return null;
+    let ip = String(rawIp).trim();
+    const mapped = ip.match(/^::ffff:(\d{1,3}(?:\.\d{1,3}){3})$/i);
+    if (mapped) ip = mapped[1];
+    const zoneIndex = ip.indexOf('%');
+    if (zoneIndex !== -1) ip = ip.slice(0, zoneIndex);
+    if (!ip.includes(':')) return ip;
+    const groups = expandIPv6(ip);
+    if (!groups) return ip;
+    return groups.slice(0, 4).join(':') + '::/64';
+}
+
+function expandIPv6(ip) {
+    if (ip === '::') return ['0', '0', '0', '0', '0', '0', '0', '0'];
+    const doubleIdx = ip.indexOf('::');
+    const leftRaw = doubleIdx === -1 ? ip : ip.slice(0, doubleIdx);
+    const rightRaw = doubleIdx === -1 ? '' : ip.slice(doubleIdx + 2);
+    const left = leftRaw ? leftRaw.split(':') : [];
+    const right = rightRaw ? rightRaw.split(':') : [];
+    if (left.some(g => !/^[0-9a-fA-F]{1,4}$/.test(g))) return null;
+    if (right.some(g => !/^[0-9a-fA-F]{1,4}$/.test(g))) return null;
+    if (doubleIdx === -1) {
+        if (left.length !== 8) return null;
+        return left;
+    }
+    const missing = 8 - left.length - right.length;
+    if (missing < 0) return null;
+    return left.concat(new Array(missing).fill('0'), right).map(g => g.toLowerCase());
+}
+
+/**
+ * 尽力获取客户端 IP：Edge 运行时可能不提供，拿不到则返回 null（跳过限流）
+ */
+function getClientIp(request) {
+    const forwarded = request.headers.get('x-forwarded-for');
+    if (forwarded) {
+        const first = forwarded.split(',')[0].trim();
+        if (first) return first;
+    }
+    const realIp = request.headers.get('x-real-ip');
+    if (realIp && realIp.trim()) return realIp.trim();
+    return null;
+}
+
+/**
+ * 固定窗口限流：返回 { allowed, retryAfter }
+ */
+function checkRateLimit(request) {
+    const ip = normalizeClientIp(getClientIp(request));
+    if (!ip) return { allowed: true };
+    const now = Date.now();
+    // 清理过期计数，防止内存无限增长
+    if (rateBuckets.size > 10000) {
+        for (const [key, bucket] of rateBuckets) {
+            if (now - bucket.windowStart >= RATE_LIMIT_WINDOW_MS * 2) rateBuckets.delete(key);
+        }
+    }
+    let bucket = rateBuckets.get(ip);
+    if (!bucket || now - bucket.windowStart >= RATE_LIMIT_WINDOW_MS) {
+        bucket = { windowStart: now, count: 0 };
+        rateBuckets.set(ip, bucket);
+    }
+    bucket.count += 1;
+    if (bucket.count <= RATE_LIMIT_MAX) return { allowed: true };
+    const retryAfter = Math.max(1, Math.ceil((bucket.windowStart + RATE_LIMIT_WINDOW_MS - now) / 1000));
+    return { allowed: false, retryAfter };
 }
 
 /**
  * 把前端路径映射为上游配置
  * @param {string} pathname 例如 /api/amap/v3/ip
- * @returns {{type:'status'} | {type:'proxy', upstream:string, sub:string} | null}
+ * @returns {{type:'status'} | {type:'forbidden'} | {type:'proxy', upstream:string, sub:string} | null}
  */
 function matchRoute(pathname) {
     if (pathname === '/api/status') return { type: 'status' };
 
     if (pathname.startsWith('/api/amap/')) {
-        return { type: 'proxy', upstream: 'amap', sub: pathname.slice('/api/amap/'.length) };
+        const sub = pathname.slice('/api/amap/'.length);
+        if (!ALLOWED_PATHS.amap.has('/' + sub)) return { type: 'forbidden' };
+        return { type: 'proxy', upstream: 'amap', sub };
     }
     if (pathname.startsWith('/api/qweather/geo/')) {
-        return { type: 'proxy', upstream: 'qweather_geo', sub: pathname.slice('/api/qweather/geo/'.length) };
+        const sub = pathname.slice('/api/qweather/geo/'.length);
+        if (!ALLOWED_PATHS.qweather_geo.has('/' + sub)) return { type: 'forbidden' };
+        return { type: 'proxy', upstream: 'qweather_geo', sub };
     }
     if (pathname.startsWith('/api/qweather/dev/')) {
-        return { type: 'proxy', upstream: 'qweather_dev', sub: pathname.slice('/api/qweather/dev/'.length) };
+        const sub = pathname.slice('/api/qweather/dev/'.length);
+        if (!ALLOWED_PATHS.qweather_dev.has('/' + sub)) return { type: 'forbidden' };
+        return { type: 'proxy', upstream: 'qweather_dev', sub };
     }
     if (pathname.startsWith('/api/ipnews/')) {
-        return { type: 'proxy', upstream: 'ipnews', sub: pathname.slice('/api/ipnews/'.length) };
+        const sub = pathname.slice('/api/ipnews/'.length);
+        if (sub.length > IPNEWS_MAX_PATTERN_LENGTH || !IPNEWS_PATH_RE.test(sub)) return { type: 'forbidden' };
+        return { type: 'proxy', upstream: 'ipnews', sub };
     }
     return null;
 }
@@ -169,6 +315,11 @@ async function handleGet(context) {
 
     if (!matched) {
         return json(404, { error: 'api not found' });
+    }
+
+    // 路径不在白名单内 → 403
+    if (matched.type === 'forbidden') {
+        return json(403, { error: 'path not allowed' });
     }
 
     // /api/status —— 返回服务端已配置的 provider（不暴露 Key）
@@ -197,12 +348,13 @@ async function handleGet(context) {
     if (canCache) {
         const cached = await cacheGet(cKey);
         if (cached) {
-            // 命中缓存：附加 CORS 头后透传
+            // 命中缓存：附加 CORS / 安全头后透传
             const headers = new Headers(cached.headers);
             headers.set('Access-Control-Allow-Origin', '*');
             headers.set('Access-Control-Allow-Methods', 'GET, OPTIONS');
             headers.set('Access-Control-Allow-Headers', 'Content-Type');
             headers.set('X-Edge-Cache', 'HIT');
+            for (const [k, v] of Object.entries(SECURITY_HEADERS)) headers.set(k, v);
             return new Response(cached.body, { status: cached.status, headers });
         }
     }
@@ -224,7 +376,7 @@ async function handleGet(context) {
             },
         });
 
-        // 透传响应 body + 关键 header，附加 CORS
+        // 透传响应 body + 关键 header，附加 CORS / 安全头
         const headers = new Headers();
         const contentType = upstreamRes.headers.get('content-type');
         const cacheControl = upstreamRes.headers.get('cache-control');
@@ -234,6 +386,7 @@ async function handleGet(context) {
         headers.set('Access-Control-Allow-Methods', 'GET, OPTIONS');
         headers.set('Access-Control-Allow-Headers', 'Content-Type');
         headers.set('X-Edge-Cache', 'MISS');
+        for (const [k, v] of Object.entries(SECURITY_HEADERS)) headers.set(k, v);
 
         const response = new Response(upstreamRes.body, {
             status: upstreamRes.status,
@@ -261,7 +414,13 @@ async function handleGet(context) {
 //   导致方法特定的 handler 永远不被分发（线上曾因此导致全部接口返回 405）。
 //   因此这里不再拆分 onRequestGet / onRequestOptions，改为在 onRequest 内部按 method 分发。
 export default async function onRequest(context) {
-    const method = context.request.method.toUpperCase();
+    const { request } = context;
+    const method = request.method.toUpperCase();
+
+    // Origin 校验：同源 / 白名单放行；无 Origin 的非浏览器请求放行；不一致 403
+    if (!isOriginAllowed(request, context.env)) {
+        return json(403, { error: 'origin not allowed' });
+    }
 
     // OPTIONS → CORS 预检
     if (method === 'OPTIONS') {
@@ -272,12 +431,19 @@ export default async function onRequest(context) {
                 'Access-Control-Allow-Methods': 'GET, OPTIONS',
                 'Access-Control-Allow-Headers': 'Content-Type',
                 'Access-Control-Max-Age': '86400',
+                'X-Content-Type-Options': 'nosniff',
             },
         });
     }
 
-    // GET → 主处理逻辑
+    // GET → 主处理逻辑（带尽力而为的 IP 限流）
     if (method === 'GET') {
+        const limit = checkRateLimit(request);
+        if (!limit.allowed) {
+            return json(429, { error: 'too many requests' }, {
+                'Retry-After': String(limit.retryAfter),
+            });
+        }
         return handleGet(context);
     }
 

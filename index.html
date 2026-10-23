@@ -44,8 +44,10 @@
 
             --text-primary: #f8fafc;
             --text-secondary: rgba(248, 250, 252, 0.72);
-            --text-tertiary: rgba(248, 250, 252, 0.50);
-            --text-muted: rgba(248, 250, 252, 0.32);
+            /* 对比度：原 0.50/0.32 在深色底上约 3.9:1 / 2.5:1，未达 WCAG AA，
+               提升到 0.66/0.52 后约 6.4:1 / 5.4:1 */
+            --text-tertiary: rgba(248, 250, 252, 0.66);
+            --text-muted: rgba(248, 250, 252, 0.52);
 
             --accent: #38bdf8;
             --accent-2: #818cf8;
@@ -1643,6 +1645,9 @@
             /* 移动端减少 backdrop-filter 开销 */
             .glass { backdrop-filter: blur(16px) saturate(130%); -webkit-backdrop-filter: blur(16px) saturate(130%); }
             .search-input { backdrop-filter: blur(12px) saturate(130%); -webkit-backdrop-filter: blur(12px) saturate(130%); }
+            /* 下拉/提示/徽章叠在持续重绘的 canvas 上，实时模糊的每帧合成开销不划算 */
+            .history { backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px); }
+            .toast, .badge { backdrop-filter: none; -webkit-backdrop-filter: none; }
             /* 生活建议移动端 */
             .life-tips-grid { grid-template-columns: repeat(2, 1fr); gap: var(--space-2); }
             .life-tip-card { padding: var(--space-3); }
@@ -1764,7 +1769,7 @@
         </button>
     </section>
 
-    <main class="main-grid" id="weather-display"></main>
+    <main class="main-grid" id="weather-display" role="status" aria-live="polite" aria-busy="false"></main>
 
     <footer class="footer">
         <p>© 2026 <a href="https://sylv.top/" target="_blank" rel="noopener noreferrer" style="font-weight:700">Sylvy</a>. All rights reserved.</p>
@@ -1775,8 +1780,6 @@
 <div class="toast-stack" id="toast-stack" aria-live="polite"></div>
 
 <script src="config.js"></script>
-<!-- 移动端 Capacitor 桥接（仅 Capacitor 环境生效，Web 自动忽略） -->
-<script src="mobile-bridge.js"></script>
 <script>
     // ===================== 稳定视口高度 =====================
     // 为背景层提供固定高度，避免地址栏显示/隐藏时百分比渐变被拉伸。
@@ -2285,8 +2288,8 @@
         }
     }
     updateDayNight();
-    // 每 5 分钟刷新一次昼夜状态
-    setInterval(updateDayNight, 5 * 60 * 1000);
+    // 每 5 分钟刷新一次昼夜状态（句柄保存下来，页面卸载时清理）
+    const _dayNightTimer = setInterval(updateDayNight, 5 * 60 * 1000);
 
     // ---- 水滴溅射特效（多向喷射 + 高光点）----
     class Splash {
@@ -3730,7 +3733,7 @@
         historyBox.innerHTML = `
             <div class="history-header"><span>最近搜索</span><button class="history-clear" id="history-clear">清空</button></div>
             ${h.map(c => `
-                <div class="history-item" data-city="${escapeHTML(c)}" role="option" tabindex="0">
+                <div class="history-item" data-city="${escapeHTML(c)}" role="option" aria-selected="false" tabindex="0">
                     <span class="h-label">${ICONS.mapPin}<span>${escapeHTML(c)}</span></span>
                     <button class="h-remove" data-city="${escapeHTML(c)}" aria-label="删除">${ICONS.trash}</button>
                 </div>
@@ -4547,6 +4550,7 @@
     }
 
     function showLoading() {
+        weatherDisplay.setAttribute('aria-busy', 'true');
         weatherDisplay.innerHTML = `
             <div class="glass current-card skeleton-card">
                 <div style="display:flex;gap:1rem;align-items:center">
@@ -4571,19 +4575,21 @@
     }
 
     function showError(msg) {
+        weatherDisplay.setAttribute('aria-busy', 'false');
         weatherDisplay.innerHTML = `
             <div class="glass current-card" style="grid-column:1/-1">
-                <div class="error">
+                <div class="error" role="alert">
                     <div class="err-icon">${ICONS.alert}</div>
                     <h3>出错了</h3>
                     <p>${escapeHTML(msg)}</p>
-                    <button onclick="window.retryLast()">重新尝试</button>
+                    <button type="button" data-retry>重新尝试</button>
                 </div>
             </div>
         `;
     }
 
     function showEmpty() {
+        weatherDisplay.setAttribute('aria-busy', 'false');
         weatherDisplay.innerHTML = `
             <div class="glass current-card" style="grid-column:1/-1">
                 <div class="empty">
@@ -5015,6 +5021,7 @@
                 ${renderDaily(data.daily)}
             </div>
         `;
+        weatherDisplay.setAttribute('aria-busy', 'false');
     }
 
     function updateMeta(data) {
@@ -5045,7 +5052,9 @@
         const myController = new AbortController();
         _activeAbortController = myController;
         const myToken = ++_requestToken;
-        if (isLoading) return;
+        // 先取消旧请求、再由本次请求接管 isLoading（token 机制负责防止陈旧响应）。
+        // 注意：不能在此处提前 return，否则第一次请求的 finally 会因 token 不匹配
+        // 而不复位 isLoading，导致页面永久卡在骨架屏（双击刷新即可复现）。
         isLoading = true;
         showLoading();
         try {
@@ -5085,7 +5094,9 @@
         const myController = new AbortController();
         _activeAbortController = myController;
         const myToken = ++_requestToken;
-        if (isLoading) return;
+        // 先取消旧请求、再由本次请求接管 isLoading（token 机制负责防止陈旧响应）。
+        // 注意：不能在此处提前 return，否则第一次请求的 finally 会因 token 不匹配
+        // 而不复位 isLoading，导致页面永久卡在骨架屏（双击刷新即可复现）。
         isLoading = true;
         clearTimeout(searchDebounceTimer);
         cityInput.value = city;
@@ -5138,6 +5149,14 @@
             historyBox.classList.remove('show');
             cityInput.blur();
         }
+        if (e.key === 'ArrowDown') {
+            const first = historyBox.querySelector('.history-item');
+            if (first) {
+                e.preventDefault();
+                historyBox.classList.add('show');
+                first.focus();
+            }
+        }
         if (e.key === '/') {
             const tag = e.target;
             if (tag.selectionStart === 0 && tag.selectionEnd === tag.value.length) {
@@ -5155,7 +5174,10 @@
         cityInput.select();
     });
     // 使用 mousedown 而非 click，避免 blur 先触发导致下拉框消失而无法点击
-    cityInput.addEventListener('blur', () => setTimeout(() => historyBox.classList.remove('show'), 200));
+    cityInput.addEventListener('blur', () => setTimeout(() => {
+        // 焦点若已进入下拉列表（键盘导航），不要关闭
+        if (!historyBox.contains(document.activeElement)) historyBox.classList.remove('show');
+    }, 200));
 
     document.addEventListener('click', (e) => {
         if (!e.target.closest('.search-box')) historyBox.classList.remove('show');
@@ -5202,16 +5224,47 @@
         const item = e.target.closest('.history-item');
         if (item) loadWeather(item.dataset.city);
     });
+    // 键盘可达性：方向键在历史列表中移动，Enter/Space 选择，Escape 关闭
     historyBox.addEventListener('keydown', (e) => {
-        if (e.key === 'Enter') {
-            const item = e.target.closest('.history-item');
-            if (item) loadWeather(item.dataset.city);
+        const items = Array.from(historyBox.querySelectorAll('.history-item'));
+        const current = e.target.closest('.history-item');
+        const idx = current ? items.indexOf(current) : -1;
+        if (e.key === 'ArrowDown') {
+            e.preventDefault();
+            const next = items[Math.min(items.length - 1, idx + 1)] || items[0];
+            if (next) next.focus();
+        } else if (e.key === 'ArrowUp') {
+            e.preventDefault();
+            if (idx <= 0) { cityInput.focus(); return; }
+            items[idx - 1].focus();
+        } else if (e.key === 'Enter' || e.key === ' ') {
+            if (current) { e.preventDefault(); loadWeather(current.dataset.city); }
+        } else if (e.key === 'Escape') {
+            historyBox.classList.remove('show');
+            cityInput.focus();
         }
+    });
+    // 焦点进入列表项时同步 aria-selected，并保持下拉可见
+    historyBox.addEventListener('focusin', (e) => {
+        const item = e.target.closest('.history-item');
+        if (!item) return;
+        historyBox.querySelectorAll('.history-item').forEach(el => {
+            el.setAttribute('aria-selected', String(el === item));
+        });
+        item.scrollIntoView({ block: 'nearest' });
+        historyBox.classList.add('show');
     });
 
     weatherDisplay.addEventListener('click', (e) => {
         const cityBtn = e.target.closest('.quick-city');
         if (cityBtn) loadWeather(cityBtn.dataset.city);
+        // 错误重试改为事件委托，去掉内联 onclick（CSP 友好、可被读屏识别）
+        const retryBtn = e.target.closest('[data-retry]');
+        if (retryBtn) {
+            retryBtn.disabled = true;
+            if (lastCity) loadWeather(lastCity);
+            else loadByIP();
+        }
     });
 
     // ===================== 小时预报滚动增强 =====================
@@ -5262,6 +5315,32 @@
         document.addEventListener('mouseup', endDrag);
     })();
 
+    // ===================== 生命周期清理 =====================
+    // 页面真正卸载（非 bfcache）时释放定时器 / 动画帧 / WebGL 资源；
+    // 进入 bfcache 时只暂停，恢复时继续，避免返回页面后背景冻结。
+    let _pageCleaned = false;
+    function cleanupPage() {
+        if (_pageCleaned) return;
+        _pageCleaned = true;
+        clearInterval(_dayNightTimer);
+        clearTimeout(searchDebounceTimer);
+        if (animationId) { cancelAnimationFrame(animationId); animationId = null; }
+        if (lightningTimer) { clearTimeout(lightningTimer); lightningTimer = null; }
+        if (window.skyRenderer && typeof window.skyRenderer.dispose === 'function') {
+            try { window.skyRenderer.dispose(); } catch (e) {}
+        }
+    }
+    window.addEventListener('pagehide', (e) => {
+        if (e.persisted) {
+            if (window.skyRenderer) window.skyRenderer.setPaused(true);
+            return;
+        }
+        cleanupPage();
+    });
+    window.addEventListener('pageshow', (e) => {
+        if (e.persisted && window.skyRenderer) window.skyRenderer.setPaused(false);
+    });
+
     // ===================== 初始化 =====================
     (async function init() {
         renderHistory();
@@ -5279,10 +5358,14 @@
     try {
         const { SkyWeatherRenderer } = await import('./weather-renderer.js');
         const canvas = document.getElementById('weather-canvas-webgl');
-        // 检测 WebGL 支持
-        const testCtx = canvas.getContext('webgl2') || canvas.getContext('webgl');
+        // 用一次性离屏 canvas 探测 WebGL 支持。
+        // 不能在真实 canvas 上探测再 loseContext()：同一 canvas 的 getContext() 会返回
+        // 同一个已丢失的上下文（isContextLost=true, precision=null），three.js 随后创建
+        // WebGLRenderer 必然抛 "Cannot read properties of null (reading 'precision')"，
+        // 导致永远静默回退到 Canvas 2D。实测 Chromium 下就是这个行为。
+        const probeCanvas = document.createElement('canvas');
+        const testCtx = probeCanvas.getContext('webgl2') || probeCanvas.getContext('webgl');
         if (testCtx) {
-            // 失去焦点时让 testCtx 释放，否则 SkyWeatherRenderer 初始化会失败
             const loseExt = testCtx.getExtension('WEBGL_lose_context');
             if (loseExt) loseExt.loseContext();
         }
@@ -5307,7 +5390,7 @@
             if (typeof currentAnim !== 'undefined' && currentAnim) {
                 renderer.setWeather(currentAnim, animIntensity, windSpeed);
             }
-            console.log('[SkyWeather WebGL] 渲染器初始化成功');
+            console.log('[SkyWeather WebGL] 渲染器初始化成功，画质档位: ' + renderer.tier + '（' + (renderer.quality && renderer.quality.label) + '）');
         } else {
             console.warn('[SkyWeather WebGL] 当前浏览器不支持 WebGL，使用 Canvas 2D');
         }

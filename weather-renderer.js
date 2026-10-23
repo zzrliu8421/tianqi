@@ -132,6 +132,17 @@ const NIGHT_THEMES = {
   haze: { top: new THREE.Color('#1c1917'), horizon: new THREE.Color('#292524'), sunColor: new THREE.Color('#fbbf24') }
 };
 
+// ===================== 画质档位 =====================
+// 帧率的主要开销并不在粒子数，而在填充率（分辨率 / Bloom）与大面积叠加的云层。
+// 因此降级顺序是：分辨率 → Bloom → 云层 → 粒子；恢复时反向。
+// 每个档位给出的是"预算"，实际生效值还会与设备 DPR 相乘。
+const QUALITY_TIERS = {
+  high:   { label: '高', resolutionScale: 1.0,  bloom: true,  cloudLayers: 4, rain: 1500, snow: 800, stars: 200, splashes: 200, dprCap: 2.0 },
+  medium: { label: '中', resolutionScale: 0.85, bloom: true,  cloudLayers: 3, rain: 900,  snow: 480, stars: 140, splashes: 120, dprCap: 1.75 },
+  low:    { label: '低', resolutionScale: 0.7,  bloom: false, cloudLayers: 2, rain: 500,  snow: 260, stars: 80,  splashes: 60,  dprCap: 1.5 }
+};
+const QUALITY_ORDER = ['low', 'medium', 'high'];
+
 // ===================== 主渲染器类 =====================
 export class SkyWeatherRenderer {
   constructor(canvas) {
@@ -190,13 +201,26 @@ export class SkyWeatherRenderer {
     this.nextLightningAt = 3 + Math.random() * 4;
     this.lightningFlash = 0; // 0-1 闪光强度
 
-    // FPS 自适应
+    // FPS 自适应：以"画质档位"为单位降级（分辨率 / Bloom / 云层 / 粒子），
+    // 而不是只裁雨雪粒子——后者对真正的瓶颈（填充率与 overdraw）几乎无效。
     this.fpsSamples = [];
     this.fpsLastCheck = 0;
-    this.dynamicScale = 1;
+    this.lastFps = 0;
+    this._lowFpsSeconds = 0;
+    this._highFpsSeconds = 0;
 
-    // reduced motion
-    this.reducedMotion = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    // 画质档位（init 时按设备画像选定，运行时按实测帧率升降）
+    this.tier = 'high';
+    this.quality = QUALITY_TIERS.high;
+
+    // reduced motion：WebGL 路径同样生效（低档 + 20fps + 动画减速），而非只关抗锯齿
+    this.reducedMotion = !!(window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches);
+    this.targetFps = this.reducedMotion ? 20 : 60;
+    this.motionFactor = this.reducedMotion ? 0.2 : 1;
+    this.paused = false;
+    this._lastFrameAt = 0;
+    this._visibleHandler = null;
+    this._pageHideHandler = null;
 
     // 当前活动效果列表（按天气类型启用）
     this.activeEffects = new Set(['sky', 'sun', 'stars']);
@@ -229,6 +253,11 @@ export class SkyWeatherRenderer {
       stencil: false,
       depth: true
     });
+    // 设备画像 → 初始画质档位（必须在建场景前确定，避免先按高配建再拆）
+    this.tier = this._detectTier();
+    this.quality = QUALITY_TIERS[this.tier];
+    this.dpr = this._targetPixelRatio();
+
     this.renderer.setPixelRatio(this.dpr);
     this.renderer.setSize(this.vpW, this.vpH, false);
     this.renderer.setClearColor(WEATHER_THEMES.sunny.top, 1);
@@ -257,10 +286,19 @@ export class SkyWeatherRenderer {
     // 后期处理
     this._buildComposer();
 
+    // 应用档位：分辨率、Bloom 开关、云层数、粒子数
+    this._applyQuality();
+
     // 应用初始天气
     this._applyWeatherVisibility('sunny');
 
     window.addEventListener('resize', this._boundResize);
+
+    // 标签页不可见时暂停渲染；页面卸载时释放 GPU 资源
+    this._visibleHandler = () => this.setPaused(!!document.hidden);
+    document.addEventListener('visibilitychange', this._visibleHandler);
+    this._pageHideHandler = () => this.dispose();
+    window.addEventListener('pagehide', this._pageHideHandler);
 
     this.running = true;
     this.clock.start();
@@ -285,12 +323,93 @@ export class SkyWeatherRenderer {
     );
     this.composer.addPass(this.bloomPass);
 
-    // 自定义景深 + 大气散射 + 颜色分级 Pass
+    // 颜色分级 + 暗角 Pass（注：不做真实景深，原 focalDepth/aperture 为未使用参数，已移除）
     this.skyPass = new ShaderPass(SkyWeatherShader);
-    this.skyPass.uniforms.focalDepth.value = 80;
-    this.skyPass.uniforms.aperture.value = 0.002;
-    this.skyPass.uniforms.focalLength.value = 30;
     this.composer.addPass(this.skyPass);
+  }
+
+  // -------------------- 画质档位 --------------------
+  // 设备画像：优先用 GPU 型号字符串，其次核数 / 内存 / 是否移动端。
+  _detectTier() {
+    const nav = window.navigator || {};
+    const ua = nav.userAgent || '';
+    const isMobile = /Android|iPhone|iPad|iPod|Mobile|HarmonyOS/i.test(ua);
+    const cores = nav.hardwareConcurrency || (isMobile ? 4 : 8);
+    const mem = nav.deviceMemory || (isMobile ? 4 : 8);
+    if (this.reducedMotion) return 'low';
+    if (!isMobile) return (cores >= 8 && mem >= 8) ? 'high' : 'medium';
+
+    let gpu = '';
+    try {
+      const gl = this.renderer.getContext();
+      const ext = gl.getExtension('WEBGL_debug_renderer_info');
+      if (ext) gpu = String(gl.getParameter(ext.UNMASKED_RENDERER_WEBGL) || '');
+    } catch (e) { /* 部分浏览器禁用调试扩展，忽略 */ }
+
+    const weakGpu = /Mali-4|Mali-T[0-9]|Adreno[^0-9]*[1-5][0-9]{2}|PowerVR|HD Graphics[^0-9]*[23][0-9]{3}/i.test(gpu);
+    const strongGpu = /Apple GPU|Adreno[^0-9]*[67][0-9]{2}|Mali-G[78][0-9]|Immortalis/i.test(gpu);
+    if (weakGpu || cores <= 4 || mem <= 3) return 'low';
+    if (strongGpu && cores >= 8 && (window.devicePixelRatio || 1) <= 3) return 'high';
+    return 'medium';
+  }
+
+  _targetPixelRatio() {
+    const q = this.quality || QUALITY_TIERS.high;
+    return Math.min(window.devicePixelRatio || 1, q.dprCap) * q.resolutionScale;
+  }
+
+  setQuality(tier) {
+    if (!QUALITY_TIERS[tier] || tier === this.tier) return;
+    this.tier = tier;
+    this.quality = QUALITY_TIERS[tier];
+    this._applyQuality();
+    console.info('[SkyWeather WebGL] 画质档位: ' + this.quality.label + ' (' + this.lastFps.toFixed(1) + ' fps)');
+  }
+
+  // 应用档位：分辨率 → Bloom → 云层 → 粒子
+  _applyQuality() {
+    const q = this.quality;
+    this.dpr = this._targetPixelRatio();
+    if (this.renderer) {
+      this.renderer.setPixelRatio(this.dpr);
+      this.renderer.setSize(this.vpW, this.vpH, false);
+    }
+    if (this.composer) {
+      this.composer.setPixelRatio(this.dpr);
+      this.composer.setSize(this.vpW, this.vpH);
+    }
+    // 云层：只显示前 N 层（层号越大越近、越贵，优先隐藏）
+    const cloudUd = this.layers.clouds && this.layers.clouds.userData;
+    if (cloudUd && Array.isArray(cloudUd.layers)) {
+      cloudUd.layers.forEach((l, i) => { l.group.visible = i < q.cloudLayers; });
+    }
+    this._setParticles('rain', q.rain);
+    this._setParticles('snow', q.snow);
+    this._setParticles('stars', q.stars);
+    this._setParticles('splashes', q.splashes);
+    for (const key of ['rain', 'snow', 'stars', 'splashes']) {
+      const layer = this.layers[key];
+      const uni = layer && layer.material && layer.material.uniforms;
+      if (uni && uni.uPixelRatio) uni.uPixelRatio.value = this.dpr;
+    }
+  }
+
+  _setParticles(key, count) {
+    const layer = this.layers[key];
+    if (!layer || !layer.geometry) return;
+    const pos = layer.geometry.getAttribute('position');
+    if (!pos) return;
+    layer.geometry.setDrawRange(0, Math.min(count, pos.count));
+  }
+
+  setPaused(paused) {
+    if (this.paused === paused) return;
+    this.paused = paused;
+    if (!paused) {
+      // 丢弃暂停期间累积的时间，避免恢复瞬间动画跳跃
+      this.clock.getDelta();
+      this._lastFrameAt = 0;
+    }
   }
 
   // -------------------- 天空盒 --------------------
@@ -1250,7 +1369,7 @@ export class SkyWeatherRenderer {
     if (w === this.vpW && h === this.vpH) return;
     this.vpW = w;
     this.vpH = h;
-    this.dpr = Math.min(window.devicePixelRatio || 1, 2);
+    this.dpr = this._targetPixelRatio();
     this.renderer.setPixelRatio(this.dpr);
     this.renderer.setSize(w, h, false);
     this.camera.aspect = w / h;
@@ -1262,25 +1381,56 @@ export class SkyWeatherRenderer {
   }
 
   dispose() {
+    if (this._disposed) return;
+    this._disposed = true;
     this.running = false;
     if (this.rAF) cancelAnimationFrame(this.rAF);
+    this.rAF = null;
+
     window.removeEventListener('resize', this._boundResize);
-    // 释放资源
-    this.scene.traverse((obj) => {
-      if (obj.geometry) obj.geometry.dispose();
-      if (obj.material) {
-        if (Array.isArray(obj.material)) obj.material.forEach(m => m.dispose());
-        else obj.material.dispose();
-      }
-    });
-    if (this.renderer) this.renderer.dispose();
+    if (this._visibleHandler) document.removeEventListener('visibilitychange', this._visibleHandler);
+    if (this._pageHideHandler) window.removeEventListener('pagehide', this._pageHideHandler);
+
+    // 释放几何体 / 材质 / 纹理
+    if (this.scene) {
+      this.scene.traverse((obj) => {
+        if (obj.geometry) obj.geometry.dispose();
+        if (obj.material) {
+          const mats = Array.isArray(obj.material) ? obj.material : [obj.material];
+          mats.forEach(m => {
+            if (m.map && m.map.dispose) m.map.dispose();
+            m.dispose();
+          });
+        }
+      });
+    }
+    if (this.composer) {
+      const passes = this.composer.passes || [];
+      passes.forEach(p => { if (p && typeof p.dispose === 'function') p.dispose(); });
+      if (typeof this.composer.dispose === 'function') this.composer.dispose();
+    }
+    if (this.renderer) {
+      this.renderer.dispose();
+      if (this.renderer.forceContextLoss) this.renderer.forceContextLoss();
+    }
+    if (typeof window !== 'undefined' && window.skyRenderer === this) window.skyRenderer = null;
   }
 
   // -------------------- 主循环 --------------------
   _tick() {
     if (!this.running) return;
     this.rAF = requestAnimationFrame(this._boundTick);
-    const dt = Math.min(this.clock.getDelta(), 0.1);
+    // 标签页不可见时不渲染（省电、省 GPU）
+    if (this.paused) return;
+
+    // 降帧模式（reduced-motion 时为 20fps；普通模式 60fps）
+    if (this.targetFps < 60) {
+      const now = performance.now();
+      if (now - this._lastFrameAt < 1000 / this.targetFps - 1) return;
+      this._lastFrameAt = now;
+    }
+
+    const dt = Math.min(this.clock.getDelta(), 0.1) * this.motionFactor;
     this.elapsed += dt;
 
     // FPS 自适应
@@ -1318,8 +1468,8 @@ export class SkyWeatherRenderer {
     this._updateGround(dt);
     this._updateSplashes(dt);
 
-    // 渲染
-    if (this.composer) {
+    // 渲染：Bloom 关闭时绕过 EffectComposer，省掉整条多 Pass 后处理链
+    if (this.quality.bloom && this.composer) {
       this.composer.render();
     } else {
       this.renderer.render(this.scene, this.camera);
@@ -1336,21 +1486,28 @@ export class SkyWeatherRenderer {
     this.fpsSamples = [];
     if (n < 10) return;
     const fps = (n - 1) * 1000 / (samples[n - 1] - samples[0]);
-    if (fps < 40 && this.dynamicScale > 0.4) {
-      this.dynamicScale = Math.max(0.4, this.dynamicScale - 0.15);
-      this._applyDynamicScale();
-    } else if (fps > 55 && this.dynamicScale < 1) {
-      this.dynamicScale = Math.min(1, this.dynamicScale + 0.05);
-    }
-  }
+    this.lastFps = fps;
 
-  _applyDynamicScale() {
-    // 调整粒子数量相关参数
-    if (this.layers.rain) {
-      this.layers.rain.geometry.setDrawRange(0, Math.floor(1500 * this.dynamicScale));
-    }
-    if (this.layers.snow) {
-      this.layers.snow.geometry.setDrawRange(0, Math.floor(800 * this.dynamicScale));
+    // 降级果断（连续 2s < 45fps），升级保守（连续 8s > 57fps），
+    // 避免在档位之间来回抖动。
+    const idx = QUALITY_ORDER.indexOf(this.tier);
+    if (fps < 45) {
+      this._lowFpsSeconds += 1;
+      this._highFpsSeconds = 0;
+      if (this._lowFpsSeconds >= 2 && idx > 0) {
+        this.setQuality(QUALITY_ORDER[idx - 1]);
+        this._lowFpsSeconds = 0;
+      }
+    } else if (fps > 57) {
+      this._highFpsSeconds += 1;
+      this._lowFpsSeconds = 0;
+      if (this._highFpsSeconds >= 8 && idx < QUALITY_ORDER.length - 1) {
+        this.setQuality(QUALITY_ORDER[idx + 1]);
+        this._highFpsSeconds = 0;
+      }
+    } else {
+      this._lowFpsSeconds = 0;
+      this._highFpsSeconds = 0;
     }
   }
 
@@ -1366,9 +1523,10 @@ export class SkyWeatherRenderer {
     const angle = (this.dayFactor - 0.5) * Math.PI; // -π/2 夜，π/2 正午
     this.layers.sun.position.x = Math.cos(angle) * 200;
     this.layers.sun.position.y = Math.sin(angle) * 150 + 30;
-    // 让 god rays 始终面向相机
-    if (this.camera) {
-      this.layers.sun.children[2].lookAt(this.camera.position);
+    // 让 god rays 始终面向相机（顺带修正了原先取错子节点的问题：
+    // 子节点顺序为 sun/glow1/glow2/rays，原 children[2] 其实是 glow2 Sprite）
+    if (this.camera && ud.rays) {
+      ud.rays.lookAt(this.camera.position);
     }
   }
 
@@ -1494,14 +1652,11 @@ export class SkyWeatherRenderer {
 }
 
 // ===================== 自定义后处理 Shader =====================
-// 简化版景深 + 颜色分级
+// 色调分级 + 暗角（不做真实景深：原先声明的 focalDepth/aperture/focalLength 从未参与计算，
+// 已删除，避免文档与实现继续对不上）
 const SkyWeatherShader = {
   uniforms: {
-    tDiffuse: { value: null },
-    focalDepth: { value: 80.0 },
-    aperture: { value: 0.002 },
-    focalLength: { value: 30.0 },
-    uTime: { value: 0 }
+    tDiffuse: { value: null }
   },
   vertexShader: `
     varying vec2 vUv;
@@ -1512,10 +1667,6 @@ const SkyWeatherShader = {
   `,
   fragmentShader: `
     uniform sampler2D tDiffuse;
-    uniform float focalDepth;
-    uniform float aperture;
-    uniform float focalLength;
-    uniform float uTime;
     varying vec2 vUv;
     void main() {
       vec4 col = texture2D(tDiffuse, vUv);
