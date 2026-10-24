@@ -37,6 +37,7 @@ const ENV_KEY_MAP = {
     AMAP_KEY: 'AMAP_KEY',
     QWEATHER_KEY: 'QWEATHER_KEY',
     IPNEWS_KEY: 'IPNEWS_KEY',
+    CAIYUN_TOKEN: 'CAIYUN_TOKEN',
 };
 
 // ===================== 工具函数 =====================
@@ -70,6 +71,8 @@ function resolveConfig() {
         // process.env 优先（CI/CD 平台注入），.env 文件作为本地兜底
         resolved[envKey] = process.env[envKey] !== undefined ? process.env[envKey] : (fileEnv[envKey] || '');
     }
+    // QWEATHER_HOST 不进 config.js（前端无需感知），仅供 check 模式展示
+    resolved.QWEATHER_HOST = process.env.QWEATHER_HOST !== undefined ? process.env.QWEATHER_HOST : (fileEnv.QWEATHER_HOST || '');
     return resolved;
 }
 
@@ -90,6 +93,7 @@ function generateConfigJS(env) {
             AMAP_KEY: '高德 Web 服务 Key 是否已在服务端配置（用于中国地区天气与地理编码）',
             QWEATHER_KEY: '和风天气 Web API Key 是否已在服务端配置（用于 AQI 等数据）',
             IPNEWS_KEY: 'IPnews API Key 是否已在服务端配置（用于 IPv6 网络 IP 定位）',
+            CAIYUN_TOKEN: '彩云天气 Token 是否已在服务端配置（用于中国区整源天气与国标 AQI）',
         };
         const comment = comments[envKey] || '';
         lines.push(`    // ${comment}`);
@@ -144,10 +148,13 @@ function main() {
             console.log(`   ${envKey}: ${displayVal} (来源: ${source})`);
             if (val) hasAny = true;
         }
+        console.log(`   QWEATHER_HOST: ${env.QWEATHER_HOST || '(空，和风回退通用域名)'}`);
         console.log('');
         console.log('高德天气: ' + (env.AMAP_KEY ? '可用' : '未配置'));
-        console.log('和风天气: ' + (env.QWEATHER_KEY ? '可用' : '未配置'));
+        console.log('和风天气: ' + (env.QWEATHER_KEY ? '可用' : '未配置')
+            + (env.QWEATHER_KEY && !env.QWEATHER_HOST ? '（未配置专属 Host，走通用域名）' : ''));
         console.log('IPnews: ' + (env.IPNEWS_KEY ? '可用（IPv6 定位）' : '未配置'));
+        console.log('彩云天气: ' + (env.CAIYUN_TOKEN ? '可用（中国区整源 + 国标 AQI）' : '未配置'));
         console.log('Open-Meteo: 始终可用（免 Key 兜底）');
         if (!hasAny) {
             console.log('');
@@ -172,6 +179,7 @@ function main() {
             : '.env 文件';
         console.log(`   ${envKey}: ${displayVal} (${source})`);
     }
+    console.log(`   QWEATHER_HOST: ${env.QWEATHER_HOST || '(空，和风回退通用域名)'}`);
 }
 
 main();

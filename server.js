@@ -4,12 +4,19 @@
  * 作用：把高德 / 和风 / IPnews 等 API Key 收敛在服务端，前端不再持有任何密钥。
  *
  * 工作原理：
- *   1. 从系统环境变量或 .env 文件读取 AMAP_KEY / QWEATHER_KEY / IPNEWS_KEY
+ *   1. 从系统环境变量或 .env 文件读取 AMAP_KEY / QWEATHER_KEY / QWEATHER_HOST / IPNEWS_KEY / CAIYUN_TOKEN
  *   2. 暴露以下代理端点（前端不传 key，由服务端补齐）：
  *      - GET /api/amap/<path>           → https://restapi.amap.com/<path>?<query>&key=AMAP_KEY
  *      - GET /api/qweather/geo/<path>   → https://geoapi.qweather.com/<path>?<query>&key=QWEATHER_KEY
  *      - GET /api/qweather/dev/<path>   → https://devapi.qweather.com/<path>?<query>&key=QWEATHER_KEY
  *      - GET /api/ipnews/<path>         → https://ipnews.io/<path>?<query>&api-key=IPNEWS_KEY
+ *      - GET /api/caiyun/<path>         → https://api.caiyunapp.com/<path>，token 注入路径段：
+ *        /api/caiyun/v2.6/<lon>,<lat>/weather → /v2.6/<CAIYUN_TOKEN>/<lon>,<lat>/weather
+ *
+ *      和风天气：配置 QWEATHER_HOST（专属 API Host）后，geo 与天气统一走
+ *      https://<QWEATHER_HOST>/...，且 GeoAPI 路径带 /geo 服务前缀
+ *      （专属 Host：/geo/v2/city/lookup；通用域名：geoapi.qweather.com/v2/city/lookup）。
+ *      官方通用域名 geoapi/devapi.qweather.com 已宣布将逐步停用，推荐配置专属 Host。
  *   3. 同时托管项目根目录的静态文件（index.html / config.js 等）
  *   4. 启动时自动生成 config.js（不含真实 Key，仅含布尔标志）
  *
@@ -48,14 +55,6 @@ const ALLOWED_ORIGINS = (process.env.ALLOWED_ORIGINS || '')
     .map(s => s.trim().toLowerCase())
     .filter(Boolean);
 
-// 上游 API 基地址映射
-const UPSTREAM = {
-    amap: 'restapi.amap.com',
-    qweather_geo: 'geoapi.qweather.com',
-    qweather_dev: 'devapi.qweather.com',
-    ipnews: 'ipnews.io',
-};
-
 // 请求超时（毫秒）
 const UPSTREAM_TIMEOUT = 10000;
 
@@ -83,6 +82,10 @@ const ALLOWED_PATHS = {
 // ipnews 路径形如 api/v1/json/<ip>，只允许 IP 字符（十六进制、点、冒号）
 const IPNEWS_PATH_RE = /^api\/v1\/json\/[0-9a-fA-F:.]+$/;
 const IPNEWS_MAX_PATTERN_LENGTH = 128;
+
+// 彩云天气路径形如 v2.6/<经度>,<纬度>/weather（token 由代理注入到 v2.6 与坐标之间）。
+// 坐标段限数字格式（范围在路由内校验），端点只放行前端实际调用的 /weather 综合接口。
+const CAIYUN_PATH_RE = /^v2\.6\/(-?\d{1,3}(?:\.\d+)?),(-?\d{1,3}(?:\.\d+)?)\/weather$/;
 
 // 限流：每客户端 IP 每分钟 90 次
 const RATE_LIMIT_MAX = 90;
@@ -141,11 +144,37 @@ function loadEnv() {
     return {
         AMAP_KEY: process.env.AMAP_KEY !== undefined ? process.env.AMAP_KEY : (fileEnv.AMAP_KEY || ''),
         QWEATHER_KEY: process.env.QWEATHER_KEY !== undefined ? process.env.QWEATHER_KEY : (fileEnv.QWEATHER_KEY || ''),
+        QWEATHER_HOST: process.env.QWEATHER_HOST !== undefined ? process.env.QWEATHER_HOST : (fileEnv.QWEATHER_HOST || ''),
         IPNEWS_KEY: process.env.IPNEWS_KEY !== undefined ? process.env.IPNEWS_KEY : (fileEnv.IPNEWS_KEY || ''),
+        CAIYUN_TOKEN: process.env.CAIYUN_TOKEN !== undefined ? process.env.CAIYUN_TOKEN : (fileEnv.CAIYUN_TOKEN || ''),
     };
 }
 
 const ENV = loadEnv();
+
+// ===================== 上游 API 基地址 =====================
+// 和风天气专属 API Host（控制台「设置」页查看，形如 abcxyz.xy.qweatherapi.com）。
+// 容错：允许带 https:// 前缀或结尾斜杠；留空则回退通用域名（官方将逐步停用）。
+const QWEATHER_HOST = (ENV.QWEATHER_HOST || '')
+    .replace(/^https?:\/\//i, '')
+    .replace(/\/+$/, '')
+    .trim()
+    .toLowerCase();
+
+const UPSTREAM = {
+    amap: 'restapi.amap.com',
+    qweather_geo: QWEATHER_HOST || 'geoapi.qweather.com',
+    qweather_dev: QWEATHER_HOST || 'devapi.qweather.com',
+    ipnews: 'ipnews.io',
+    caiyun: 'api.caiyunapp.com',
+};
+
+// 彩云 token 只允许 URL 路径安全字符；不合规视为未配置，防止注入破坏上游路径结构
+const CAIYUN_TOKEN_OK = /^[A-Za-z0-9_-]+$/.test(ENV.CAIYUN_TOKEN || '');
+
+// 专属 Host 下 geo 与天气共用同一域名，GeoAPI 路径需带 /geo 服务前缀；
+// 通用 geoapi 域名的服务前缀在域名里，路径本身不带。
+const QWEATHER_GEO_PREFIX = QWEATHER_HOST ? '/geo' : '';
 
 // ===================== 工具函数 =====================
 function sendJSON(res, status, obj, extraHeaders) {
@@ -303,6 +332,13 @@ function getGzipped(filePath, mtimeMs, size, data, cb) {
 }
 
 // ===================== 上游代理 =====================
+// 日志脱敏：key/api-key query 参数与彩云 token 路径段不进错误日志
+function maskSensitivePath(fullPath) {
+    return fullPath
+        .replace(/([?&])(key|api-key)=[^&]*/g, '$1$2=****')
+        .replace(/^\/v2\.6\/[^/?]+\//, '/v2.6/****/');
+}
+
 /**
  * 透传 GET 请求到 https://host/path?query，并附加额外 query 参数
  */
@@ -316,6 +352,7 @@ function proxyGet(req, res, host, upstreamPath, extraQuery) {
     }
     const search = params.toString();
     const fullPath = search ? `${upstreamPath}?${search}` : upstreamPath;
+    const logPath = `${host}${maskSensitivePath(fullPath)}`;
 
     const options = {
         hostname: host,
@@ -350,7 +387,7 @@ function proxyGet(req, res, host, upstreamPath, extraQuery) {
         };
         res.writeHead(upstreamRes.statusCode || 502, headers);
         stream.on('error', err => {
-            console.error(`[proxy] 解压 ${host}${fullPath} 失败:`, err.message);
+            console.error(`[proxy] 解压 ${logPath} 失败:`, err.message);
             if (!res.writableEnded) res.end();
         });
         stream.pipe(res);
@@ -361,7 +398,7 @@ function proxyGet(req, res, host, upstreamPath, extraQuery) {
         if (!res.headersSent) sendJSON(res, 504, { error: 'upstream timeout' });
     });
     upstreamReq.on('error', err => {
-        console.error(`[proxy] ${host}${fullPath} 失败:`, err.message);
+        console.error(`[proxy] ${logPath} 失败:`, err.message);
         if (!res.headersSent) sendJSON(res, 502, { error: 'upstream error', detail: err.message });
     });
     upstreamReq.end();
@@ -394,6 +431,7 @@ function handleApi(req, res) {
         return sendJSON(res, 200, {
             amap: !!ENV.AMAP_KEY,
             qweather: !!ENV.QWEATHER_KEY,
+            caiyun: !!ENV.CAIYUN_TOKEN,
             ipnews: !!ENV.IPNEWS_KEY,
         });
     }
@@ -406,20 +444,35 @@ function handleApi(req, res) {
         return proxyGet(req, res, UPSTREAM.amap, '/' + sub, { key: ENV.AMAP_KEY });
     }
 
-    // /api/qweather/geo/<path> → https://geoapi.qweather.com/<path>
+    // /api/qweather/geo/<path> → geoapi.qweather.com/<path>；配置 QWEATHER_HOST 后
+    // 统一走专属 Host，路径带 /geo 服务前缀：<host>/geo/<path>
     if (pathname.startsWith('/api/qweather/geo/')) {
         const sub = pathname.slice('/api/qweather/geo/'.length);
         if (!ALLOWED_PATHS.qweather_geo.has('/' + sub)) return pathNotAllowed(res);
         if (!ENV.QWEATHER_KEY) return sendJSON(res, 503, { error: 'QWEATHER_KEY not configured on server' });
-        return proxyGet(req, res, UPSTREAM.qweather_geo, '/' + sub, { key: ENV.QWEATHER_KEY });
+        return proxyGet(req, res, UPSTREAM.qweather_geo, QWEATHER_GEO_PREFIX + '/' + sub, { key: ENV.QWEATHER_KEY });
     }
 
-    // /api/qweather/dev/<path> → https://devapi.qweather.com/<path>
+    // /api/qweather/dev/<path> → devapi.qweather.com/<path>；配置 QWEATHER_HOST 后
+    // 统一走专属 Host，路径不变
     if (pathname.startsWith('/api/qweather/dev/')) {
         const sub = pathname.slice('/api/qweather/dev/'.length);
         if (!ALLOWED_PATHS.qweather_dev.has('/' + sub)) return pathNotAllowed(res);
         if (!ENV.QWEATHER_KEY) return sendJSON(res, 503, { error: 'QWEATHER_KEY not configured on server' });
         return proxyGet(req, res, UPSTREAM.qweather_dev, '/' + sub, { key: ENV.QWEATHER_KEY });
+    }
+
+    // /api/caiyun/<path> → https://api.caiyunapp.com/<path>；token 注入 v2.6 与坐标之间：
+    // /api/caiyun/v2.6/<lon>,<lat>/weather → 上游 /v2.6/<CAIYUN_TOKEN>/<lon>,<lat>/weather
+    if (pathname.startsWith('/api/caiyun/')) {
+        const sub = pathname.slice('/api/caiyun/'.length);
+        const m = CAIYUN_PATH_RE.exec(sub);
+        if (!m) return pathNotAllowed(res);
+        if (!CAIYUN_TOKEN_OK) return sendJSON(res, 503, { error: 'CAIYUN_TOKEN not configured on server' });
+        const lon = parseFloat(m[1]);
+        const lat = parseFloat(m[2]);
+        if (lat < -90 || lat > 90 || lon < -180 || lon > 180) return pathNotAllowed(res);
+        return proxyGet(req, res, UPSTREAM.caiyun, `/v2.6/${ENV.CAIYUN_TOKEN}/${m[1]},${m[2]}/weather`);
     }
 
     // /api/ipnews/<path> → https://ipnews.io/<path>（path 形如 api/v1/json/<ip>）
@@ -572,15 +625,18 @@ function main() {
         console.log(`  SkyWeather 代理服务器已启动`);
         console.log(`  监听: http://${HOST}:${PORT}`);
         console.log('------------------------------------------------------');
-        console.log(`  AMAP_KEY     : ${mask(ENV.AMAP_KEY)}`);
-        console.log(`  QWEATHER_KEY : ${mask(ENV.QWEATHER_KEY)}`);
-        console.log(`  IPNEWS_KEY   : ${mask(ENV.IPNEWS_KEY)}`);
+        console.log(`  AMAP_KEY      : ${mask(ENV.AMAP_KEY)}`);
+        console.log(`  QWEATHER_KEY  : ${mask(ENV.QWEATHER_KEY)}`);
+        console.log(`  QWEATHER_HOST : ${QWEATHER_HOST || '(未配置，回退通用域名)'}`);
+        console.log(`  IPNEWS_KEY    : ${mask(ENV.IPNEWS_KEY)}`);
+        console.log(`  CAIYUN_TOKEN  : ${mask(ENV.CAIYUN_TOKEN)}`);
         console.log('------------------------------------------------------');
         console.log('  代理端点:');
         console.log('    /api/amap/*           → restapi.amap.com');
-        console.log('    /api/qweather/geo/*   → geoapi.qweather.com');
-        console.log('    /api/qweather/dev/*   → devapi.qweather.com');
+        console.log(`    /api/qweather/geo/*   → ${UPSTREAM.qweather_geo}${QWEATHER_GEO_PREFIX}`);
+        console.log(`    /api/qweather/dev/*   → ${UPSTREAM.qweather_dev}`);
         console.log('    /api/ipnews/*         → ipnews.io');
+        console.log('    /api/caiyun/*         → api.caiyunapp.com（token 注入路径段）');
         console.log('    /api/status           → 服务端已配置的 provider');
         console.log('------------------------------------------------------');
         console.log(`  安全策略: 路径白名单 / 限流 ${RATE_LIMIT_MAX} 次每分钟每 IP / Origin 校验 / gzip`);

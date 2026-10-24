@@ -8,7 +8,7 @@
  *           匹配所有 /api/* 子路径（/api/status、/api/amap/v3/ip 等）
  *
  * 工作原理：
- *   1. 从 context.env 读取 AMAP_KEY / QWEATHER_KEY / IPNEWS_KEY
+ *   1. 从 context.env 读取 AMAP_KEY / QWEATHER_KEY / QWEATHER_HOST / IPNEWS_KEY / CAIYUN_TOKEN
  *      （环境变量需在 EdgeOne Pages 控制台 → 项目 → 环境变量 中配置）
  *   2. 按前端请求路径分流，附加对应 Key 后用 fetch 转发到上游
  *   3. 透传上游响应（含 Content-Type / Cache-Control），自动附加 CORS 头
@@ -26,6 +26,12 @@
  *   GET /api/qweather/geo/<path>  → https://geoapi.qweather.com/<path>?<query>&key=QWEATHER_KEY
  *   GET /api/qweather/dev/<path>  → https://devapi.qweather.com/<path>?<query>&key=QWEATHER_KEY
  *   GET /api/ipnews/<path>        → https://ipnews.io/<path>?<query>&api-key=IPNEWS_KEY
+ *   GET /api/caiyun/<path>        → https://api.caiyunapp.com/<path>，CAIYUN_TOKEN 注入路径段：
+ *                                   /api/caiyun/v2.6/<lon>,<lat>/weather → /v2.6/<token>/<lon>,<lat>/weather
+ *
+ *   和风天气：配置 QWEATHER_HOST（专属 API Host）后，geo 与天气统一走
+ *   https://<QWEATHER_HOST>/...，且 GeoAPI 路径带 /geo 服务前缀。
+ *   官方通用域名 geoapi/devapi.qweather.com 已宣布将逐步停用，推荐配置专属 Host。
  *
  * 运行时：EdgeOne Edge Functions（Web 标准 API，非 Node.js）
  *   仅使用 fetch / Request / Response / URL / URLSearchParams / Headers
@@ -41,6 +47,7 @@ const UPSTREAM = {
     qweather_geo: 'https://geoapi.qweather.com',
     qweather_dev: 'https://devapi.qweather.com',
     ipnews: 'https://ipnews.io',
+    caiyun: 'https://api.caiyunapp.com',
 };
 
 // 上游 API 接收 Key 时的 query 参数名
@@ -57,6 +64,7 @@ const KEY_ENV = {
     qweather_geo: 'QWEATHER_KEY',
     qweather_dev: 'QWEATHER_KEY',
     ipnews: 'IPNEWS_KEY',
+    caiyun: 'CAIYUN_TOKEN',
 };
 
 // ===================== 安全策略 =====================
@@ -83,6 +91,12 @@ const ALLOWED_PATHS = {
 // ipnews 路径形如 api/v1/json/<ip>，只允许 IP 字符（十六进制、点、冒号）
 const IPNEWS_PATH_RE = /^api\/v1\/json\/[0-9a-fA-F:.]+$/;
 const IPNEWS_MAX_PATTERN_LENGTH = 128;
+
+// 彩云天气路径形如 v2.6/<经度>,<纬度>/weather（token 注入到 v2.6 与坐标之间）。
+// 坐标段限数字格式（范围在 matchRoute 内校验），端点只放行前端实际调用的 /weather 综合接口。
+const CAIYUN_PATH_RE = /^v2\.6\/(-?\d{1,3}(?:\.\d+)?),(-?\d{1,3}(?:\.\d+)?)\/weather$/;
+// 彩云 token 只允许 URL 路径安全字符，防止注入破坏上游路径结构
+const CAIYUN_TOKEN_RE = /^[A-Za-z0-9_-]+$/;
 
 // 限流：每客户端 IP 每分钟 90 次（边缘实例内存计数，尽力而为）
 const RATE_LIMIT_MAX = 90;
@@ -292,17 +306,30 @@ function matchRoute(pathname) {
         if (sub.length > IPNEWS_MAX_PATTERN_LENGTH || !IPNEWS_PATH_RE.test(sub)) return { type: 'forbidden' };
         return { type: 'proxy', upstream: 'ipnews', sub };
     }
+    if (pathname.startsWith('/api/caiyun/')) {
+        const sub = pathname.slice('/api/caiyun/'.length);
+        const m = CAIYUN_PATH_RE.exec(sub);
+        // 经度在前、纬度在后；范围校验与 server.js 保持一致
+        if (!m || parseFloat(m[2]) < -90 || parseFloat(m[2]) > 90 ||
+            parseFloat(m[1]) < -180 || parseFloat(m[1]) > 180) {
+            return { type: 'forbidden' };
+        }
+        return { type: 'proxy', upstream: 'caiyun', sub };
+    }
     return null;
 }
 
 /**
- * 构造上游 URL：保留前端传入的 query，并附加 Key 参数
+ * 构造上游 URL：保留前端传入的 query，并附加 Key 参数。
+ * opts.base / opts.pathPrefix：和风专属 API Host 场景下覆盖默认基地址并附加服务前缀
  */
-function buildUpstreamUrl(upstream, sub, searchParams, keyValue) {
-    const base = UPSTREAM[upstream];
-    const subPath = '/' + sub.replace(/^\/+/, ''); // 防止开头多斜杠
+function buildUpstreamUrl(upstream, sub, searchParams, keyValue, opts) {
+    const base = (opts && opts.base) || UPSTREAM[upstream];
+    const prefix = (opts && opts.pathPrefix) || '';
+    const subPath = prefix + '/' + sub.replace(/^\/+/, ''); // 防止开头多斜杠
     const params = new URLSearchParams(searchParams);
-    if (keyValue) params.set(KEY_PARAM[upstream], keyValue);
+    // 彩云 token 走路径段注入（见 handleGet），KEY_PARAM 中无对应项则不追加 query 参数
+    if (keyValue && KEY_PARAM[upstream]) params.set(KEY_PARAM[upstream], keyValue);
     const query = params.toString();
     return query ? `${base}${subPath}?${query}` : `${base}${subPath}`;
 }
@@ -327,6 +354,7 @@ async function handleGet(context) {
         return json(200, {
             amap: !!env.AMAP_KEY,
             qweather: !!env.QWEATHER_KEY,
+            caiyun: !!env.CAIYUN_TOKEN,
             ipnews: !!env.IPNEWS_KEY,
         });
     }
@@ -338,9 +366,32 @@ async function handleGet(context) {
         return json(503, { error: `${envKey} not configured on server` });
     }
 
+    // 和风专属 API Host：配置后 geo 与天气统一走同一域名，GeoAPI 路径加 /geo 服务前缀；
+    // 未配置则回退通用域名（官方将逐步停用）。容错：允许带 https:// 前缀或结尾斜杠。
+    const qwHost = String(env.QWEATHER_HOST || '')
+        .replace(/^https?:\/\//i, '')
+        .replace(/\/+$/, '')
+        .trim()
+        .toLowerCase();
+    const qwOpts = qwHost
+        ? {
+            base: `https://${qwHost}`,
+            pathPrefix: matched.upstream === 'qweather_geo' ? '/geo' : '',
+        }
+        : undefined;
+
     const waitUntil = context.waitUntil ? context.waitUntil.bind(context) : null;
 
-    const upstreamUrl = buildUpstreamUrl(matched.upstream, matched.sub, url.searchParams, keyValue);
+    // 彩云：token 在上游 URL 路径中，注入到 v2.6 与坐标之间（v2.6/<token>/<lon>,<lat>/weather）
+    let sub = matched.sub;
+    if (matched.upstream === 'caiyun') {
+        if (!CAIYUN_TOKEN_RE.test(String(keyValue))) {
+            return json(503, { error: 'CAIYUN_TOKEN malformed on server' });
+        }
+        sub = sub.replace(/^v2\.6\//, `v2.6/${keyValue}/`);
+    }
+
+    const upstreamUrl = buildUpstreamUrl(matched.upstream, sub, url.searchParams, keyValue, qwOpts);
 
     // 边缘缓存：天气/地理编码数据 2 分钟内多用户共享，减少上游压力
     const canCache = isCacheable(url.pathname);

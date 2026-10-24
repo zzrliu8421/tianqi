@@ -6,7 +6,7 @@
 
 ## 功能
 
-- **定位**：打开页面自动 IP 定位（IPv4 / IPv6），支持城市搜索、快捷城市、搜索历史（本地保存 8 条）
+- **定位**：打开页面自动 IP 定位（IPv4 / IPv6），支持 GPS 精确定位（浏览器授权，中国用高德逆地理编码、海外用 BigDataCloud）、城市搜索、快捷城市、搜索历史（本地保存 8 条）
 - **天气**：实况（温度 / 体感 / 风速 / 湿度 / 气压 / 紫外线）、24 小时逐时预报、7 天预报、日出日落
 - **空气质量**：PM2.5、PM10、NO₂、O₃ 与 AQI
 - **动态背景**：Canvas 2D 渲染的云 / 雨 / 雪 / 雾 / 霾 / 雷暴 / 星空动画，昼夜主题与天气平滑过渡，重力感应视差
@@ -43,10 +43,12 @@
 | 数据                  | 来源                                                            | 说明         |
 | ------------------- | ------------------------------------------------------------- | ---------- |
 | 中国实况 / 地理编码 / IP 定位 | [高德地图](https://lbs.amap.com/)                                 | 需 Key      |
+| 中国区整源天气（实况+24h+7天+国标 AQI） | [彩云天气](https://caiyunapp.com/)                              | 需 Token，可选 |
 | 中国标准 AQI / 城市搜索     | [和风天气](https://dev.qweather.com/)                             | 需 Key，可选   |
 | 全球天气 / 预报 / 兜底 AQI  | [Open-Meteo](https://open-meteo.com/)                         | 免 Key，默认兜底 |
 | IPv6 IP 定位          | [IPnews](https://ipnews.io/)                                  | 需 Key，可选   |
 | 城市搜索 / IP 定位兜底      | [GeoDB Cities](https://geodb-cities-api.wirefreethought.com/) | 免 Key      |
+| GPS 海外坐标逆地理编码       | [BigDataCloud](https://www.bigdatacloud.com/)                 | 免 Key      |
 
 ## 代理与安全
 
@@ -55,9 +57,10 @@
 | 前端请求                       | 上游                                     |
 | -------------------------- | -------------------------------------- |
 | `/api/amap/<path>`         | restapi.amap.com（注入 `AMAP_KEY`）        |
-| `/api/qweather/geo/<path>` | geoapi.qweather.com（注入 `QWEATHER_KEY`） |
-| `/api/qweather/dev/<path>` | devapi.qweather.com（注入 `QWEATHER_KEY`） |
+| `/api/qweather/geo/<path>` | 和风 API（注入 `QWEATHER_KEY`；配置 `QWEATHER_HOST` 后走专属域名，GeoAPI 加 `/geo` 前缀） |
+| `/api/qweather/dev/<path>` | 和风 API（注入 `QWEATHER_KEY`；配置 `QWEATHER_HOST` 后走专属域名） |
 | `/api/ipnews/<path>`       | ipnews.io（注入 `IPNEWS_KEY`）             |
+| `/api/caiyun/<path>`       | api.caiyunapp.com（`CAIYUN_TOKEN` 注入上游路径段） |
 | `/api/status`              | 返回服务端已配置的 provider 布尔值                 |
 
 代理侧防护：上游路径白名单（其余 403）、Origin 校验（异源拒绝）、单 IP 限流 90 次 / 分钟（429 + Retry-After）、点开头路径与 `node_modules/` 一律 404；文本资源支持 gzip 与缓存。
@@ -67,7 +70,7 @@
 | 方式            | 做法                                                          | 适用                 |
 | ------------- | ----------------------------------------------------------- | ------------------ |
 | 自建服务器         | 配好 `.env` 后 `npm start`（建议 pm2 / systemd 守护），Nginx 反代到 8787 | 有 VPS / NAT 服务器    |
-| EdgeOne Pages | 控制台配置三个 Key（构建 + 运行环境都勾选），关联仓库即可，构建命令读自 `edgeone.json`      | 无服务器、全球加速（本项目线上方式） |
+| EdgeOne Pages | 控制台配置各 API Key（构建 + 运行环境都勾选），关联仓库即可，构建命令读自 `edgeone.json`      | 无服务器、全球加速（本项目线上方式） |
 | 纯静态           | `node build.js` 后托管静态文件                                     | 仅演示；只能用免 Key 数据源   |
 
 ## 开发与验证

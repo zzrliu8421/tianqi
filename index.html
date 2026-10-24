@@ -1719,6 +1719,12 @@
             </svg>
             <span>查询</span>
         </button>
+        <button class="btn btn-ghost" id="btn-gps" aria-label="GPS 定位" title="GPS 定位">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <line x1="12" y1="2" x2="12" y2="5"/><line x1="12" y1="19" x2="12" y2="22"/><line x1="2" y1="12" x2="5" y2="12"/><line x1="19" y1="12" x2="22" y2="12"/>
+                <circle cx="12" cy="12" r="7"/><circle cx="12" cy="12" r="3"/>
+            </svg>
+        </button>
         <button class="btn btn-ghost" id="btn-refresh" aria-label="刷新" title="刷新">
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                 <path d="M21 12a9 9 0 1 1-3-6.7L21 8"/><path d="M21 3v5h-5"/>
@@ -1946,26 +1952,33 @@
     const lastUpdateBadge = $('last-update');
     const btnSearch = $('btn-search');
     const btnRefresh = $('btn-refresh');
+    const btnGps = $('btn-gps');
 
     // ===================== 天气类型映射 =====================
     const weatherTypeMap = {
         sunny: ['晴', 'clear'],
         partlyCloudy: ['多云', 'partly', 'mainly clear'],
         cloudy: ['阴', 'overcast', 'cloudy'],
-        rain: ['雨', 'rain', 'drizzle', 'shower'],
+        // storm 必须在 rain 之前：'雷阵雨' 同时含 '雷' 与 '雨'，优先归类为雷暴
         storm: ['雷', 'storm', 'thunder'],
+        rain: ['雨', 'rain', 'drizzle', 'shower'],
         snow: ['雪', 'snow', 'sleet', 'blizzard'],
         fog: ['雾', 'fog', 'mist'],
-        haze: ['霾', 'haze', 'dust', 'sand', 'smog'],
+        // '尘'/'沙'：高德与彩云的浮尘/扬沙/沙尘暴文案，此前匹配不到会误回退晴天
+        haze: ['霾', 'haze', 'dust', 'sand', 'smog', '尘', '沙'],
     };
 
-    function getWeatherType(text) {
-        if (!text) return 'sunny';
+    function matchWeatherType(text) {
+        if (!text) return null;
         const t = String(text).toLowerCase();
         for (const [type, keywords] of Object.entries(weatherTypeMap)) {
             if (keywords.some(k => t.includes(k))) return type;
         }
-        return 'sunny';
+        return null;
+    }
+
+    function getWeatherType(text) {
+        return matchWeatherType(text) || 'sunny';
     }
 
     // WMO 天气代码转中文天气文本与内部类型
@@ -1990,6 +2003,32 @@
 
     function wmoText(code) { return wmoToWeather(code).text; }
     function wmoType(code) { return wmoToWeather(code).type; }
+
+    // 彩云天气 skycon → 中文文本。动画/图标类型由 matchWeatherType 按文本关键词归类，
+    // 映射文本必须带「雨/雪/雷/雾/霾/尘」等关键词；WIND（大风）无对应动画类型，回退晴天。
+    const CAIYUN_SKYCON_TEXT = {
+        CLEAR_DAY: '晴', CLEAR_NIGHT: '晴',
+        PARTLY_CLOUDY_DAY: '多云', PARTLY_CLOUDY_NIGHT: '多云',
+        CLOUDY: '阴',
+        // 注意不要用「雾霾」字样：含「雾」会先命中 fog 关键词（fog 在 haze 之前迭代）
+        LIGHT_HAZE: '轻度霾', MODERATE_HAZE: '中度霾', HEAVY_HAZE: '重度霾',
+        LIGHT_RAIN: '小雨', MODERATE_RAIN: '中雨', HEAVY_RAIN: '大雨', STORM_RAIN: '暴雨',
+        LIGHT_SNOW: '小雪', MODERATE_SNOW: '中雪', HEAVY_SNOW: '大雪', STORM_SNOW: '暴雪',
+        FOG: '雾',
+        DUST: '浮尘', SAND: '沙尘',
+        WIND: '大风',
+        THUNDER_SHOWER: '雷阵雨',
+    };
+    function caiyunSkyconText(skycon) { return CAIYUN_SKYCON_TEXT[skycon] || '晴'; }
+
+    // 当前天气的动画/主题/图标类型必须与页面展示的天气文本同源。
+    // 高德/和风实况文本与 Open-Meteo 补全的 weather_code 经常不一致（如文本"霾"而 code=阴/雾），
+    // 且 Open-Meteo 的 current code 在雾/阴边界会随请求波动：若动画取 code、标签取文本，
+    // 同一城市同一时刻在不同浏览器会得到完全不同的背景动画。文本匹配不到关键词时才回退 code。
+    function resolveWeatherType(cur) {
+        return (cur && matchWeatherType(cur.weather)) ||
+            (cur && cur.weatherCode != null ? wmoType(cur.weatherCode) : 'sunny');
+    }
 
     // ===================== 高级天气动画引擎 =====================
     let animationId = null;
@@ -3801,6 +3840,78 @@
         return target;
     }
 
+    // ===================== 彩云天气解析 =====================
+    // v2.6 /weather 综合端点一次返回 result.realtime + hourly + daily。
+    // 单位：湿度 0~1、气压 Pa、风速 km/h、能见度 km；请求路径经度在前、纬度在后；
+    // AQI 取 realtime.air_quality.aqi.chn（中国国标），与 getAQIInfo 的 50/100/150/200/300 阈值同口径。
+    // 紫外线不映射：彩云指数尺度（如 index 3 =「弱」）与 getUVLevel 的 0~11 国际尺度不一致，硬填会标错等级。
+    function parseCaiyunWeather(result, loc, envelope) {
+        const rt = result.realtime || {};
+        const hr = result.hourly || {};
+        const dr = result.daily || {};
+        const aq = rt.air_quality || {};
+        const hourly = [];
+        const hourCount = Math.min(hr.temperature?.length || 0, 24);
+        for (let i = 0; i < hourCount; i++) {
+            const t = hr.temperature[i];
+            const pop = hr.precipitation?.[i]?.probability;
+            hourly.push({
+                time: t.datetime,
+                label: formatTime(t.datetime),
+                temp: t.value,
+                weather: caiyunSkyconText(hr.skycon?.[i]?.value),
+                weatherCode: null,
+                precipProbability: pop != null ? Math.round(pop) : null,
+                windSpeed: hr.wind?.[i]?.speed ?? null,
+            });
+        }
+        const daily = (dr.temperature || []).slice(0, 7).map((t, i) => ({
+            date: String(t.date).slice(0, 10),
+            minTemp: t.min,
+            maxTemp: t.max,
+            // 白天现象（skycon_08h_20h）与和风 textDay 语义一致，缺省回退全天现象
+            weather: caiyunSkyconText(dr.skycon_08h_20h?.[i]?.value || dr.skycon?.[i]?.value),
+            weatherCode: null,
+            precipProbability: dr.precipitation_08h_20h?.[i]?.probability ?? dr.precipitation?.[i]?.probability ?? null,
+            sunrise: dr.astro?.[i]?.sunrise?.time || null,
+            sunset: dr.astro?.[i]?.sunset?.time || null,
+        }));
+        return {
+            location: {
+                city: loc.city,
+                province: loc.province,
+                country: loc.country,
+                countryCode: loc.countryCode,
+                lat: loc.lat,
+                lon: loc.lon,
+                timezone: envelope?.timezone || loc.timezone || 'Asia/Shanghai',
+            },
+            current: {
+                temp: rt.temperature ?? null,
+                feelsLike: rt.apparent_temperature ?? rt.temperature ?? null,
+                weather: caiyunSkyconText(rt.skycon),
+                weatherCode: null,
+                humidity: rt.humidity != null ? Math.round(rt.humidity * 100) : null,
+                pressure: rt.pressure != null ? Math.round(rt.pressure / 100) : null,
+                windSpeed: rt.wind?.speed ?? null,
+                windDirection: rt.wind?.direction != null ? degToDirection(rt.wind.direction) : '--',
+                windDirectionDeg: rt.wind?.direction ?? null,
+                visibility: rt.visibility != null ? Number(rt.visibility).toFixed(1) : null,
+                uv: null,
+                precipProbability: hr.precipitation?.[0]?.probability != null ? Math.round(hr.precipitation[0].probability) : null,
+                aqi: aq.aqi?.chn != null ? parseInt(aq.aqi.chn) : null,
+                aqiPm25: aq.pm25 ?? null,
+                aqiPm10: aq.pm10 ?? null,
+                aqiNo2: aq.no2 ?? null,
+                aqiO3: aq.o3 ?? null,
+            },
+            hourly,
+            daily,
+            source: '彩云天气',
+            updatedAt: envelope?.server_time ? new Date(envelope.server_time * 1000).toISOString() : new Date().toISOString(),
+        };
+    }
+
     const Providers = {
         // --- IP 定位：geolocation-db.com（全球 / 支持 CORS） ---
         geodb: {
@@ -3819,6 +3930,27 @@
                     lat: data.latitude,
                     lon: data.longitude,
                     source: 'GeoDB',
+                };
+            }
+        },
+
+        // --- 逆地理编码：BigDataCloud（全球 / 免 Key / 支持 CORS），GPS 海外坐标兜底 ---
+        bigdatacloud: {
+            name: 'BigDataCloud',
+            ipv6: true,
+            overseas: true,
+            available: () => true,
+            async reverseGeocode(lat, lon, signal) {
+                const data = await fetchJSON(`https://api.bigdatacloud.net/data/reverse-geocode-client?latitude=${lat}&longitude=${lon}&localityLanguage=zh`, { timeout: 8000, signal });
+                const city = data.city || data.locality || data.principalSubdivision;
+                if (!city && !data.countryName) throw new Error('BigDataCloud 逆地理编码失败');
+                return {
+                    city: city || data.countryName,
+                    province: data.principalSubdivision || '',
+                    country: data.countryName || '',
+                    countryCode: data.countryCode || null,
+                    lat, lon,
+                    source: 'GPS',
                 };
             }
         },
@@ -3917,6 +4049,27 @@
                     adcode: g.adcode,
                     formatted: g.formatted_address,
                     source: '高德地图',
+                };
+            },
+            // GPS 坐标 → 地名（中国坐标精度最佳；海外坐标返回空结果，调用方回退其他源）
+            async reverseGeocode(lat, lon, signal) {
+                const data = await fetchJSON(`${CONFIG.API_BASE}/api/amap/v3/geocode/regeo?location=${lon},${lat}&extensions=base`, { signal });
+                if (data.status !== '1' || !data.regeocode) throw new Error('高德逆地理编码失败');
+                const ac = data.regeocode.addressComponent || {};
+                // 高德对直辖市返回空 city（regeo 是空数组 / ip 接口是字符串 '[]'），统一用 province 兜底
+                const rawCity = ac.city;
+                const city = (rawCity && !Array.isArray(rawCity) && rawCity !== '[]')
+                    ? rawCity
+                    : ac.province;
+                if (!city || !ac.adcode) throw new Error('高德逆地理编码无结果');
+                return {
+                    city,
+                    province: ac.province,
+                    country: '中国',
+                    countryCode: 'CN',
+                    lat, lon,
+                    adcode: ac.adcode,
+                    source: 'GPS',
                 };
             },
             async getWeather(loc, signal) {
@@ -4078,6 +4231,23 @@
                     source: '和风天气',
                     updatedAt: nowRes.updateTime || new Date().toISOString(),
                 };
+            }
+        },
+
+        // --- 天气：彩云天气（中国区整源：实况+逐小时+逐天+国标 AQI 同包返回；无地理编码，复用定位链路坐标） ---
+        caiyun: {
+            name: '彩云天气',
+            ipv6: true,
+            overseas: true,
+            available: () => !!CONFIG.CAIYUN_TOKEN,
+            async getWeather(loc, signal) {
+                const lat = Number(loc.lat), lon = Number(loc.lon);
+                if (!Number.isFinite(lat) || !Number.isFinite(lon)) throw new Error('彩云天气需要经纬度');
+                // 上游路径经度在前、纬度在后；dailysteps/hourlysteps 与前端展示口径一致（7 天 / 24 小时）
+                const url = `${CONFIG.API_BASE}/api/caiyun/v2.6/${lon},${lat}/weather?dailysteps=7&hourlysteps=24&lang=zh_CN`;
+                const data = await fetchJSON(url, { signal });
+                if (!data || data.status !== 'ok' || !data.result) throw new Error(data.error || '彩云天气请求失败');
+                return parseCaiyunWeather(data.result, loc, data);
             }
         },
 
@@ -4307,6 +4477,66 @@
             throw new Error('IP 定位失败，请手动输入城市');
         },
 
+        // ===================== GPS 定位 =====================
+        // 浏览器 Geolocation API 获取坐标（精度远高于 IP 定位，但需用户授权，
+        // 且浏览器要求 HTTPS 或 localhost 安全上下文，否则 API 不可用）
+        async locateGPS(signal) {
+            if (!('geolocation' in navigator)) {
+                throw new Error(window.isSecureContext
+                    ? '当前浏览器不支持 GPS 定位'
+                    : 'GPS 定位需要 HTTPS 或 localhost 环境');
+            }
+            const pos = await new Promise((resolve, reject) => {
+                navigator.geolocation.getCurrentPosition(resolve, (err) => {
+                    const messages = {
+                        1: '定位权限被拒绝，请在浏览器地址栏允许访问位置信息',
+                        2: '暂时无法获取位置信息，请检查设备定位服务是否开启',
+                        3: '定位超时，请重试',
+                    };
+                    reject(new Error(messages[err.code] || err.message || 'GPS 定位失败'));
+                }, { enableHighAccuracy: true, timeout: 15000, maximumAge: 5 * 60 * 1000 });
+            });
+            const lat = pos.coords.latitude;
+            const lon = pos.coords.longitude;
+            if (!isFinite(lat) || !isFinite(lon)) throw new Error('GPS 返回无效坐标');
+            const loc = await this.reverseGeocode(lat, lon, signal);
+            loc._gps = true;
+            return loc;
+        },
+
+        // 坐标 → 地名。中国坐标优先高德（中文地名 + adcode，实况数据更准），
+        // 海外/高德失败时回退 BigDataCloud；港澳台坐标即使拿到 adcode 也没关系，
+        // getWeather 内的 isHMT 检查会自动改用 Open-Meteo/和风。全部失败仍返回纯坐标（Open-Meteo 可查）
+        async reverseGeocode(lat, lon, signal) {
+            // 中国陆地（含海南、港澳台）粗略经纬度范围，海外坐标跳过高德避免无效请求
+            const inChina = lon >= 73.5 && lon <= 135 && lat >= 17.5 && lat <= 53.6;
+            const order = inChina ? ['amap', 'bigdatacloud'] : ['bigdatacloud', 'amap'];
+            const errors = [];
+            for (const key of order) {
+                const p = Providers[key];
+                if (!p || !p.available() || !p.reverseGeocode) continue;
+                try {
+                    const loc = await p.reverseGeocode(lat, lon, signal);
+                    if (loc && isFinite(loc.lat) && isFinite(loc.lon)) {
+                        loc._provider = p.name;
+                        return loc;
+                    }
+                } catch (e) {
+                    console.warn(`[GPS] ${p.name} 逆地理编码失败:`, e.message);
+                    errors.push(p.name);
+                }
+            }
+            console.warn(`[GPS] 逆地理编码源均失败（${errors.join('、') || '无可用源'}），返回纯坐标`);
+            return {
+                city: '当前位置',
+                province: '',
+                country: '',
+                countryCode: null,
+                lat, lon,
+                source: 'GPS',
+            };
+        },
+
         async geocode(city, signal) {
             // 地理编码缓存：30min TTL（坐标不变，重复搜索即时响应）
             const cacheKey = String(city || '').toLowerCase().trim();
@@ -4362,14 +4592,14 @@
             // 根据地区智能选择天气源顺序
             const hmt = isHMT(location);
             const isChina = !hmt && (!location.countryCode || location.countryCode === 'CN');
-            // 港澳台：Open-Meteo > 和风（高德不支持港澳台）
-            // 中国大陆：高德(实况+adcode) > Open-Meteo(全球+AQI) > 和风(需Key)
-            // 海外地址：Open-Meteo > 和风 > 高德(不支持海外)
+            // 港澳台：Open-Meteo > 和风 > 彩云（高德不支持港澳台）
+            // 中国大陆：高德(实况+adcode) > 彩云(整源+国标AQI) > Open-Meteo(全球+AQI) > 和风(需Key)
+            // 海外地址：Open-Meteo > 和风 > 彩云 > 高德(不支持海外)
             const order = hmt
-                ? ['openmeteo', 'qweather']
+                ? ['openmeteo', 'qweather', 'caiyun']
                 : (isChina
-                    ? ['amap', 'openmeteo', 'qweather']
-                    : ['openmeteo', 'qweather', 'amap']);
+                    ? ['amap', 'caiyun', 'openmeteo', 'qweather']
+                    : ['openmeteo', 'qweather', 'caiyun', 'amap']);
             const errors = [];
             for (const key of order) {
                 const p = Providers[key];
@@ -4484,7 +4714,7 @@
         const cur = data.current;
         const d0 = data.daily?.[0] || {};
         const comfort = getComfort(cur.temp);
-        const weatherType = cur.weatherCode != null ? wmoType(cur.weatherCode) : getWeatherType(cur.weather);
+        const weatherType = resolveWeatherType(cur);
         const providerBadge = data._provider ? `<span class="provider-badge">${ICONS.globe}<span>${escapeHTML(data._provider)}</span></span>` : '';
         const countryBadge = `<span class="country-badge">${escapeHTML(countryBadgeLabel(loc))}</span>`;
         return `
@@ -4852,7 +5082,7 @@
     function renderWeather(data) {
         const cur = data.current;
         const daily0 = data.daily?.[0] || {};
-        const weatherType = cur.weatherCode != null ? wmoType(cur.weatherCode) : getWeatherType(cur.weather);
+        const weatherType = resolveWeatherType(cur);
 
         // 根据天气数据计算动画强度和风速
         const precip = cur.precipProbability ?? 50;
@@ -4952,6 +5182,37 @@
             if (myToken !== _requestToken) return;
             if (silent) showEmpty();
             else showError(e.message);
+            showToast(e.message, 'error');
+        } finally {
+            if (myToken === _requestToken) {
+                isLoading = false;
+                if (_activeAbortController === myController) _activeAbortController = null;
+            }
+        }
+    }
+
+    async function loadByGPS() {
+        // 请求去重与防陈旧响应机制同 loadByIP
+        _abortActiveRequest();
+        const myController = new AbortController();
+        _activeAbortController = myController;
+        const myToken = ++_requestToken;
+        isLoading = true;
+        showLoading();
+        try {
+            const loc = await WeatherService.locateGPS(myController.signal);
+            if (myToken !== _requestToken) return;
+            const data = await WeatherService.getWeather(loc, myController.signal);
+            if (myToken !== _requestToken) return;
+            lastCity = loc.city;
+            cityInput.value = loc.city;
+            renderWeather(data);
+            showToast(`已通过 GPS 定位到 ${loc.city}`, 'success');
+        } catch (e) {
+            // 用户主动取消（请求去重）不报错
+            if (e && e.name === 'AbortError') return;
+            if (myToken !== _requestToken) return;
+            showError(e.message);
             showToast(e.message, 'error');
         } finally {
             if (myToken === _requestToken) {
@@ -5068,6 +5329,12 @@
         btnRefresh.classList.add('spinning');
         const promise = lastCity ? loadWeather(lastCity) : loadByIP();
         promise?.finally(() => setTimeout(() => btnRefresh.classList.remove('spinning'), 600));
+    });
+
+    btnGps.addEventListener('click', () => {
+        if (isLoading) return;
+        btnGps.classList.add('spinning');
+        loadByGPS().finally(() => setTimeout(() => btnGps.classList.remove('spinning'), 600));
     });
 
     historyBox.addEventListener('mousedown', (e) => {
