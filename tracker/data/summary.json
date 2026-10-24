@@ -1,0 +1,375 @@
+{
+ "generatedAt": "2026-10-24T12:20:25.758Z",
+ "source": "Open-Meteo Previous Runs API(过去实际发布的预报)vs day-0 分析值",
+ "rainThresholdMM": 0.2,
+ "cityCount": 6,
+ "totalCityDays": 336,
+ "overall": {
+  "maeTmaxF1": 0.79,
+  "maeTminF1": 0.71,
+  "maeTmaxF3": 1.14,
+  "maeTminF3": 0.92,
+  "biasTmaxF1": 0.05,
+  "pod": 79,
+  "far": 11,
+  "rainDays": 170,
+  "falseAlarms": 17,
+  "days": 336
+ },
+ "perCity": {
+  "北京": {
+   "maeTmaxF1": 0.51,
+   "maeTminF1": 0.44,
+   "maeTmaxF3": 0.88,
+   "maeTminF3": 0.63,
+   "biasTmaxF1": -0.22,
+   "pod": 75,
+   "far": 8,
+   "rainDays": 16,
+   "falseAlarms": 1,
+   "days": 56
+  },
+  "成都": {
+   "maeTmaxF1": 1.01,
+   "maeTminF1": 0.62,
+   "maeTmaxF3": 1.67,
+   "maeTminF3": 0.89,
+   "biasTmaxF1": 0.75,
+   "pod": 64,
+   "far": 14,
+   "rainDays": 39,
+   "falseAlarms": 4,
+   "days": 56
+  },
+  "广州": {
+   "maeTmaxF1": 0.64,
+   "maeTminF1": 0.48,
+   "maeTmaxF3": 1,
+   "maeTminF3": 0.59,
+   "biasTmaxF1": -0.08,
+   "pod": 87,
+   "far": 6,
+   "rainDays": 38,
+   "falseAlarms": 2,
+   "days": 56
+  },
+  "南阳": {
+   "maeTmaxF1": 0.8,
+   "maeTminF1": 0.65,
+   "maeTmaxF3": 1.09,
+   "maeTminF3": 1.05,
+   "biasTmaxF1": 0.01,
+   "pod": 76,
+   "far": 10,
+   "rainDays": 25,
+   "falseAlarms": 2,
+   "days": 56
+  },
+  "纽约": {
+   "maeTmaxF1": 1.05,
+   "maeTminF1": 1.49,
+   "maeTmaxF3": 1.24,
+   "maeTminF3": 1.61,
+   "biasTmaxF1": -0.43,
+   "pod": 78,
+   "far": 22,
+   "rainDays": 18,
+   "falseAlarms": 4,
+   "days": 56
+  },
+  "上海": {
+   "maeTmaxF1": 0.75,
+   "maeTminF1": 0.59,
+   "maeTmaxF3": 0.96,
+   "maeTminF3": 0.76,
+   "biasTmaxF1": 0.26,
+   "pod": 91,
+   "far": 11,
+   "rainDays": 34,
+   "falseAlarms": 4,
+   "days": 56
+  }
+ },
+ "daily": [
+  {
+   "date": "2026-08-27",
+   "maeTmaxF1": 1.03,
+   "maeTmaxF3": 0.9
+  },
+  {
+   "date": "2026-08-28",
+   "maeTmaxF1": 0.93,
+   "maeTmaxF3": 0.97
+  },
+  {
+   "date": "2026-08-29",
+   "maeTmaxF1": 1.03,
+   "maeTmaxF3": 1.5
+  },
+  {
+   "date": "2026-08-30",
+   "maeTmaxF1": 0.95,
+   "maeTmaxF3": 1.85
+  },
+  {
+   "date": "2026-08-31",
+   "maeTmaxF1": 0.5,
+   "maeTmaxF3": 1.05
+  },
+  {
+   "date": "2026-09-01",
+   "maeTmaxF1": 0.57,
+   "maeTmaxF3": 1.32
+  },
+  {
+   "date": "2026-09-02",
+   "maeTmaxF1": 0.37,
+   "maeTmaxF3": 0.47
+  },
+  {
+   "date": "2026-09-03",
+   "maeTmaxF1": 0.98,
+   "maeTmaxF3": 0.65
+  },
+  {
+   "date": "2026-09-04",
+   "maeTmaxF1": 0.28,
+   "maeTmaxF3": 0.82
+  },
+  {
+   "date": "2026-09-05",
+   "maeTmaxF1": 0.43,
+   "maeTmaxF3": 0.73
+  },
+  {
+   "date": "2026-09-06",
+   "maeTmaxF1": 0.32,
+   "maeTmaxF3": 0.68
+  },
+  {
+   "date": "2026-09-07",
+   "maeTmaxF1": 0.58,
+   "maeTmaxF3": 0.68
+  },
+  {
+   "date": "2026-09-08",
+   "maeTmaxF1": 1.22,
+   "maeTmaxF3": 1.53
+  },
+  {
+   "date": "2026-09-09",
+   "maeTmaxF1": 0.58,
+   "maeTmaxF3": 1.18
+  },
+  {
+   "date": "2026-09-10",
+   "maeTmaxF1": 0.57,
+   "maeTmaxF3": 0.93
+  },
+  {
+   "date": "2026-09-11",
+   "maeTmaxF1": 1.15,
+   "maeTmaxF3": 1.73
+  },
+  {
+   "date": "2026-09-12",
+   "maeTmaxF1": 0.57,
+   "maeTmaxF3": 0.7
+  },
+  {
+   "date": "2026-09-13",
+   "maeTmaxF1": 1.2,
+   "maeTmaxF3": 2
+  },
+  {
+   "date": "2026-09-14",
+   "maeTmaxF1": 0.97,
+   "maeTmaxF3": 1.5
+  },
+  {
+   "date": "2026-09-15",
+   "maeTmaxF1": 0.47,
+   "maeTmaxF3": 1.12
+  },
+  {
+   "date": "2026-09-16",
+   "maeTmaxF1": 0.6,
+   "maeTmaxF3": 1.37
+  },
+  {
+   "date": "2026-09-17",
+   "maeTmaxF1": 0.7,
+   "maeTmaxF3": 0.65
+  },
+  {
+   "date": "2026-09-18",
+   "maeTmaxF1": 1,
+   "maeTmaxF3": 1.55
+  },
+  {
+   "date": "2026-09-19",
+   "maeTmaxF1": 0.73,
+   "maeTmaxF3": 1.4
+  },
+  {
+   "date": "2026-09-20",
+   "maeTmaxF1": 0.6,
+   "maeTmaxF3": 1.1
+  },
+  {
+   "date": "2026-09-21",
+   "maeTmaxF1": 0.92,
+   "maeTmaxF3": 0.88
+  },
+  {
+   "date": "2026-09-22",
+   "maeTmaxF1": 0.78,
+   "maeTmaxF3": 1.58
+  },
+  {
+   "date": "2026-09-23",
+   "maeTmaxF1": 0.83,
+   "maeTmaxF3": 1.33
+  },
+  {
+   "date": "2026-09-24",
+   "maeTmaxF1": 1.12,
+   "maeTmaxF3": 1.38
+  },
+  {
+   "date": "2026-09-25",
+   "maeTmaxF1": 0.58,
+   "maeTmaxF3": 1.25
+  },
+  {
+   "date": "2026-09-26",
+   "maeTmaxF1": 0.47,
+   "maeTmaxF3": 2.48
+  },
+  {
+   "date": "2026-09-27",
+   "maeTmaxF1": 1.03,
+   "maeTmaxF3": 0.95
+  },
+  {
+   "date": "2026-09-28",
+   "maeTmaxF1": 0.65,
+   "maeTmaxF3": 0.65
+  },
+  {
+   "date": "2026-09-29",
+   "maeTmaxF1": 0.73,
+   "maeTmaxF3": 0.73
+  },
+  {
+   "date": "2026-09-30",
+   "maeTmaxF1": 1.03,
+   "maeTmaxF3": 0.93
+  },
+  {
+   "date": "2026-10-01",
+   "maeTmaxF1": 1.3,
+   "maeTmaxF3": 1.05
+  },
+  {
+   "date": "2026-10-02",
+   "maeTmaxF1": 0.88,
+   "maeTmaxF3": 1.28
+  },
+  {
+   "date": "2026-10-03",
+   "maeTmaxF1": 1.07,
+   "maeTmaxF3": 1.47
+  },
+  {
+   "date": "2026-10-04",
+   "maeTmaxF1": 1.52,
+   "maeTmaxF3": 1.58
+  },
+  {
+   "date": "2026-10-05",
+   "maeTmaxF1": 0.88,
+   "maeTmaxF3": 0.6
+  },
+  {
+   "date": "2026-10-06",
+   "maeTmaxF1": 0.48,
+   "maeTmaxF3": 0.7
+  },
+  {
+   "date": "2026-10-07",
+   "maeTmaxF1": 0.42,
+   "maeTmaxF3": 0.8
+  },
+  {
+   "date": "2026-10-08",
+   "maeTmaxF1": 0.32,
+   "maeTmaxF3": 0.67
+  },
+  {
+   "date": "2026-10-09",
+   "maeTmaxF1": 0.7,
+   "maeTmaxF3": 0.72
+  },
+  {
+   "date": "2026-10-10",
+   "maeTmaxF1": 0.83,
+   "maeTmaxF3": 1.67
+  },
+  {
+   "date": "2026-10-11",
+   "maeTmaxF1": 1.03,
+   "maeTmaxF3": 1.25
+  },
+  {
+   "date": "2026-10-12",
+   "maeTmaxF1": 1.23,
+   "maeTmaxF3": 1.48
+  },
+  {
+   "date": "2026-10-13",
+   "maeTmaxF1": 0.65,
+   "maeTmaxF3": 1.05
+  },
+  {
+   "date": "2026-10-14",
+   "maeTmaxF1": 0.68,
+   "maeTmaxF3": 0.8
+  },
+  {
+   "date": "2026-10-15",
+   "maeTmaxF1": 0.72,
+   "maeTmaxF3": 0.75
+  },
+  {
+   "date": "2026-10-16",
+   "maeTmaxF1": 0.78,
+   "maeTmaxF3": 1
+  },
+  {
+   "date": "2026-10-17",
+   "maeTmaxF1": 0.65,
+   "maeTmaxF3": 0.77
+  },
+  {
+   "date": "2026-10-18",
+   "maeTmaxF1": 1,
+   "maeTmaxF3": 1.07
+  },
+  {
+   "date": "2026-10-19",
+   "maeTmaxF1": 1.27,
+   "maeTmaxF3": 1.55
+  },
+  {
+   "date": "2026-10-20",
+   "maeTmaxF1": 0.95,
+   "maeTmaxF3": 2.2
+  },
+  {
+   "date": "2026-10-21",
+   "maeTmaxF1": 0.65,
+   "maeTmaxF3": 0.75
+  }
+ ]
+}

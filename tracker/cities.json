@@ -1,0 +1,8 @@
+[
+  { "id": "beijing",  "city": "北京", "lat": 39.90, "lon": 116.40, "tz": "Asia/Shanghai", "adcode": "110000" },
+  { "id": "shanghai", "city": "上海", "lat": 31.23, "lon": 121.47, "tz": "Asia/Shanghai", "adcode": "310000" },
+  { "id": "guangzhou","city": "广州", "lat": 23.13, "lon": 113.26, "tz": "Asia/Shanghai", "adcode": "440100" },
+  { "id": "chengdu",  "city": "成都", "lat": 30.57, "lon": 104.07, "tz": "Asia/Shanghai", "adcode": "510100" },
+  { "id": "nanyang",  "city": "南阳", "lat": 32.99, "lon": 112.53, "tz": "Asia/Shanghai", "adcode": "411300" },
+  { "id": "newyork",  "city": "纽约", "lat": 40.71, "lon": -74.01, "tz": "America/New_York", "adcode": null }
+]
