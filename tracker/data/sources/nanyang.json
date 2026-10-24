@@ -1,0 +1,2587 @@
+{
+ "city": "南阳",
+ "id": "nanyang",
+ "window": {
+  "start": "2026-08-27",
+  "end": "2026-10-21"
+ },
+ "days": 56,
+ "rows": [
+  {
+   "date": "2026-08-27",
+   "actual": {
+    "tmax": 32.3,
+    "tmin": 26.3,
+    "precip": 0.1
+   },
+   "sources": {
+    "openmeteo": {
+     "f1": {
+      "tmax": 32.1,
+      "tmin": 25.7,
+      "precip": 0.6
+     },
+     "f3": {
+      "tmax": 32.7,
+      "tmin": 24.6,
+      "precip": 11.1
+     }
+    },
+    "caiyun": {
+     "f1": {
+      "tmax": 32.1,
+      "tmin": 25.8,
+      "precip": 0
+     },
+     "f3": {
+      "tmax": 31.9,
+      "tmin": 23.2,
+      "precip": 0
+     }
+    },
+    "amap_qweather": {
+     "f1": {
+      "tmax": 31.7,
+      "tmin": 25.3,
+      "precip": null
+     },
+     "f3": {
+      "tmax": 31.7,
+      "tmin": 23.7,
+      "precip": null
+     }
+    }
+   }
+  },
+  {
+   "date": "2026-08-28",
+   "actual": {
+    "tmax": 30.6,
+    "tmin": 23.5,
+    "precip": 0
+   },
+   "sources": {
+    "openmeteo": {
+     "f1": {
+      "tmax": 31.8,
+      "tmin": 24.4,
+      "precip": 0
+     },
+     "f3": {
+      "tmax": 30.9,
+      "tmin": 24,
+      "precip": 4.5
+     }
+    },
+    "caiyun": {
+     "f1": {
+      "tmax": 31.6,
+      "tmin": 24,
+      "precip": 0
+     },
+     "f3": {
+      "tmax": 32,
+      "tmin": 24.9,
+      "precip": 0
+     }
+    },
+    "amap_qweather": {
+     "f1": {
+      "tmax": 32.2,
+      "tmin": 24.1,
+      "precip": null
+     },
+     "f3": {
+      "tmax": 31.9,
+      "tmin": 24,
+      "precip": null
+     }
+    }
+   }
+  },
+  {
+   "date": "2026-08-29",
+   "actual": {
+    "tmax": 32.8,
+    "tmin": 21.7,
+    "precip": 0
+   },
+   "sources": {
+    "openmeteo": {
+     "f1": {
+      "tmax": 32.8,
+      "tmin": 22.8,
+      "precip": 0
+     },
+     "f3": {
+      "tmax": 32.5,
+      "tmin": 23.4,
+      "precip": 0.1
+     }
+    },
+    "caiyun": {
+     "f1": {
+      "tmax": 33.1,
+      "tmin": 21.9,
+      "precip": 0
+     },
+     "f3": {
+      "tmax": 32.7,
+      "tmin": 24.1,
+      "precip": 1.6
+     }
+    },
+    "amap_qweather": {
+     "f1": {
+      "tmax": 32.4,
+      "tmin": 22.9,
+      "precip": null
+     },
+     "f3": {
+      "tmax": 32.5,
+      "tmin": 23.6,
+      "precip": null
+     }
+    }
+   }
+  },
+  {
+   "date": "2026-08-30",
+   "actual": {
+    "tmax": 31.8,
+    "tmin": 23.7,
+    "precip": 0
+   },
+   "sources": {
+    "openmeteo": {
+     "f1": {
+      "tmax": 30.5,
+      "tmin": 23.4,
+      "precip": 0
+     },
+     "f3": {
+      "tmax": 31,
+      "tmin": 25.5,
+      "precip": 0
+     }
+    },
+    "caiyun": {
+     "f1": {
+      "tmax": 30.9,
+      "tmin": 23.5,
+      "precip": 0
+     },
+     "f3": {
+      "tmax": 29,
+      "tmin": 25.9,
+      "precip": 2.1
+     }
+    },
+    "amap_qweather": {
+     "f1": {
+      "tmax": 30.6,
+      "tmin": 24.2,
+      "precip": null
+     },
+     "f3": {
+      "tmax": 30.3,
+      "tmin": 26,
+      "precip": null
+     }
+    }
+   }
+  },
+  {
+   "date": "2026-08-31",
+   "actual": {
+    "tmax": 33.1,
+    "tmin": 22.1,
+    "precip": 0
+   },
+   "sources": {
+    "openmeteo": {
+     "f1": {
+      "tmax": 32.5,
+      "tmin": 22.1,
+      "precip": 0
+     },
+     "f3": {
+      "tmax": 32.4,
+      "tmin": 22.5,
+      "precip": 0
+     }
+    },
+    "caiyun": {
+     "f1": {
+      "tmax": 32.4,
+      "tmin": 22.3,
+      "precip": 0
+     },
+     "f3": {
+      "tmax": 32.3,
+      "tmin": 21.4,
+      "precip": 0
+     }
+    },
+    "amap_qweather": {
+     "f1": {
+      "tmax": 32.1,
+      "tmin": 23.1,
+      "precip": null
+     },
+     "f3": {
+      "tmax": 32.3,
+      "tmin": 22.9,
+      "precip": null
+     }
+    }
+   }
+  },
+  {
+   "date": "2026-09-01",
+   "actual": {
+    "tmax": 30.7,
+    "tmin": 22.5,
+    "precip": 0
+   },
+   "sources": {
+    "openmeteo": {
+     "f1": {
+      "tmax": 30.5,
+      "tmin": 22.1,
+      "precip": 0
+     },
+     "f3": {
+      "tmax": 29.8,
+      "tmin": 22.3,
+      "precip": 0
+     }
+    },
+    "caiyun": {
+     "f1": {
+      "tmax": 30.2,
+      "tmin": 22.3,
+      "precip": 0
+     },
+     "f3": {
+      "tmax": 29.8,
+      "tmin": 22.1,
+      "precip": 0
+     }
+    },
+    "amap_qweather": {
+     "f1": {
+      "tmax": 30.7,
+      "tmin": 22.1,
+      "precip": null
+     },
+     "f3": {
+      "tmax": 30.2,
+      "tmin": 23.7,
+      "precip": null
+     }
+    }
+   }
+  },
+  {
+   "date": "2026-09-02",
+   "actual": {
+    "tmax": 29.1,
+    "tmin": 22.6,
+    "precip": 0
+   },
+   "sources": {
+    "openmeteo": {
+     "f1": {
+      "tmax": 28.8,
+      "tmin": 22,
+      "precip": 0
+     },
+     "f3": {
+      "tmax": 28.5,
+      "tmin": 21.6,
+      "precip": 0
+     }
+    },
+    "caiyun": {
+     "f1": {
+      "tmax": 28.9,
+      "tmin": 22,
+      "precip": 0
+     },
+     "f3": {
+      "tmax": 28.1,
+      "tmin": 21,
+      "precip": 0
+     }
+    },
+    "amap_qweather": {
+     "f1": {
+      "tmax": 28.7,
+      "tmin": 22.3,
+      "precip": null
+     },
+     "f3": {
+      "tmax": 28.9,
+      "tmin": 22,
+      "precip": null
+     }
+    }
+   }
+  },
+  {
+   "date": "2026-09-03",
+   "actual": {
+    "tmax": 28.6,
+    "tmin": 21.2,
+    "precip": 0
+   },
+   "sources": {
+    "openmeteo": {
+     "f1": {
+      "tmax": 28.6,
+      "tmin": 21.8,
+      "precip": 0
+     },
+     "f3": {
+      "tmax": 28.9,
+      "tmin": 21.2,
+      "precip": 0
+     }
+    },
+    "caiyun": {
+     "f1": {
+      "tmax": 28.6,
+      "tmin": 21.9,
+      "precip": 0
+     },
+     "f3": {
+      "tmax": 28,
+      "tmin": 22.4,
+      "precip": 0
+     }
+    },
+    "amap_qweather": {
+     "f1": {
+      "tmax": 28.5,
+      "tmin": 21.7,
+      "precip": null
+     },
+     "f3": {
+      "tmax": 29.6,
+      "tmin": 20.7,
+      "precip": null
+     }
+    }
+   }
+  },
+  {
+   "date": "2026-09-04",
+   "actual": {
+    "tmax": 30.1,
+    "tmin": 22,
+    "precip": 0
+   },
+   "sources": {
+    "openmeteo": {
+     "f1": {
+      "tmax": 29.8,
+      "tmin": 21.7,
+      "precip": 0
+     },
+     "f3": {
+      "tmax": 29.9,
+      "tmin": 20,
+      "precip": 0
+     }
+    },
+    "caiyun": {
+     "f1": {
+      "tmax": 29.8,
+      "tmin": 22.3,
+      "precip": 0
+     },
+     "f3": {
+      "tmax": 29.4,
+      "tmin": 19.1,
+      "precip": 0
+     }
+    },
+    "amap_qweather": {
+     "f1": {
+      "tmax": 29.6,
+      "tmin": 21.5,
+      "precip": null
+     },
+     "f3": {
+      "tmax": 29.9,
+      "tmin": 19.7,
+      "precip": null
+     }
+    }
+   }
+  },
+  {
+   "date": "2026-09-05",
+   "actual": {
+    "tmax": 31,
+    "tmin": 20.1,
+    "precip": 0
+   },
+   "sources": {
+    "openmeteo": {
+     "f1": {
+      "tmax": 31.3,
+      "tmin": 20.1,
+      "precip": 0
+     },
+     "f3": {
+      "tmax": 30.6,
+      "tmin": 19.1,
+      "precip": 0
+     }
+    },
+    "caiyun": {
+     "f1": {
+      "tmax": 31.4,
+      "tmin": 20.2,
+      "precip": 0
+     },
+     "f3": {
+      "tmax": 31.1,
+      "tmin": 17.7,
+      "precip": 0
+     }
+    },
+    "amap_qweather": {
+     "f1": {
+      "tmax": 31.6,
+      "tmin": 20.3,
+      "precip": null
+     },
+     "f3": {
+      "tmax": 31.6,
+      "tmin": 18.1,
+      "precip": null
+     }
+    }
+   }
+  },
+  {
+   "date": "2026-09-06",
+   "actual": {
+    "tmax": 31.4,
+    "tmin": 21.2,
+    "precip": 0
+   },
+   "sources": {
+    "openmeteo": {
+     "f1": {
+      "tmax": 31.4,
+      "tmin": 21,
+      "precip": 0
+     },
+     "f3": {
+      "tmax": 31.4,
+      "tmin": 21,
+      "precip": 0
+     }
+    },
+    "caiyun": {
+     "f1": {
+      "tmax": 31.4,
+      "tmin": 20.4,
+      "precip": 0
+     },
+     "f3": {
+      "tmax": 30.8,
+      "tmin": 20.3,
+      "precip": 0
+     }
+    },
+    "amap_qweather": {
+     "f1": {
+      "tmax": 31.5,
+      "tmin": 21,
+      "precip": null
+     },
+     "f3": {
+      "tmax": 31.4,
+      "tmin": 20.4,
+      "precip": null
+     }
+    }
+   }
+  },
+  {
+   "date": "2026-09-07",
+   "actual": {
+    "tmax": 32.2,
+    "tmin": 21.8,
+    "precip": 0
+   },
+   "sources": {
+    "openmeteo": {
+     "f1": {
+      "tmax": 32.2,
+      "tmin": 21.1,
+      "precip": 0
+     },
+     "f3": {
+      "tmax": 31.2,
+      "tmin": 20.8,
+      "precip": 0
+     }
+    },
+    "caiyun": {
+     "f1": {
+      "tmax": 32.5,
+      "tmin": 21.5,
+      "precip": 0
+     },
+     "f3": {
+      "tmax": 32.8,
+      "tmin": 20.1,
+      "precip": 0.8
+     }
+    },
+    "amap_qweather": {
+     "f1": {
+      "tmax": 32.4,
+      "tmin": 20.9,
+      "precip": null
+     },
+     "f3": {
+      "tmax": 31.6,
+      "tmin": 20.9,
+      "precip": null
+     }
+    }
+   }
+  },
+  {
+   "date": "2026-09-08",
+   "actual": {
+    "tmax": 32,
+    "tmin": 17.8,
+    "precip": 0.4
+   },
+   "sources": {
+    "openmeteo": {
+     "f1": {
+      "tmax": 32.3,
+      "tmin": 19.2,
+      "precip": 0
+     },
+     "f3": {
+      "tmax": 32.2,
+      "tmin": 21.5,
+      "precip": 0
+     }
+    },
+    "caiyun": {
+     "f1": {
+      "tmax": 31.9,
+      "tmin": 19.1,
+      "precip": 0.5
+     },
+     "f3": {
+      "tmax": 32.6,
+      "tmin": 23.6,
+      "precip": 0
+     }
+    },
+    "amap_qweather": {
+     "f1": {
+      "tmax": 32.7,
+      "tmin": 19.5,
+      "precip": null
+     },
+     "f3": {
+      "tmax": 32.8,
+      "tmin": 22.3,
+      "precip": null
+     }
+    }
+   }
+  },
+  {
+   "date": "2026-09-09",
+   "actual": {
+    "tmax": 17.7,
+    "tmin": 15.7,
+    "precip": 3.7
+   },
+   "sources": {
+    "openmeteo": {
+     "f1": {
+      "tmax": 19.2,
+      "tmin": 17.1,
+      "precip": 1.5
+     },
+     "f3": {
+      "tmax": 21.3,
+      "tmin": 17.8,
+      "precip": 0.6
+     }
+    },
+    "caiyun": {
+     "f1": {
+      "tmax": 18.8,
+      "tmin": 16.7,
+      "precip": 2.7
+     },
+     "f3": {
+      "tmax": 20.7,
+      "tmin": 18.6,
+      "precip": 2.9
+     }
+    },
+    "amap_qweather": {
+     "f1": {
+      "tmax": 19.3,
+      "tmin": 17.5,
+      "precip": null
+     },
+     "f3": {
+      "tmax": 20.6,
+      "tmin": 18.9,
+      "precip": null
+     }
+    }
+   }
+  },
+  {
+   "date": "2026-09-10",
+   "actual": {
+    "tmax": 22.1,
+    "tmin": 16.7,
+    "precip": 1
+   },
+   "sources": {
+    "openmeteo": {
+     "f1": {
+      "tmax": 21.6,
+      "tmin": 17.5,
+      "precip": 0.1
+     },
+     "f3": {
+      "tmax": 21.6,
+      "tmin": 17.1,
+      "precip": 1.6
+     }
+    },
+    "caiyun": {
+     "f1": {
+      "tmax": 21.7,
+      "tmin": 17.1,
+      "precip": 1.1
+     },
+     "f3": {
+      "tmax": 21.6,
+      "tmin": 17.4,
+      "precip": 1
+     }
+    },
+    "amap_qweather": {
+     "f1": {
+      "tmax": 21.4,
+      "tmin": 17.6,
+      "precip": null
+     },
+     "f3": {
+      "tmax": 21.8,
+      "tmin": 17,
+      "precip": null
+     }
+    }
+   }
+  },
+  {
+   "date": "2026-09-11",
+   "actual": {
+    "tmax": 25.6,
+    "tmin": 17.9,
+    "precip": 0
+   },
+   "sources": {
+    "openmeteo": {
+     "f1": {
+      "tmax": 26.1,
+      "tmin": 16.8,
+      "precip": 0
+     },
+     "f3": {
+      "tmax": 25,
+      "tmin": 16.2,
+      "precip": 0
+     }
+    },
+    "caiyun": {
+     "f1": {
+      "tmax": 25.8,
+      "tmin": 17,
+      "precip": 0
+     },
+     "f3": {
+      "tmax": 26.1,
+      "tmin": 16,
+      "precip": 0
+     }
+    },
+    "amap_qweather": {
+     "f1": {
+      "tmax": 25.8,
+      "tmin": 17.8,
+      "precip": null
+     },
+     "f3": {
+      "tmax": 26.3,
+      "tmin": 16,
+      "precip": null
+     }
+    }
+   }
+  },
+  {
+   "date": "2026-09-12",
+   "actual": {
+    "tmax": 26.8,
+    "tmin": 17.7,
+    "precip": 0
+   },
+   "sources": {
+    "openmeteo": {
+     "f1": {
+      "tmax": 25.7,
+      "tmin": 18.4,
+      "precip": 0
+     },
+     "f3": {
+      "tmax": 27.3,
+      "tmin": 17.8,
+      "precip": 0
+     }
+    },
+    "caiyun": {
+     "f1": {
+      "tmax": 25.6,
+      "tmin": 18.1,
+      "precip": 0
+     },
+     "f3": {
+      "tmax": 24.6,
+      "tmin": 16.3,
+      "precip": 0.4
+     }
+    },
+    "amap_qweather": {
+     "f1": {
+      "tmax": 25.7,
+      "tmin": 17.4,
+      "precip": null
+     },
+     "f3": {
+      "tmax": 26.1,
+      "tmin": 18.4,
+      "precip": null
+     }
+    }
+   }
+  },
+  {
+   "date": "2026-09-13",
+   "actual": {
+    "tmax": 27.9,
+    "tmin": 19.6,
+    "precip": 0
+   },
+   "sources": {
+    "openmeteo": {
+     "f1": {
+      "tmax": 26.3,
+      "tmin": 19.1,
+      "precip": 0
+     },
+     "f3": {
+      "tmax": 25.8,
+      "tmin": 19.7,
+      "precip": 0.3
+     }
+    },
+    "caiyun": {
+     "f1": {
+      "tmax": 27.4,
+      "tmin": 19.2,
+      "precip": 0
+     },
+     "f3": {
+      "tmax": 25.3,
+      "tmin": 19.8,
+      "precip": 0
+     }
+    },
+    "amap_qweather": {
+     "f1": {
+      "tmax": 26,
+      "tmin": 19,
+      "precip": null
+     },
+     "f3": {
+      "tmax": 26.1,
+      "tmin": 19.4,
+      "precip": null
+     }
+    }
+   }
+  },
+  {
+   "date": "2026-09-14",
+   "actual": {
+    "tmax": 30,
+    "tmin": 18.8,
+    "precip": 0
+   },
+   "sources": {
+    "openmeteo": {
+     "f1": {
+      "tmax": 30.1,
+      "tmin": 18.8,
+      "precip": 0
+     },
+     "f3": {
+      "tmax": 29.1,
+      "tmin": 18.9,
+      "precip": 0
+     }
+    },
+    "caiyun": {
+     "f1": {
+      "tmax": 29.1,
+      "tmin": 18.6,
+      "precip": 0
+     },
+     "f3": {
+      "tmax": 30.3,
+      "tmin": 18.2,
+      "precip": 0
+     }
+    },
+    "amap_qweather": {
+     "f1": {
+      "tmax": 29.6,
+      "tmin": 19.2,
+      "precip": null
+     },
+     "f3": {
+      "tmax": 29.9,
+      "tmin": 19.3,
+      "precip": null
+     }
+    }
+   }
+  },
+  {
+   "date": "2026-09-15",
+   "actual": {
+    "tmax": 30.3,
+    "tmin": 20.7,
+    "precip": 0
+   },
+   "sources": {
+    "openmeteo": {
+     "f1": {
+      "tmax": 30.2,
+      "tmin": 19.3,
+      "precip": 0
+     },
+     "f3": {
+      "tmax": 27.3,
+      "tmin": 19.5,
+      "precip": 0
+     }
+    },
+    "caiyun": {
+     "f1": {
+      "tmax": 30.4,
+      "tmin": 20.5,
+      "precip": 0
+     },
+     "f3": {
+      "tmax": 30.3,
+      "tmin": 20.1,
+      "precip": 0
+     }
+    },
+    "amap_qweather": {
+     "f1": {
+      "tmax": 30.2,
+      "tmin": 20,
+      "precip": null
+     },
+     "f3": {
+      "tmax": 30.8,
+      "tmin": 18.9,
+      "precip": null
+     }
+    }
+   }
+  },
+  {
+   "date": "2026-09-16",
+   "actual": {
+    "tmax": 22.5,
+    "tmin": 17.4,
+    "precip": 7.1
+   },
+   "sources": {
+    "openmeteo": {
+     "f1": {
+      "tmax": 24,
+      "tmin": 18.2,
+      "precip": 1.4
+     },
+     "f3": {
+      "tmax": 25.3,
+      "tmin": 19.9,
+      "precip": 1.5
+     }
+    },
+    "caiyun": {
+     "f1": {
+      "tmax": 23.7,
+      "tmin": 17.9,
+      "precip": 0
+     },
+     "f3": {
+      "tmax": 25.2,
+      "tmin": 20.7,
+      "precip": 6.9
+     }
+    },
+    "amap_qweather": {
+     "f1": {
+      "tmax": 23.9,
+      "tmin": 18.4,
+      "precip": null
+     },
+     "f3": {
+      "tmax": 24.9,
+      "tmin": 20.9,
+      "precip": null
+     }
+    }
+   }
+  },
+  {
+   "date": "2026-09-17",
+   "actual": {
+    "tmax": 20.8,
+    "tmin": 16.8,
+    "precip": 0.2
+   },
+   "sources": {
+    "openmeteo": {
+     "f1": {
+      "tmax": 22.8,
+      "tmin": 17.6,
+      "precip": 1
+     },
+     "f3": {
+      "tmax": 21.3,
+      "tmin": 18.8,
+      "precip": 0
+     }
+    },
+    "caiyun": {
+     "f1": {
+      "tmax": 22.5,
+      "tmin": 17,
+      "precip": 0.2
+     },
+     "f3": {
+      "tmax": 24,
+      "tmin": 20,
+      "precip": 0.2
+     }
+    },
+    "amap_qweather": {
+     "f1": {
+      "tmax": 22.8,
+      "tmin": 17.6,
+      "precip": null
+     },
+     "f3": {
+      "tmax": 23,
+      "tmin": 19.1,
+      "precip": null
+     }
+    }
+   }
+  },
+  {
+   "date": "2026-09-18",
+   "actual": {
+    "tmax": 23.2,
+    "tmin": 16.7,
+    "precip": 9.4
+   },
+   "sources": {
+    "openmeteo": {
+     "f1": {
+      "tmax": 24.7,
+      "tmin": 17.2,
+      "precip": 0.1
+     },
+     "f3": {
+      "tmax": 26.6,
+      "tmin": 19.2,
+      "precip": 0.1
+     }
+    },
+    "caiyun": {
+     "f1": {
+      "tmax": 24.4,
+      "tmin": 17.6,
+      "precip": 13.6
+     },
+     "f3": {
+      "tmax": 25.8,
+      "tmin": 20.4,
+      "precip": 8
+     }
+    },
+    "amap_qweather": {
+     "f1": {
+      "tmax": 24.9,
+      "tmin": 17.4,
+      "precip": null
+     },
+     "f3": {
+      "tmax": 25.1,
+      "tmin": 21,
+      "precip": null
+     }
+    }
+   }
+  },
+  {
+   "date": "2026-09-19",
+   "actual": {
+    "tmax": 23.8,
+    "tmin": 18.1,
+    "precip": 0.6
+   },
+   "sources": {
+    "openmeteo": {
+     "f1": {
+      "tmax": 25.3,
+      "tmin": 17.8,
+      "precip": 0.4
+     },
+     "f3": {
+      "tmax": 26.6,
+      "tmin": 20.5,
+      "precip": 1.8
+     }
+    },
+    "caiyun": {
+     "f1": {
+      "tmax": 24.4,
+      "tmin": 17.8,
+      "precip": 0.6
+     },
+     "f3": {
+      "tmax": 26.6,
+      "tmin": 20.7,
+      "precip": 0.5
+     }
+    },
+    "amap_qweather": {
+     "f1": {
+      "tmax": 25.3,
+      "tmin": 17.7,
+      "precip": null
+     },
+     "f3": {
+      "tmax": 25.8,
+      "tmin": 21.4,
+      "precip": null
+     }
+    }
+   }
+  },
+  {
+   "date": "2026-09-20",
+   "actual": {
+    "tmax": 25.3,
+    "tmin": 19.5,
+    "precip": 11.8
+   },
+   "sources": {
+    "openmeteo": {
+     "f1": {
+      "tmax": 25,
+      "tmin": 19.3,
+      "precip": 3.7
+     },
+     "f3": {
+      "tmax": 26.2,
+      "tmin": 20.6,
+      "precip": 16.3
+     }
+    },
+    "caiyun": {
+     "f1": {
+      "tmax": 24.7,
+      "tmin": 18.9,
+      "precip": 15.5
+     },
+     "f3": {
+      "tmax": 24.5,
+      "tmin": 20.7,
+      "precip": 9.2
+     }
+    },
+    "amap_qweather": {
+     "f1": {
+      "tmax": 25.8,
+      "tmin": 19.7,
+      "precip": null
+     },
+     "f3": {
+      "tmax": 25.4,
+      "tmin": 20.6,
+      "precip": null
+     }
+    }
+   }
+  },
+  {
+   "date": "2026-09-21",
+   "actual": {
+    "tmax": 22.3,
+    "tmin": 20.3,
+    "precip": 2.7
+   },
+   "sources": {
+    "openmeteo": {
+     "f1": {
+      "tmax": 23.4,
+      "tmin": 20.8,
+      "precip": 0.8
+     },
+     "f3": {
+      "tmax": 22.5,
+      "tmin": 20.9,
+      "precip": 14.1
+     }
+    },
+    "caiyun": {
+     "f1": {
+      "tmax": 23.4,
+      "tmin": 20.5,
+      "precip": 2.8
+     },
+     "f3": {
+      "tmax": 24.2,
+      "tmin": 21.6,
+      "precip": 2.6
+     }
+    },
+    "amap_qweather": {
+     "f1": {
+      "tmax": 23.5,
+      "tmin": 20.3,
+      "precip": null
+     },
+     "f3": {
+      "tmax": 24.2,
+      "tmin": 21.3,
+      "precip": null
+     }
+    }
+   }
+  },
+  {
+   "date": "2026-09-22",
+   "actual": {
+    "tmax": 26.7,
+    "tmin": 19.3,
+    "precip": 0
+   },
+   "sources": {
+    "openmeteo": {
+     "f1": {
+      "tmax": 26.3,
+      "tmin": 20.1,
+      "precip": 0
+     },
+     "f3": {
+      "tmax": 25.6,
+      "tmin": 20.3,
+      "precip": 1
+     }
+    },
+    "caiyun": {
+     "f1": {
+      "tmax": 26.4,
+      "tmin": 19.9,
+      "precip": 0
+     },
+     "f3": {
+      "tmax": 26.1,
+      "tmin": 21.5,
+      "precip": 0
+     }
+    },
+    "amap_qweather": {
+     "f1": {
+      "tmax": 26.2,
+      "tmin": 20.2,
+      "precip": null
+     },
+     "f3": {
+      "tmax": 26.2,
+      "tmin": 21.3,
+      "precip": null
+     }
+    }
+   }
+  },
+  {
+   "date": "2026-09-23",
+   "actual": {
+    "tmax": 27.5,
+    "tmin": 20.1,
+    "precip": 1.6
+   },
+   "sources": {
+    "openmeteo": {
+     "f1": {
+      "tmax": 27.6,
+      "tmin": 19.1,
+      "precip": 0.4
+     },
+     "f3": {
+      "tmax": 26.9,
+      "tmin": 19.1,
+      "precip": 2.2
+     }
+    },
+    "caiyun": {
+     "f1": {
+      "tmax": 27.2,
+      "tmin": 19.3,
+      "precip": 1.3
+     },
+     "f3": {
+      "tmax": 27,
+      "tmin": 18.7,
+      "precip": 0
+     }
+    },
+    "amap_qweather": {
+     "f1": {
+      "tmax": 27.9,
+      "tmin": 18.8,
+      "precip": null
+     },
+     "f3": {
+      "tmax": 27.8,
+      "tmin": 19.7,
+      "precip": null
+     }
+    }
+   }
+  },
+  {
+   "date": "2026-09-24",
+   "actual": {
+    "tmax": 24,
+    "tmin": 21.4,
+    "precip": 6.4
+   },
+   "sources": {
+    "openmeteo": {
+     "f1": {
+      "tmax": 24.3,
+      "tmin": 21.3,
+      "precip": 13.8
+     },
+     "f3": {
+      "tmax": 23,
+      "tmin": 19.7,
+      "precip": 15.6
+     }
+    },
+    "caiyun": {
+     "f1": {
+      "tmax": 24.5,
+      "tmin": 21.9,
+      "precip": 7.4
+     },
+     "f3": {
+      "tmax": 24,
+      "tmin": 19,
+      "precip": 5.9
+     }
+    },
+    "amap_qweather": {
+     "f1": {
+      "tmax": 24.7,
+      "tmin": 21.6,
+      "precip": null
+     },
+     "f3": {
+      "tmax": 24.3,
+      "tmin": 19.5,
+      "precip": null
+     }
+    }
+   }
+  },
+  {
+   "date": "2026-09-25",
+   "actual": {
+    "tmax": 21.6,
+    "tmin": 19.3,
+    "precip": 14.5
+   },
+   "sources": {
+    "openmeteo": {
+     "f1": {
+      "tmax": 22.1,
+      "tmin": 20.2,
+      "precip": 32.8
+     },
+     "f3": {
+      "tmax": 22.7,
+      "tmin": 20.2,
+      "precip": 26.2
+     }
+    },
+    "caiyun": {
+     "f1": {
+      "tmax": 21.9,
+      "tmin": 20,
+      "precip": 0
+     },
+     "f3": {
+      "tmax": 22.3,
+      "tmin": 20.5,
+      "precip": 22.8
+     }
+    },
+    "amap_qweather": {
+     "f1": {
+      "tmax": 22.3,
+      "tmin": 20.3,
+      "precip": null
+     },
+     "f3": {
+      "tmax": 23.1,
+      "tmin": 20.5,
+      "precip": null
+     }
+    }
+   }
+  },
+  {
+   "date": "2026-09-26",
+   "actual": {
+    "tmax": 23.7,
+    "tmin": 18.8,
+    "precip": 28.2
+   },
+   "sources": {
+    "openmeteo": {
+     "f1": {
+      "tmax": 22.6,
+      "tmin": 19,
+      "precip": 27.3
+     },
+     "f3": {
+      "tmax": 21.4,
+      "tmin": 19.8,
+      "precip": 31.9
+     }
+    },
+    "caiyun": {
+     "f1": {
+      "tmax": 22.7,
+      "tmin": 18.1,
+      "precip": 21.1
+     },
+     "f3": {
+      "tmax": 22.4,
+      "tmin": 19.9,
+      "precip": 44.9
+     }
+    },
+    "amap_qweather": {
+     "f1": {
+      "tmax": 22.3,
+      "tmin": 19,
+      "precip": null
+     },
+     "f3": {
+      "tmax": 22.4,
+      "tmin": 20,
+      "precip": null
+     }
+    }
+   }
+  },
+  {
+   "date": "2026-09-27",
+   "actual": {
+    "tmax": 23.9,
+    "tmin": 18.5,
+    "precip": 3.4
+   },
+   "sources": {
+    "openmeteo": {
+     "f1": {
+      "tmax": 23.5,
+      "tmin": 17.7,
+      "precip": 1.5
+     },
+     "f3": {
+      "tmax": 24.7,
+      "tmin": 19.9,
+      "precip": 27.4
+     }
+    },
+    "caiyun": {
+     "f1": {
+      "tmax": 23.5,
+      "tmin": 17.2,
+      "precip": 3.2
+     },
+     "f3": {
+      "tmax": 22.9,
+      "tmin": 20.6,
+      "precip": 0
+     }
+    },
+    "amap_qweather": {
+     "f1": {
+      "tmax": 23.8,
+      "tmin": 17.7,
+      "precip": null
+     },
+     "f3": {
+      "tmax": 23.5,
+      "tmin": 20.5,
+      "precip": null
+     }
+    }
+   }
+  },
+  {
+   "date": "2026-09-28",
+   "actual": {
+    "tmax": 22,
+    "tmin": 18.6,
+    "precip": 15.2
+   },
+   "sources": {
+    "openmeteo": {
+     "f1": {
+      "tmax": 22.6,
+      "tmin": 19.8,
+      "precip": 20.2
+     },
+     "f3": {
+      "tmax": 21.9,
+      "tmin": 19.3,
+      "precip": 48.2
+     }
+    },
+    "caiyun": {
+     "f1": {
+      "tmax": 22.1,
+      "tmin": 19.2,
+      "precip": 13.2
+     },
+     "f3": {
+      "tmax": 23.3,
+      "tmin": 19.6,
+      "precip": 14
+     }
+    },
+    "amap_qweather": {
+     "f1": {
+      "tmax": 23,
+      "tmin": 20.4,
+      "precip": null
+     },
+     "f3": {
+      "tmax": 22.5,
+      "tmin": 18.7,
+      "precip": null
+     }
+    }
+   }
+  },
+  {
+   "date": "2026-09-29",
+   "actual": {
+    "tmax": 24.2,
+    "tmin": 18.6,
+    "precip": 1.7
+   },
+   "sources": {
+    "openmeteo": {
+     "f1": {
+      "tmax": 24.3,
+      "tmin": 19.2,
+      "precip": 0
+     },
+     "f3": {
+      "tmax": 26.3,
+      "tmin": 18.2,
+      "precip": 0
+     }
+    },
+    "caiyun": {
+     "f1": {
+      "tmax": 24.1,
+      "tmin": 19.4,
+      "precip": 2.5
+     },
+     "f3": {
+      "tmax": 25.1,
+      "tmin": 18.4,
+      "precip": 0
+     }
+    },
+    "amap_qweather": {
+     "f1": {
+      "tmax": 24.6,
+      "tmin": 18.5,
+      "precip": null
+     },
+     "f3": {
+      "tmax": 24.5,
+      "tmin": 17.4,
+      "precip": null
+     }
+    }
+   }
+  },
+  {
+   "date": "2026-09-30",
+   "actual": {
+    "tmax": 24.4,
+    "tmin": 19.1,
+    "precip": 7.6
+   },
+   "sources": {
+    "openmeteo": {
+     "f1": {
+      "tmax": 25.2,
+      "tmin": 19.1,
+      "precip": 0.6
+     },
+     "f3": {
+      "tmax": 24,
+      "tmin": 18.7,
+      "precip": 0.7
+     }
+    },
+    "caiyun": {
+     "f1": {
+      "tmax": 25.3,
+      "tmin": 18.9,
+      "precip": 10.7
+     },
+     "f3": {
+      "tmax": 24.9,
+      "tmin": 18.6,
+      "precip": 4.6
+     }
+    },
+    "amap_qweather": {
+     "f1": {
+      "tmax": 25.8,
+      "tmin": 19.1,
+      "precip": null
+     },
+     "f3": {
+      "tmax": 25.8,
+      "tmin": 18.4,
+      "precip": null
+     }
+    }
+   }
+  },
+  {
+   "date": "2026-10-01",
+   "actual": {
+    "tmax": 19.7,
+    "tmin": 15.6,
+    "precip": 0.6
+   },
+   "sources": {
+    "openmeteo": {
+     "f1": {
+      "tmax": 16.9,
+      "tmin": 13.5,
+      "precip": 8.3
+     },
+     "f3": {
+      "tmax": 19.1,
+      "tmin": 12.7,
+      "precip": 5.5
+     }
+    },
+    "caiyun": {
+     "f1": {
+      "tmax": 17.9,
+      "tmin": 14.2,
+      "precip": 0
+     },
+     "f3": {
+      "tmax": 14.4,
+      "tmin": 11.6,
+      "precip": 0.4
+     }
+    },
+    "amap_qweather": {
+     "f1": {
+      "tmax": 17,
+      "tmin": 13.5,
+      "precip": null
+     },
+     "f3": {
+      "tmax": 16.5,
+      "tmin": 12.9,
+      "precip": null
+     }
+    }
+   }
+  },
+  {
+   "date": "2026-10-02",
+   "actual": {
+    "tmax": 20.6,
+    "tmin": 13.3,
+    "precip": 0
+   },
+   "sources": {
+    "openmeteo": {
+     "f1": {
+      "tmax": 21.2,
+      "tmin": 12.9,
+      "precip": 0.1
+     },
+     "f3": {
+      "tmax": 18.6,
+      "tmin": 12.4,
+      "precip": 4.7
+     }
+    },
+    "caiyun": {
+     "f1": {
+      "tmax": 21.2,
+      "tmin": 12.9,
+      "precip": 0
+     },
+     "f3": {
+      "tmax": 22,
+      "tmin": 11.2,
+      "precip": 0
+     }
+    },
+    "amap_qweather": {
+     "f1": {
+      "tmax": 21.2,
+      "tmin": 12.5,
+      "precip": null
+     },
+     "f3": {
+      "tmax": 21.3,
+      "tmin": 12.2,
+      "precip": null
+     }
+    }
+   }
+  },
+  {
+   "date": "2026-10-03",
+   "actual": {
+    "tmax": 17.5,
+    "tmin": 14.6,
+    "precip": 11.4
+   },
+   "sources": {
+    "openmeteo": {
+     "f1": {
+      "tmax": 20.2,
+      "tmin": 15.6,
+      "precip": 6.2
+     },
+     "f3": {
+      "tmax": 20.5,
+      "tmin": 13.4,
+      "precip": 3.4
+     }
+    },
+    "caiyun": {
+     "f1": {
+      "tmax": 19.6,
+      "tmin": 15.7,
+      "precip": 13.7
+     },
+     "f3": {
+      "tmax": 22.9,
+      "tmin": 13.8,
+      "precip": 15.6
+     }
+    },
+    "amap_qweather": {
+     "f1": {
+      "tmax": 20.9,
+      "tmin": 15.8,
+      "precip": null
+     },
+     "f3": {
+      "tmax": 21.7,
+      "tmin": 12.7,
+      "precip": null
+     }
+    }
+   }
+  },
+  {
+   "date": "2026-10-04",
+   "actual": {
+    "tmax": 23.4,
+    "tmin": 13.4,
+    "precip": 0
+   },
+   "sources": {
+    "openmeteo": {
+     "f1": {
+      "tmax": 22.5,
+      "tmin": 13.6,
+      "precip": 0
+     },
+     "f3": {
+      "tmax": 23.5,
+      "tmin": 13.4,
+      "precip": 0
+     }
+    },
+    "caiyun": {
+     "f1": {
+      "tmax": 22.4,
+      "tmin": 13.6,
+      "precip": 0
+     },
+     "f3": {
+      "tmax": 22.3,
+      "tmin": 13,
+      "precip": 0
+     }
+    },
+    "amap_qweather": {
+     "f1": {
+      "tmax": 22.5,
+      "tmin": 13,
+      "precip": null
+     },
+     "f3": {
+      "tmax": 21.4,
+      "tmin": 13,
+      "precip": null
+     }
+    }
+   }
+  },
+  {
+   "date": "2026-10-05",
+   "actual": {
+    "tmax": 23.2,
+    "tmin": 13,
+    "precip": 0
+   },
+   "sources": {
+    "openmeteo": {
+     "f1": {
+      "tmax": 22.7,
+      "tmin": 11.2,
+      "precip": 0
+     },
+     "f3": {
+      "tmax": 22.6,
+      "tmin": 12.7,
+      "precip": 0
+     }
+    },
+    "caiyun": {
+     "f1": {
+      "tmax": 23.1,
+      "tmin": 11.4,
+      "precip": 0
+     },
+     "f3": {
+      "tmax": 22.6,
+      "tmin": 13.4,
+      "precip": 0
+     }
+    },
+    "amap_qweather": {
+     "f1": {
+      "tmax": 22.8,
+      "tmin": 11,
+      "precip": null
+     },
+     "f3": {
+      "tmax": 23.1,
+      "tmin": 12.7,
+      "precip": null
+     }
+    }
+   }
+  },
+  {
+   "date": "2026-10-06",
+   "actual": {
+    "tmax": 26,
+    "tmin": 12.6,
+    "precip": 0
+   },
+   "sources": {
+    "openmeteo": {
+     "f1": {
+      "tmax": 25.4,
+      "tmin": 12.8,
+      "precip": 0
+     },
+     "f3": {
+      "tmax": 25.2,
+      "tmin": 12.6,
+      "precip": 0
+     }
+    },
+    "caiyun": {
+     "f1": {
+      "tmax": 25.1,
+      "tmin": 12.6,
+      "precip": 0
+     },
+     "f3": {
+      "tmax": 24.6,
+      "tmin": 12.5,
+      "precip": 0
+     }
+    },
+    "amap_qweather": {
+     "f1": {
+      "tmax": 24.9,
+      "tmin": 13.8,
+      "precip": null
+     },
+     "f3": {
+      "tmax": 25.6,
+      "tmin": 12.5,
+      "precip": null
+     }
+    }
+   }
+  },
+  {
+   "date": "2026-10-07",
+   "actual": {
+    "tmax": 25.7,
+    "tmin": 12.5,
+    "precip": 0
+   },
+   "sources": {
+    "openmeteo": {
+     "f1": {
+      "tmax": 25.4,
+      "tmin": 12.4,
+      "precip": 0
+     },
+     "f3": {
+      "tmax": 25.3,
+      "tmin": 12.3,
+      "precip": 0
+     }
+    },
+    "caiyun": {
+     "f1": {
+      "tmax": 25.6,
+      "tmin": 13,
+      "precip": 0
+     },
+     "f3": {
+      "tmax": 25.4,
+      "tmin": 12.6,
+      "precip": 0
+     }
+    },
+    "amap_qweather": {
+     "f1": {
+      "tmax": 24.7,
+      "tmin": 12.5,
+      "precip": null
+     },
+     "f3": {
+      "tmax": 24.9,
+      "tmin": 12.1,
+      "precip": null
+     }
+    }
+   }
+  },
+  {
+   "date": "2026-10-08",
+   "actual": {
+    "tmax": 24.7,
+    "tmin": 13.1,
+    "precip": 0
+   },
+   "sources": {
+    "openmeteo": {
+     "f1": {
+      "tmax": 24.8,
+      "tmin": 12.9,
+      "precip": 0
+     },
+     "f3": {
+      "tmax": 24.1,
+      "tmin": 12,
+      "precip": 0
+     }
+    },
+    "caiyun": {
+     "f1": {
+      "tmax": 24.7,
+      "tmin": 13.1,
+      "precip": 0
+     },
+     "f3": {
+      "tmax": 25.2,
+      "tmin": 11.1,
+      "precip": 2.1
+     }
+    },
+    "amap_qweather": {
+     "f1": {
+      "tmax": 25,
+      "tmin": 13.3,
+      "precip": null
+     },
+     "f3": {
+      "tmax": 25.1,
+      "tmin": 12.2,
+      "precip": null
+     }
+    }
+   }
+  },
+  {
+   "date": "2026-10-09",
+   "actual": {
+    "tmax": 25.9,
+    "tmin": 14.2,
+    "precip": 0
+   },
+   "sources": {
+    "openmeteo": {
+     "f1": {
+      "tmax": 25.6,
+      "tmin": 13.6,
+      "precip": 0
+     },
+     "f3": {
+      "tmax": 25.2,
+      "tmin": 13.8,
+      "precip": 0
+     }
+    },
+    "caiyun": {
+     "f1": {
+      "tmax": 25.7,
+      "tmin": 14.1,
+      "precip": 0
+     },
+     "f3": {
+      "tmax": 24,
+      "tmin": 13.7,
+      "precip": 0
+     }
+    },
+    "amap_qweather": {
+     "f1": {
+      "tmax": 25.6,
+      "tmin": 13.5,
+      "precip": null
+     },
+     "f3": {
+      "tmax": 25.4,
+      "tmin": 13.9,
+      "precip": null
+     }
+    }
+   }
+  },
+  {
+   "date": "2026-10-10",
+   "actual": {
+    "tmax": 28.3,
+    "tmin": 15.2,
+    "precip": 0
+   },
+   "sources": {
+    "openmeteo": {
+     "f1": {
+      "tmax": 27.7,
+      "tmin": 15.1,
+      "precip": 0
+     },
+     "f3": {
+      "tmax": 27.7,
+      "tmin": 14.3,
+      "precip": 0
+     }
+    },
+    "caiyun": {
+     "f1": {
+      "tmax": 28.3,
+      "tmin": 15.3,
+      "precip": 0
+     },
+     "f3": {
+      "tmax": 27.9,
+      "tmin": 13.8,
+      "precip": 0
+     }
+    },
+    "amap_qweather": {
+     "f1": {
+      "tmax": 28,
+      "tmin": 14.9,
+      "precip": null
+     },
+     "f3": {
+      "tmax": 27.8,
+      "tmin": 13.9,
+      "precip": null
+     }
+    }
+   }
+  },
+  {
+   "date": "2026-10-11",
+   "actual": {
+    "tmax": 26.6,
+    "tmin": 19.1,
+    "precip": 0.1
+   },
+   "sources": {
+    "openmeteo": {
+     "f1": {
+      "tmax": 25.8,
+      "tmin": 17.3,
+      "precip": 0
+     },
+     "f3": {
+      "tmax": 27.6,
+      "tmin": 16.9,
+      "precip": 0
+     }
+    },
+    "caiyun": {
+     "f1": {
+      "tmax": 26.4,
+      "tmin": 17.4,
+      "precip": 0
+     },
+     "f3": {
+      "tmax": 25.9,
+      "tmin": 15.9,
+      "precip": 0
+     }
+    },
+    "amap_qweather": {
+     "f1": {
+      "tmax": 26.1,
+      "tmin": 17.5,
+      "precip": null
+     },
+     "f3": {
+      "tmax": 25.8,
+      "tmin": 15.9,
+      "precip": null
+     }
+    }
+   }
+  },
+  {
+   "date": "2026-10-12",
+   "actual": {
+    "tmax": 26.1,
+    "tmin": 18.2,
+    "precip": 0.9
+   },
+   "sources": {
+    "openmeteo": {
+     "f1": {
+      "tmax": 23,
+      "tmin": 17.7,
+      "precip": 4.6
+     },
+     "f3": {
+      "tmax": 25,
+      "tmin": 17.2,
+      "precip": 0
+     }
+    },
+    "caiyun": {
+     "f1": {
+      "tmax": 24.2,
+      "tmin": 17.9,
+      "precip": 0.8
+     },
+     "f3": {
+      "tmax": 21,
+      "tmin": 16.9,
+      "precip": 0.5
+     }
+    },
+    "amap_qweather": {
+     "f1": {
+      "tmax": 22.6,
+      "tmin": 17.4,
+      "precip": null
+     },
+     "f3": {
+      "tmax": 21.6,
+      "tmin": 16.5,
+      "precip": null
+     }
+    }
+   }
+  },
+  {
+   "date": "2026-10-13",
+   "actual": {
+    "tmax": 26.2,
+    "tmin": 14.8,
+    "precip": 0
+   },
+   "sources": {
+    "openmeteo": {
+     "f1": {
+      "tmax": 25.7,
+      "tmin": 15,
+      "precip": 0
+     },
+     "f3": {
+      "tmax": 26.6,
+      "tmin": 16.3,
+      "precip": 0
+     }
+    },
+    "caiyun": {
+     "f1": {
+      "tmax": 25.7,
+      "tmin": 15,
+      "precip": 0
+     },
+     "f3": {
+      "tmax": 25,
+      "tmin": 17.2,
+      "precip": 0
+     }
+    },
+    "amap_qweather": {
+     "f1": {
+      "tmax": 24.8,
+      "tmin": 14.2,
+      "precip": null
+     },
+     "f3": {
+      "tmax": 25,
+      "tmin": 16.4,
+      "precip": null
+     }
+    }
+   }
+  },
+  {
+   "date": "2026-10-14",
+   "actual": {
+    "tmax": 25.4,
+    "tmin": 14.7,
+    "precip": 0
+   },
+   "sources": {
+    "openmeteo": {
+     "f1": {
+      "tmax": 25.7,
+      "tmin": 14,
+      "precip": 0
+     },
+     "f3": {
+      "tmax": 23.7,
+      "tmin": 14,
+      "precip": 0.3
+     }
+    },
+    "caiyun": {
+     "f1": {
+      "tmax": 26,
+      "tmin": 14.1,
+      "precip": 0
+     },
+     "f3": {
+      "tmax": 26.3,
+      "tmin": 14.1,
+      "precip": 0
+     }
+    },
+    "amap_qweather": {
+     "f1": {
+      "tmax": 25.8,
+      "tmin": 14,
+      "precip": null
+     },
+     "f3": {
+      "tmax": 26.1,
+      "tmin": 14.1,
+      "precip": null
+     }
+    }
+   }
+  },
+  {
+   "date": "2026-10-15",
+   "actual": {
+    "tmax": 23.7,
+    "tmin": 15.6,
+    "precip": 0.8
+   },
+   "sources": {
+    "openmeteo": {
+     "f1": {
+      "tmax": 24.9,
+      "tmin": 15.1,
+      "precip": 0
+     },
+     "f3": {
+      "tmax": 24.2,
+      "tmin": 14,
+      "precip": 0.6
+     }
+    },
+    "caiyun": {
+     "f1": {
+      "tmax": 25.1,
+      "tmin": 15.9,
+      "precip": 1.1
+     },
+     "f3": {
+      "tmax": 25.3,
+      "tmin": 13,
+      "precip": 0
+     }
+    },
+    "amap_qweather": {
+     "f1": {
+      "tmax": 25.4,
+      "tmin": 14.7,
+      "precip": null
+     },
+     "f3": {
+      "tmax": 25,
+      "tmin": 14.1,
+      "precip": null
+     }
+    }
+   }
+  },
+  {
+   "date": "2026-10-16",
+   "actual": {
+    "tmax": 22.8,
+    "tmin": 18.5,
+    "precip": 6
+   },
+   "sources": {
+    "openmeteo": {
+     "f1": {
+      "tmax": 23.7,
+      "tmin": 18.6,
+      "precip": 4.7
+     },
+     "f3": {
+      "tmax": 23.1,
+      "tmin": 17.6,
+      "precip": 16
+     }
+    },
+    "caiyun": {
+     "f1": {
+      "tmax": 23.4,
+      "tmin": 18.6,
+      "precip": 4.9
+     },
+     "f3": {
+      "tmax": 24.7,
+      "tmin": 17.7,
+      "precip": 4.6
+     }
+    },
+    "amap_qweather": {
+     "f1": {
+      "tmax": 23.8,
+      "tmin": 18.7,
+      "precip": null
+     },
+     "f3": {
+      "tmax": 23.1,
+      "tmin": 17,
+      "precip": null
+     }
+    }
+   }
+  },
+  {
+   "date": "2026-10-17",
+   "actual": {
+    "tmax": 21.3,
+    "tmin": 17.3,
+    "precip": 26.6
+   },
+   "sources": {
+    "openmeteo": {
+     "f1": {
+      "tmax": 22.3,
+      "tmin": 18.6,
+      "precip": 28.1
+     },
+     "f3": {
+      "tmax": 19.5,
+      "tmin": 17.4,
+      "precip": 29.4
+     }
+    },
+    "caiyun": {
+     "f1": {
+      "tmax": 21.9,
+      "tmin": 18.7,
+      "precip": 32.5
+     },
+     "f3": {
+      "tmax": 23.1,
+      "tmin": 16.9,
+      "precip": 39.7
+     }
+    },
+    "amap_qweather": {
+     "f1": {
+      "tmax": 22.2,
+      "tmin": 19.1,
+      "precip": null
+     },
+     "f3": {
+      "tmax": 22.9,
+      "tmin": 17,
+      "precip": null
+     }
+    }
+   }
+  },
+  {
+   "date": "2026-10-18",
+   "actual": {
+    "tmax": 23.2,
+    "tmin": 13.2,
+    "precip": 0.6
+   },
+   "sources": {
+    "openmeteo": {
+     "f1": {
+      "tmax": 20.9,
+      "tmin": 15.1,
+      "precip": 0.1
+     },
+     "f3": {
+      "tmax": 21.2,
+      "tmin": 14,
+      "precip": 0
+     }
+    },
+    "caiyun": {
+     "f1": {
+      "tmax": 21.1,
+      "tmin": 14.5,
+      "precip": 0.5
+     },
+     "f3": {
+      "tmax": 20.1,
+      "tmin": 14.5,
+      "precip": 0.9
+     }
+    },
+    "amap_qweather": {
+     "f1": {
+      "tmax": 19.9,
+      "tmin": 16,
+      "precip": null
+     },
+     "f3": {
+      "tmax": 20.1,
+      "tmin": 14.7,
+      "precip": null
+     }
+    }
+   }
+  },
+  {
+   "date": "2026-10-19",
+   "actual": {
+    "tmax": 17.1,
+    "tmin": 13.8,
+    "precip": 4
+   },
+   "sources": {
+    "openmeteo": {
+     "f1": {
+      "tmax": 19,
+      "tmin": 13.9,
+      "precip": 1.7
+     },
+     "f3": {
+      "tmax": 21.4,
+      "tmin": 14,
+      "precip": 0.6
+     }
+    },
+    "caiyun": {
+     "f1": {
+      "tmax": 17.4,
+      "tmin": 13.9,
+      "precip": 5.1
+     },
+     "f3": {
+      "tmax": 19.7,
+      "tmin": 13.3,
+      "precip": 0
+     }
+    },
+    "amap_qweather": {
+     "f1": {
+      "tmax": 19,
+      "tmin": 14,
+      "precip": null
+     },
+     "f3": {
+      "tmax": 20.3,
+      "tmin": 14.2,
+      "precip": null
+     }
+    }
+   }
+  },
+  {
+   "date": "2026-10-20",
+   "actual": {
+    "tmax": 22.2,
+    "tmin": 14.5,
+    "precip": 0.1
+   },
+   "sources": {
+    "openmeteo": {
+     "f1": {
+      "tmax": 21.3,
+      "tmin": 15,
+      "precip": 1.6
+     },
+     "f3": {
+      "tmax": 23.1,
+      "tmin": 13.9,
+      "precip": 1.1
+     }
+    },
+    "caiyun": {
+     "f1": {
+      "tmax": 21.5,
+      "tmin": 14.8,
+      "precip": 0
+     },
+     "f3": {
+      "tmax": 20.6,
+      "tmin": 13,
+      "precip": 0
+     }
+    },
+    "amap_qweather": {
+     "f1": {
+      "tmax": 20.9,
+      "tmin": 14.7,
+      "precip": null
+     },
+     "f3": {
+      "tmax": 20.7,
+      "tmin": 13.2,
+      "precip": null
+     }
+    }
+   }
+  },
+  {
+   "date": "2026-10-21",
+   "actual": {
+    "tmax": 17.4,
+    "tmin": 11.6,
+    "precip": 0
+   },
+   "sources": {
+    "openmeteo": {
+     "f1": {
+      "tmax": 17.6,
+      "tmin": 12.1,
+      "precip": 0
+     },
+     "f3": {
+      "tmax": 17.4,
+      "tmin": 12.2,
+      "precip": 0
+     }
+    },
+    "caiyun": {
+     "f1": {
+      "tmax": 17.7,
+      "tmin": 11.9,
+      "precip": 0
+     },
+     "f3": {
+      "tmax": 17.8,
+      "tmin": 11.8,
+      "precip": 0
+     }
+    },
+    "amap_qweather": {
+     "f1": {
+      "tmax": 17.3,
+      "tmin": 11.7,
+      "precip": null
+     },
+     "f3": {
+      "tmax": 17.2,
+      "tmin": 12.6,
+      "precip": null
+     }
+    }
+   }
+  }
+ ]
+}

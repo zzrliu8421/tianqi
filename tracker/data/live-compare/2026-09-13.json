@@ -1,0 +1,675 @@
+{
+ "date": "2026-09-13",
+ "comparedAt": "2026-10-24T18:56:50.673Z",
+ "reference": "Open-Meteo Previous Runs API day-0(当日分析值,与 backfill.js 一致)",
+ "rainThresholdMM": 0.2,
+ "note": "errTmax/errTmin 为「预报 − 实况」(°C,正=报高);rainHit 为降水有无命中;某源当天缺失/出错即缺席",
+ "cities": [
+  {
+   "id": "beijing",
+   "city": "北京",
+   "timezone": "Asia/Shanghai",
+   "actual": {
+    "tmax": 30.1,
+    "tmin": 19.2,
+    "precip": 0
+   },
+   "sources": [
+    {
+     "source": "openmeteo",
+     "d1": {
+      "recordedOn": "2026-09-12",
+      "forecast": {
+       "date": "2026-09-13",
+       "tmax": 29.8,
+       "tmin": 18.6,
+       "precipProb": null,
+       "precipMM": 0
+      },
+      "errTmax": -0.3,
+      "errTmin": -0.6,
+      "forecastRain": false,
+      "actualRain": false,
+      "rainHit": true
+     },
+     "d3": {
+      "recordedOn": "2026-09-10",
+      "forecast": {
+       "date": "2026-09-13",
+       "tmax": 30.5,
+       "tmin": 18.4,
+       "precipProb": null,
+       "precipMM": 0
+      },
+      "errTmax": 0.4,
+      "errTmin": -0.8,
+      "forecastRain": false,
+      "actualRain": false,
+      "rainHit": true
+     }
+    },
+    {
+     "source": "caiyun",
+     "d1": {
+      "recordedOn": "2026-09-12",
+      "forecast": {
+       "date": "2026-09-13",
+       "tmax": 29.8,
+       "tmin": 18.6,
+       "precipProb": null,
+       "precipMM": 0
+      },
+      "errTmax": -0.3,
+      "errTmin": -0.6,
+      "forecastRain": false,
+      "actualRain": false,
+      "rainHit": true
+     },
+     "d3": {
+      "recordedOn": "2026-09-10",
+      "forecast": {
+       "date": "2026-09-13",
+       "tmax": 29.9,
+       "tmin": 18.5,
+       "precipProb": null,
+       "precipMM": 0
+      },
+      "errTmax": -0.2,
+      "errTmin": -0.7,
+      "forecastRain": false,
+      "actualRain": false,
+      "rainHit": true
+     }
+    },
+    {
+     "source": "amap_qweather",
+     "d1": {
+      "recordedOn": "2026-09-12",
+      "forecast": {
+       "date": "2026-09-13",
+       "tmax": 29.6,
+       "tmin": 18.4,
+       "precipProb": null,
+       "precipMM": null
+      },
+      "errTmax": -0.5,
+      "errTmin": -0.8,
+      "forecastRain": null,
+      "actualRain": false,
+      "rainHit": null
+     },
+     "d3": {
+      "recordedOn": "2026-09-10",
+      "forecast": {
+       "date": "2026-09-13",
+       "tmax": 29.2,
+       "tmin": 18.1,
+       "precipProb": null,
+       "precipMM": null
+      },
+      "errTmax": -0.9,
+      "errTmin": -1.1,
+      "forecastRain": null,
+      "actualRain": false,
+      "rainHit": null
+     }
+    }
+   ]
+  },
+  {
+   "id": "shanghai",
+   "city": "上海",
+   "timezone": "Asia/Shanghai",
+   "actual": {
+    "tmax": 32.1,
+    "tmin": 22,
+    "precip": 0
+   },
+   "sources": [
+    {
+     "source": "openmeteo",
+     "d1": {
+      "recordedOn": "2026-09-12",
+      "forecast": {
+       "date": "2026-09-13",
+       "tmax": 31.6,
+       "tmin": 22.3,
+       "precipProb": null,
+       "precipMM": 0
+      },
+      "errTmax": -0.5,
+      "errTmin": 0.3,
+      "forecastRain": false,
+      "actualRain": false,
+      "rainHit": true
+     },
+     "d3": {
+      "recordedOn": "2026-09-10",
+      "forecast": {
+       "date": "2026-09-13",
+       "tmax": 30.9,
+       "tmin": 24.7,
+       "precipProb": null,
+       "precipMM": 0.2
+      },
+      "errTmax": -1.2,
+      "errTmin": 2.7,
+      "forecastRain": true,
+      "actualRain": false,
+      "rainHit": false
+     }
+    },
+    {
+     "source": "caiyun",
+     "d1": {
+      "recordedOn": "2026-09-12",
+      "forecast": {
+       "date": "2026-09-13",
+       "tmax": 32.2,
+       "tmin": 22.1,
+       "precipProb": null,
+       "precipMM": 0
+      },
+      "errTmax": 0.1,
+      "errTmin": 0.1,
+      "forecastRain": false,
+      "actualRain": false,
+      "rainHit": true
+     },
+     "d3": {
+      "recordedOn": "2026-09-10",
+      "forecast": {
+       "date": "2026-09-13",
+       "tmax": 31.7,
+       "tmin": 25.3,
+       "precipProb": null,
+       "precipMM": 0.7
+      },
+      "errTmax": -0.4,
+      "errTmin": 3.3,
+      "forecastRain": true,
+      "actualRain": false,
+      "rainHit": false
+     }
+    },
+    {
+     "source": "amap_qweather",
+     "d1": {
+      "recordedOn": "2026-09-12",
+      "forecast": {
+       "date": "2026-09-13",
+       "tmax": 31.8,
+       "tmin": 22.4,
+       "precipProb": null,
+       "precipMM": null
+      },
+      "errTmax": -0.3,
+      "errTmin": 0.4,
+      "forecastRain": null,
+      "actualRain": false,
+      "rainHit": null
+     },
+     "d3": {
+      "recordedOn": "2026-09-10",
+      "forecast": {
+       "date": "2026-09-13",
+       "tmax": 31.3,
+       "tmin": 24.9,
+       "precipProb": null,
+       "precipMM": null
+      },
+      "errTmax": -0.8,
+      "errTmin": 2.9,
+      "forecastRain": null,
+      "actualRain": false,
+      "rainHit": null
+     }
+    }
+   ]
+  },
+  {
+   "id": "guangzhou",
+   "city": "广州",
+   "timezone": "Asia/Shanghai",
+   "actual": {
+    "tmax": 33.4,
+    "tmin": 24.2,
+    "precip": 9.2
+   },
+   "sources": [
+    {
+     "source": "openmeteo",
+     "d1": {
+      "recordedOn": "2026-09-12",
+      "forecast": {
+       "date": "2026-09-13",
+       "tmax": 30.6,
+       "tmin": 24.7,
+       "precipProb": null,
+       "precipMM": 11.1
+      },
+      "errTmax": -2.8,
+      "errTmin": 0.5,
+      "forecastRain": true,
+      "actualRain": true,
+      "rainHit": true
+     },
+     "d3": {
+      "recordedOn": "2026-09-10",
+      "forecast": {
+       "date": "2026-09-13",
+       "tmax": 31.6,
+       "tmin": 25,
+       "precipProb": null,
+       "precipMM": 13.7
+      },
+      "errTmax": -1.8,
+      "errTmin": 0.8,
+      "forecastRain": true,
+      "actualRain": true,
+      "rainHit": true
+     }
+    },
+    {
+     "source": "caiyun",
+     "d1": {
+      "recordedOn": "2026-09-12",
+      "forecast": {
+       "date": "2026-09-13",
+       "tmax": 31.3,
+       "tmin": 24.8,
+       "precipProb": null,
+       "precipMM": 8.6
+      },
+      "errTmax": -2.1,
+      "errTmin": 0.6,
+      "forecastRain": true,
+      "actualRain": true,
+      "rainHit": true
+     },
+     "d3": {
+      "recordedOn": "2026-09-10",
+      "forecast": {
+       "date": "2026-09-13",
+       "tmax": 29,
+       "tmin": 24.6,
+       "precipProb": null,
+       "precipMM": 13.5
+      },
+      "errTmax": -4.4,
+      "errTmin": 0.4,
+      "forecastRain": true,
+      "actualRain": true,
+      "rainHit": true
+     }
+    },
+    {
+     "source": "amap_qweather",
+     "d1": {
+      "recordedOn": "2026-09-12",
+      "forecast": {
+       "date": "2026-09-13",
+       "tmax": 30.4,
+       "tmin": 25.3,
+       "precipProb": null,
+       "precipMM": null
+      },
+      "errTmax": -3,
+      "errTmin": 1.1,
+      "forecastRain": null,
+      "actualRain": true,
+      "rainHit": null
+     },
+     "d3": {
+      "recordedOn": "2026-09-10",
+      "forecast": {
+       "date": "2026-09-13",
+       "tmax": 29.9,
+       "tmin": 25.1,
+       "precipProb": null,
+       "precipMM": null
+      },
+      "errTmax": -3.5,
+      "errTmin": 0.9,
+      "forecastRain": null,
+      "actualRain": true,
+      "rainHit": null
+     }
+    }
+   ]
+  },
+  {
+   "id": "chengdu",
+   "city": "成都",
+   "timezone": "Asia/Shanghai",
+   "actual": {
+    "tmax": 22.2,
+    "tmin": 17,
+    "precip": 10
+   },
+   "sources": [
+    {
+     "source": "openmeteo",
+     "d1": {
+      "recordedOn": "2026-09-12",
+      "forecast": {
+       "date": "2026-09-13",
+       "tmax": 24.4,
+       "tmin": 18,
+       "precipProb": null,
+       "precipMM": 13.1
+      },
+      "errTmax": 2.2,
+      "errTmin": 1,
+      "forecastRain": true,
+      "actualRain": true,
+      "rainHit": true
+     },
+     "d3": {
+      "recordedOn": "2026-09-10",
+      "forecast": {
+       "date": "2026-09-13",
+       "tmax": 25.9,
+       "tmin": 19.2,
+       "precipProb": null,
+       "precipMM": 9.2
+      },
+      "errTmax": 3.7,
+      "errTmin": 2.2,
+      "forecastRain": true,
+      "actualRain": true,
+      "rainHit": true
+     }
+    },
+    {
+     "source": "caiyun",
+     "d1": {
+      "recordedOn": "2026-09-12",
+      "forecast": {
+       "date": "2026-09-13",
+       "tmax": 23.9,
+       "tmin": 17.7,
+       "precipProb": null,
+       "precipMM": 13
+      },
+      "errTmax": 1.7,
+      "errTmin": 0.7,
+      "forecastRain": true,
+      "actualRain": true,
+      "rainHit": true
+     },
+     "d3": {
+      "recordedOn": "2026-09-10",
+      "forecast": {
+       "date": "2026-09-13",
+       "tmax": 25.4,
+       "tmin": 20.1,
+       "precipProb": null,
+       "precipMM": 7.4
+      },
+      "errTmax": 3.2,
+      "errTmin": 3.1,
+      "forecastRain": true,
+      "actualRain": true,
+      "rainHit": true
+     }
+    },
+    {
+     "source": "amap_qweather",
+     "d1": {
+      "recordedOn": "2026-09-12",
+      "forecast": {
+       "date": "2026-09-13",
+       "tmax": 24.7,
+       "tmin": 18.5,
+       "precipProb": null,
+       "precipMM": null
+      },
+      "errTmax": 2.5,
+      "errTmin": 1.5,
+      "forecastRain": null,
+      "actualRain": true,
+      "rainHit": null
+     },
+     "d3": {
+      "recordedOn": "2026-09-10",
+      "forecast": {
+       "date": "2026-09-13",
+       "tmax": 24.8,
+       "tmin": 20,
+       "precipProb": null,
+       "precipMM": null
+      },
+      "errTmax": 2.6,
+      "errTmin": 3,
+      "forecastRain": null,
+      "actualRain": true,
+      "rainHit": null
+     }
+    }
+   ]
+  },
+  {
+   "id": "nanyang",
+   "city": "南阳",
+   "timezone": "Asia/Shanghai",
+   "actual": {
+    "tmax": 28,
+    "tmin": 19.5,
+    "precip": 0
+   },
+   "sources": [
+    {
+     "source": "openmeteo",
+     "d1": {
+      "recordedOn": "2026-09-12",
+      "forecast": {
+       "date": "2026-09-13",
+       "tmax": 26.3,
+       "tmin": 19.1,
+       "precipProb": null,
+       "precipMM": 0
+      },
+      "errTmax": -1.7,
+      "errTmin": -0.4,
+      "forecastRain": false,
+      "actualRain": false,
+      "rainHit": true
+     },
+     "d3": {
+      "recordedOn": "2026-09-10",
+      "forecast": {
+       "date": "2026-09-13",
+       "tmax": 25.8,
+       "tmin": 19.7,
+       "precipProb": null,
+       "precipMM": 0.3
+      },
+      "errTmax": -2.2,
+      "errTmin": 0.2,
+      "forecastRain": true,
+      "actualRain": false,
+      "rainHit": false
+     }
+    },
+    {
+     "source": "caiyun",
+     "d1": {
+      "recordedOn": "2026-09-12",
+      "forecast": {
+       "date": "2026-09-13",
+       "tmax": 27.4,
+       "tmin": 19.2,
+       "precipProb": null,
+       "precipMM": 0
+      },
+      "errTmax": -0.6,
+      "errTmin": -0.3,
+      "forecastRain": false,
+      "actualRain": false,
+      "rainHit": true
+     },
+     "d3": {
+      "recordedOn": "2026-09-10",
+      "forecast": {
+       "date": "2026-09-13",
+       "tmax": 25.3,
+       "tmin": 19.8,
+       "precipProb": null,
+       "precipMM": 0
+      },
+      "errTmax": -2.7,
+      "errTmin": 0.3,
+      "forecastRain": false,
+      "actualRain": false,
+      "rainHit": true
+     }
+    },
+    {
+     "source": "amap_qweather",
+     "d1": {
+      "recordedOn": "2026-09-12",
+      "forecast": {
+       "date": "2026-09-13",
+       "tmax": 26,
+       "tmin": 19,
+       "precipProb": null,
+       "precipMM": null
+      },
+      "errTmax": -2,
+      "errTmin": -0.5,
+      "forecastRain": null,
+      "actualRain": false,
+      "rainHit": null
+     },
+     "d3": {
+      "recordedOn": "2026-09-10",
+      "forecast": {
+       "date": "2026-09-13",
+       "tmax": 26.1,
+       "tmin": 19.4,
+       "precipProb": null,
+       "precipMM": null
+      },
+      "errTmax": -1.9,
+      "errTmin": -0.1,
+      "forecastRain": null,
+      "actualRain": false,
+      "rainHit": null
+     }
+    }
+   ]
+  },
+  {
+   "id": "newyork",
+   "city": "纽约",
+   "timezone": "America/New_York",
+   "actual": {
+    "tmax": 26.6,
+    "tmin": 20.4,
+    "precip": 7.3
+   },
+   "sources": [
+    {
+     "source": "openmeteo",
+     "d1": {
+      "recordedOn": "2026-09-12",
+      "forecast": {
+       "date": "2026-09-13",
+       "tmax": 26.3,
+       "tmin": 19.6,
+       "precipProb": null,
+       "precipMM": 3.6
+      },
+      "errTmax": -0.3,
+      "errTmin": -0.8,
+      "forecastRain": true,
+      "actualRain": true,
+      "rainHit": true
+     },
+     "d3": {
+      "recordedOn": "2026-09-10",
+      "forecast": {
+       "date": "2026-09-13",
+       "tmax": 29.7,
+       "tmin": 21.8,
+       "precipProb": null,
+       "precipMM": 17.9
+      },
+      "errTmax": 3.1,
+      "errTmin": 1.4,
+      "forecastRain": true,
+      "actualRain": true,
+      "rainHit": true
+     }
+    },
+    {
+     "source": "caiyun",
+     "d1": {
+      "recordedOn": "2026-09-12",
+      "forecast": {
+       "date": "2026-09-13",
+       "tmax": 26,
+       "tmin": 19.9,
+       "precipProb": null,
+       "precipMM": 0
+      },
+      "errTmax": -0.6,
+      "errTmin": -0.5,
+      "forecastRain": false,
+      "actualRain": true,
+      "rainHit": false
+     },
+     "d3": {
+      "recordedOn": "2026-09-10",
+      "forecast": {
+       "date": "2026-09-13",
+       "tmax": 25,
+       "tmin": 21.7,
+       "precipProb": null,
+       "precipMM": 10.8
+      },
+      "errTmax": -1.6,
+      "errTmin": 1.3,
+      "forecastRain": true,
+      "actualRain": true,
+      "rainHit": true
+     }
+    },
+    {
+     "source": "amap_qweather",
+     "d1": {
+      "recordedOn": "2026-09-12",
+      "forecast": {
+       "date": "2026-09-13",
+       "tmax": 26.4,
+       "tmin": 20.3,
+       "precipProb": null,
+       "precipMM": null
+      },
+      "errTmax": -0.2,
+      "errTmin": -0.1,
+      "forecastRain": null,
+      "actualRain": true,
+      "rainHit": null
+     },
+     "d3": {
+      "recordedOn": "2026-09-10",
+      "forecast": {
+       "date": "2026-09-13",
+       "tmax": 26.3,
+       "tmin": 22.3,
+       "precipProb": null,
+       "precipMM": null
+      },
+      "errTmax": -0.3,
+      "errTmin": 1.9,
+      "forecastRain": null,
+      "actualRain": true,
+      "rainHit": null
+     }
+    }
+   ]
+  }
+ ]
+}

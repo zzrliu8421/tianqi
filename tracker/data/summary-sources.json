@@ -1,0 +1,146 @@
+{
+ "generatedAt": "2026-10-24T18:34:39.496Z",
+ "window": {
+  "start": "2026-08-27",
+  "end": "2026-10-21"
+ },
+ "note": "openmeteo 取自 data/backfill(Open-Meteo Previous Runs 回填);caiyun 与 amap_qweather 取自 data/sources;实况参照为 OM day-0 分析值;高德+和风无降水量,POD/FAR 为 null",
+ "rainThresholdMM": 0.2,
+ "cityCount": 6,
+ "perSource": {
+  "openmeteo": {
+   "maeTmaxF1": 0.79,
+   "maeTmaxF3": 1.14,
+   "maeTminF1": 0.71,
+   "maeTminF3": 0.92,
+   "biasTmaxF1": 0.05,
+   "pod": 79,
+   "far": 11,
+   "days": 336
+  },
+  "caiyun": {
+   "maeTmaxF1": 0.6,
+   "maeTmaxF3": 1.37,
+   "maeTminF1": 0.56,
+   "maeTminF3": 1.41,
+   "biasTmaxF1": 0.04,
+   "pod": 86,
+   "far": 5,
+   "days": 336
+  },
+  "amap_qweather": {
+   "maeTmaxF1": 0.92,
+   "maeTmaxF3": 1.12,
+   "maeTminF1": 0.86,
+   "maeTminF3": 1.24,
+   "biasTmaxF1": 0.06,
+   "pod": null,
+   "far": null,
+   "days": 336
+  }
+ },
+ "perCityMatrix": {
+  "北京": {
+   "openmeteo": {
+    "maeTmaxF1": 0.51,
+    "maeTmaxF3": 0.88,
+    "days": 56
+   },
+   "caiyun": {
+    "maeTmaxF1": 0.4,
+    "maeTmaxF3": 1.01,
+    "days": 56
+   },
+   "amap_qweather": {
+    "maeTmaxF1": 0.59,
+    "maeTmaxF3": 0.78,
+    "days": 56
+   }
+  },
+  "成都": {
+   "openmeteo": {
+    "maeTmaxF1": 1.01,
+    "maeTmaxF3": 1.67,
+    "days": 56
+   },
+   "caiyun": {
+    "maeTmaxF1": 0.7,
+    "maeTmaxF3": 1.64,
+    "days": 56
+   },
+   "amap_qweather": {
+    "maeTmaxF1": 1.12,
+    "maeTmaxF3": 1.39,
+    "days": 56
+   }
+  },
+  "广州": {
+   "openmeteo": {
+    "maeTmaxF1": 0.64,
+    "maeTmaxF3": 1,
+    "days": 56
+   },
+   "caiyun": {
+    "maeTmaxF1": 0.48,
+    "maeTmaxF3": 1.16,
+    "days": 56
+   },
+   "amap_qweather": {
+    "maeTmaxF1": 0.77,
+    "maeTmaxF3": 0.92,
+    "days": 56
+   }
+  },
+  "南阳": {
+   "openmeteo": {
+    "maeTmaxF1": 0.8,
+    "maeTmaxF3": 1.09,
+    "days": 56
+   },
+   "caiyun": {
+    "maeTmaxF1": 0.64,
+    "maeTmaxF3": 1.42,
+    "days": 56
+   },
+   "amap_qweather": {
+    "maeTmaxF1": 0.99,
+    "maeTmaxF3": 1.14,
+    "days": 56
+   }
+  },
+  "纽约": {
+   "openmeteo": {
+    "maeTmaxF1": 1.05,
+    "maeTmaxF3": 1.24,
+    "days": 56
+   },
+   "caiyun": {
+    "maeTmaxF1": 0.76,
+    "maeTmaxF3": 1.77,
+    "days": 56
+   },
+   "amap_qweather": {
+    "maeTmaxF1": 1.22,
+    "maeTmaxF3": 1.46,
+    "days": 56
+   }
+  },
+  "上海": {
+   "openmeteo": {
+    "maeTmaxF1": 0.75,
+    "maeTmaxF3": 0.96,
+    "days": 56
+   },
+   "caiyun": {
+    "maeTmaxF1": 0.61,
+    "maeTmaxF3": 1.19,
+    "days": 56
+   },
+   "amap_qweather": {
+    "maeTmaxF1": 0.84,
+    "maeTmaxF3": 1.05,
+    "days": 56
+   }
+  }
+ }
+}

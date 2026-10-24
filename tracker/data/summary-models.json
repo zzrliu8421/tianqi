@@ -1,0 +1,188 @@
+{
+ "generatedAt": "2026-10-24T15:37:48.599Z",
+ "source": "Open-Meteo Previous Runs API 指定模式(过去实际发布的预报)",
+ "reference": "best_match day-0 分析值",
+ "cityCount": 6,
+ "daysPerCity": 56,
+ "perModel": {
+  "ecmwf_ifs025": {
+   "maeTmaxF1": 0.9,
+   "biasTmaxF1": -0.08,
+   "pod": 82,
+   "far": 13,
+   "days": 336,
+   "maeTmaxF3": 1.21,
+   "daysF3": 336
+  },
+  "gfs_seamless": {
+   "maeTmaxF1": 1.21,
+   "biasTmaxF1": -0.08,
+   "pod": 74,
+   "far": 13,
+   "days": 336,
+   "maeTmaxF3": 1.32,
+   "daysF3": 336
+  },
+  "icon_seamless": {
+   "maeTmaxF1": 1.06,
+   "biasTmaxF1": -0.27,
+   "pod": 63,
+   "far": 10,
+   "days": 336,
+   "maeTmaxF3": 1.31,
+   "daysF3": 336
+  },
+  "jma_seamless": {
+   "maeTmaxF1": 1.52,
+   "biasTmaxF1": -0.13,
+   "pod": 74,
+   "far": 14,
+   "days": 336,
+   "maeTmaxF3": 1.73,
+   "daysF3": 336
+  },
+  "cma_grapes_global": {
+   "maeTmaxF1": 1.8,
+   "biasTmaxF1": -1.22,
+   "pod": 76,
+   "far": 15,
+   "days": 336,
+   "maeTmaxF3": 2.01,
+   "daysF3": 336
+  }
+ },
+ "perCityMatrix": {
+  "北京": {
+   "ecmwf_ifs025": {
+    "maeTmaxF1": 0.83,
+    "maeTmaxF3": 0.94
+   },
+   "gfs_seamless": {
+    "maeTmaxF1": 0.89,
+    "maeTmaxF3": 1.08
+   },
+   "icon_seamless": {
+    "maeTmaxF1": 0.96,
+    "maeTmaxF3": 1.32
+   },
+   "jma_seamless": {
+    "maeTmaxF1": 0.89,
+    "maeTmaxF3": 1.16
+   },
+   "cma_grapes_global": {
+    "maeTmaxF1": 2.66,
+    "maeTmaxF3": 2.76
+   }
+  },
+  "成都": {
+   "ecmwf_ifs025": {
+    "maeTmaxF1": 1.05,
+    "maeTmaxF3": 1.7
+   },
+   "gfs_seamless": {
+    "maeTmaxF1": 1.5,
+    "maeTmaxF3": 1.44
+   },
+   "icon_seamless": {
+    "maeTmaxF1": 1.15,
+    "maeTmaxF3": 1.49
+   },
+   "jma_seamless": {
+    "maeTmaxF1": 1.27,
+    "maeTmaxF3": 1.59
+   },
+   "cma_grapes_global": {
+    "maeTmaxF1": 1.19,
+    "maeTmaxF3": 1.36
+   }
+  },
+  "广州": {
+   "ecmwf_ifs025": {
+    "maeTmaxF1": 0.8,
+    "maeTmaxF3": 1.1
+   },
+   "gfs_seamless": {
+    "maeTmaxF1": 1.42,
+    "maeTmaxF3": 1.6
+   },
+   "icon_seamless": {
+    "maeTmaxF1": 0.95,
+    "maeTmaxF3": 1.11
+   },
+   "jma_seamless": {
+    "maeTmaxF1": 1.44,
+    "maeTmaxF3": 1.89
+   },
+   "cma_grapes_global": {
+    "maeTmaxF1": 1.69,
+    "maeTmaxF3": 1.8
+   }
+  },
+  "南阳": {
+   "ecmwf_ifs025": {
+    "maeTmaxF1": 0.82,
+    "maeTmaxF3": 1.11
+   },
+   "gfs_seamless": {
+    "maeTmaxF1": 1.33,
+    "maeTmaxF3": 1.61
+   },
+   "icon_seamless": {
+    "maeTmaxF1": 1.17,
+    "maeTmaxF3": 1.5
+   },
+   "jma_seamless": {
+    "maeTmaxF1": 2.05,
+    "maeTmaxF3": 2.3
+   },
+   "cma_grapes_global": {
+    "maeTmaxF1": 1.64,
+    "maeTmaxF3": 2.34
+   }
+  },
+  "纽约": {
+   "ecmwf_ifs025": {
+    "maeTmaxF1": 1.23,
+    "maeTmaxF3": 1.45
+   },
+   "gfs_seamless": {
+    "maeTmaxF1": 1.05,
+    "maeTmaxF3": 1.24
+   },
+   "icon_seamless": {
+    "maeTmaxF1": 1.05,
+    "maeTmaxF3": 1.35
+   },
+   "jma_seamless": {
+    "maeTmaxF1": 1.93,
+    "maeTmaxF3": 1.92
+   },
+   "cma_grapes_global": {
+    "maeTmaxF1": 1.7,
+    "maeTmaxF3": 1.94
+   }
+  },
+  "上海": {
+   "ecmwf_ifs025": {
+    "maeTmaxF1": 0.69,
+    "maeTmaxF3": 0.97
+   },
+   "gfs_seamless": {
+    "maeTmaxF1": 1.08,
+    "maeTmaxF3": 0.95
+   },
+   "icon_seamless": {
+    "maeTmaxF1": 1.11,
+    "maeTmaxF3": 1.06
+   },
+   "jma_seamless": {
+    "maeTmaxF1": 1.58,
+    "maeTmaxF3": 1.54
+   },
+   "cma_grapes_global": {
+    "maeTmaxF1": 1.94,
+    "maeTmaxF3": 1.88
+   }
+  }
+ }
+}

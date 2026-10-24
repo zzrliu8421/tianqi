@@ -1,0 +1,53 @@
+# 测 · 预报准确性日常追踪
+# 每天 北京时间 00:10(UTC 16:10):
+#   1. record:存档各数据源(Open-Meteo/高德/彩云/和风)当天对 D+1/D+3 的预报
+#   2. compare:对最近 3 天逐日对比(实况 day-0 有 2~3 天延迟,幂等合并,数据到齐自动补上)
+#   3. 数据 commit 回仓库 —— git 历史即研究日志,Actions 运行记录即过程证据
+#
+# 首次使用:在本仓库 Settings → Secrets and variables → Actions 添加
+#   AMAP_KEY / CAIYUN_TOKEN / QWEATHER_KEY / QWEATHER_HOST(与本地 .env 同名同值;
+#   QWEATHER_KEY 当前 403 可暂时不配,修好后再加,record 会自动开始记录该源)
+
+name: forecast-track
+
+on:
+  schedule:
+    - cron: '10 16 * * *' # UTC 16:10 = 北京时间 00:10
+  workflow_dispatch: {} # 支持手动触发
+
+permissions:
+  contents: write
+
+jobs:
+  track:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: 记录各数据源今日预报
+        run: node tracker/record.js
+        env:
+          AMAP_KEY: ${{ secrets.AMAP_KEY }}
+          CAIYUN_TOKEN: ${{ secrets.CAIYUN_TOKEN }}
+          QWEATHER_KEY: ${{ secrets.QWEATHER_KEY }}
+          QWEATHER_HOST: ${{ secrets.QWEATHER_HOST }}
+
+      - name: 对比最近 3 天(缺实况/缺记录自动跳过,不失败)
+        run: |
+          for d in 1 2 3; do
+            day=$(date -u -d "-$d day" +%F)
+            echo "== compare $day =="
+            node tracker/compare.js "$day" || true
+          done
+
+      - name: 提交数据
+        run: |
+          git config user.name  "tracker-bot"
+          git config user.email "tracker-bot@users.noreply.github.com"
+          git add tracker/data
+          git commit -m "tracker: $(date -u +%F) 日常预报记录与对比" || echo "今日无数据变更"
+          git push

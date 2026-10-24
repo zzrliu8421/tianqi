@@ -1,0 +1,379 @@
+{
+ "date": "2026-09-11",
+ "targetDays": {
+  "d1": "2026-09-12",
+  "d3": "2026-09-14"
+ },
+ "window": {
+  "start": "2026-08-27",
+  "end": "2026-10-21"
+ },
+ "cities": [
+  {
+   "id": "beijing",
+   "city": "北京",
+   "lat": 39.9,
+   "lon": 116.4,
+   "tz": "Asia/Shanghai",
+   "sources": [
+    {
+     "source": "openmeteo",
+     "d1": {
+      "date": "2026-09-12",
+      "tmax": 28.3,
+      "tmin": 17.5,
+      "precipProb": null,
+      "precipMM": 0
+     },
+     "d3": {
+      "date": "2026-09-14",
+      "tmax": 26.7,
+      "tmin": 17.8,
+      "precipProb": null,
+      "precipMM": 0
+     }
+    },
+    {
+     "source": "caiyun",
+     "d1": {
+      "date": "2026-09-12",
+      "tmax": 28.2,
+      "tmin": 17.5,
+      "precipProb": null,
+      "precipMM": 0
+     },
+     "d3": {
+      "date": "2026-09-14",
+      "tmax": 27.3,
+      "tmin": 18.5,
+      "precipProb": null,
+      "precipMM": 0
+     }
+    },
+    {
+     "source": "amap_qweather",
+     "note": "高德/和风逐日数值一致,合并记录(见 README 已知事项)",
+     "d1": {
+      "date": "2026-09-12",
+      "tmax": 28.4,
+      "tmin": 17.4,
+      "precipProb": null,
+      "precipMM": null
+     },
+     "d3": {
+      "date": "2026-09-14",
+      "tmax": 27.3,
+      "tmin": 18.7,
+      "precipProb": null,
+      "precipMM": null
+     }
+    }
+   ]
+  },
+  {
+   "id": "shanghai",
+   "city": "上海",
+   "lat": 31.23,
+   "lon": 121.47,
+   "tz": "Asia/Shanghai",
+   "sources": [
+    {
+     "source": "openmeteo",
+     "d1": {
+      "date": "2026-09-12",
+      "tmax": 30.5,
+      "tmin": 22.8,
+      "precipProb": null,
+      "precipMM": 0
+     },
+     "d3": {
+      "date": "2026-09-14",
+      "tmax": 29.9,
+      "tmin": 23.7,
+      "precipProb": null,
+      "precipMM": 0
+     }
+    },
+    {
+     "source": "caiyun",
+     "d1": {
+      "date": "2026-09-12",
+      "tmax": 30.8,
+      "tmin": 22.6,
+      "precipProb": null,
+      "precipMM": 0
+     },
+     "d3": {
+      "date": "2026-09-14",
+      "tmax": 29.3,
+      "tmin": 24.6,
+      "precipProb": null,
+      "precipMM": 0
+     }
+    },
+    {
+     "source": "amap_qweather",
+     "note": "高德/和风逐日数值一致,合并记录(见 README 已知事项)",
+     "d1": {
+      "date": "2026-09-12",
+      "tmax": 30.3,
+      "tmin": 23.3,
+      "precipProb": null,
+      "precipMM": null
+     },
+     "d3": {
+      "date": "2026-09-14",
+      "tmax": 30.4,
+      "tmin": 23.4,
+      "precipProb": null,
+      "precipMM": null
+     }
+    }
+   ]
+  },
+  {
+   "id": "guangzhou",
+   "city": "广州",
+   "lat": 23.13,
+   "lon": 113.26,
+   "tz": "Asia/Shanghai",
+   "sources": [
+    {
+     "source": "openmeteo",
+     "d1": {
+      "date": "2026-09-12",
+      "tmax": 32.1,
+      "tmin": 23.1,
+      "precipProb": null,
+      "precipMM": 0
+     },
+     "d3": {
+      "date": "2026-09-14",
+      "tmax": 31.2,
+      "tmin": 24.1,
+      "precipProb": null,
+      "precipMM": 6
+     }
+    },
+    {
+     "source": "caiyun",
+     "d1": {
+      "date": "2026-09-12",
+      "tmax": 32.4,
+      "tmin": 22.7,
+      "precipProb": null,
+      "precipMM": 0
+     },
+     "d3": {
+      "date": "2026-09-14",
+      "tmax": 30.2,
+      "tmin": 24.6,
+      "precipProb": null,
+      "precipMM": 20.7
+     }
+    },
+    {
+     "source": "amap_qweather",
+     "note": "高德/和风逐日数值一致,合并记录(见 README 已知事项)",
+     "d1": {
+      "date": "2026-09-12",
+      "tmax": 32.2,
+      "tmin": 23.1,
+      "precipProb": null,
+      "precipMM": null
+     },
+     "d3": {
+      "date": "2026-09-14",
+      "tmax": 29.6,
+      "tmin": 24.1,
+      "precipProb": null,
+      "precipMM": null
+     }
+    }
+   ]
+  },
+  {
+   "id": "chengdu",
+   "city": "成都",
+   "lat": 30.57,
+   "lon": 104.07,
+   "tz": "Asia/Shanghai",
+   "sources": [
+    {
+     "source": "openmeteo",
+     "d1": {
+      "date": "2026-09-12",
+      "tmax": 23.7,
+      "tmin": 17.3,
+      "precipProb": null,
+      "precipMM": 0
+     },
+     "d3": {
+      "date": "2026-09-14",
+      "tmax": 26.5,
+      "tmin": 17.7,
+      "precipProb": null,
+      "precipMM": 0.7
+     }
+    },
+    {
+     "source": "caiyun",
+     "d1": {
+      "date": "2026-09-12",
+      "tmax": 23.2,
+      "tmin": 18,
+      "precipProb": null,
+      "precipMM": 0.7
+     },
+     "d3": {
+      "date": "2026-09-14",
+      "tmax": 23.7,
+      "tmin": 17.9,
+      "precipProb": null,
+      "precipMM": 3.4
+     }
+    },
+    {
+     "source": "amap_qweather",
+     "note": "高德/和风逐日数值一致,合并记录(见 README 已知事项)",
+     "d1": {
+      "date": "2026-09-12",
+      "tmax": 23.7,
+      "tmin": 17.4,
+      "precipProb": null,
+      "precipMM": null
+     },
+     "d3": {
+      "date": "2026-09-14",
+      "tmax": 23.2,
+      "tmin": 18,
+      "precipProb": null,
+      "precipMM": null
+     }
+    }
+   ]
+  },
+  {
+   "id": "nanyang",
+   "city": "南阳",
+   "lat": 32.99,
+   "lon": 112.53,
+   "tz": "Asia/Shanghai",
+   "sources": [
+    {
+     "source": "openmeteo",
+     "d1": {
+      "date": "2026-09-12",
+      "tmax": 25.7,
+      "tmin": 18.4,
+      "precipProb": null,
+      "precipMM": 0
+     },
+     "d3": {
+      "date": "2026-09-14",
+      "tmax": 29.1,
+      "tmin": 18.9,
+      "precipProb": null,
+      "precipMM": 0
+     }
+    },
+    {
+     "source": "caiyun",
+     "d1": {
+      "date": "2026-09-12",
+      "tmax": 25.6,
+      "tmin": 18.1,
+      "precipProb": null,
+      "precipMM": 0
+     },
+     "d3": {
+      "date": "2026-09-14",
+      "tmax": 30.3,
+      "tmin": 18.2,
+      "precipProb": null,
+      "precipMM": 0
+     }
+    },
+    {
+     "source": "amap_qweather",
+     "note": "高德/和风逐日数值一致,合并记录(见 README 已知事项)",
+     "d1": {
+      "date": "2026-09-12",
+      "tmax": 25.7,
+      "tmin": 17.4,
+      "precipProb": null,
+      "precipMM": null
+     },
+     "d3": {
+      "date": "2026-09-14",
+      "tmax": 29.9,
+      "tmin": 19.3,
+      "precipProb": null,
+      "precipMM": null
+     }
+    }
+   ]
+  },
+  {
+   "id": "newyork",
+   "city": "纽约",
+   "lat": 40.71,
+   "lon": -74.01,
+   "tz": "America/New_York",
+   "sources": [
+    {
+     "source": "openmeteo",
+     "d1": {
+      "date": "2026-09-12",
+      "tmax": 26.4,
+      "tmin": 15,
+      "precipProb": null,
+      "precipMM": 0
+     },
+     "d3": {
+      "date": "2026-09-14",
+      "tmax": 24.2,
+      "tmin": 18.6,
+      "precipProb": null,
+      "precipMM": 1
+     }
+    },
+    {
+     "source": "caiyun",
+     "d1": {
+      "date": "2026-09-12",
+      "tmax": 26.7,
+      "tmin": 15.6,
+      "precipProb": null,
+      "precipMM": 0
+     },
+     "d3": {
+      "date": "2026-09-14",
+      "tmax": 21.2,
+      "tmin": 20.5,
+      "precipProb": null,
+      "precipMM": 0
+     }
+    },
+    {
+     "source": "amap_qweather",
+     "note": "高德/和风逐日数值一致,合并记录(见 README 已知事项)",
+     "d1": {
+      "date": "2026-09-12",
+      "tmax": 26.3,
+      "tmin": 14.8,
+      "precipProb": null,
+      "precipMM": null
+     },
+     "d3": {
+      "date": "2026-09-14",
+      "tmax": 22.4,
+      "tmin": 18.3,
+      "precipProb": null,
+      "precipMM": null
+     }
+    }
+   ]
+  }
+ ]
+}
