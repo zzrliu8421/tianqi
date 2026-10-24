@@ -11,9 +11,6 @@ node_modules/
 android/
 ios/
 
-# vendor 由 copy-vendor.js 从 node_modules 拷贝生成（构建时自动）
-vendor/
-
 # 调试日志
 *.log
 

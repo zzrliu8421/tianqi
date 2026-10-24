@@ -436,7 +436,6 @@ function handleApi(req, res) {
 // ===================== 静态文件服务 =====================
 function cacheControlFor(ext, pathname) {
     if (ext === '.html') return 'no-cache';
-    if (pathname.startsWith('/vendor/')) return 'public, max-age=31536000, immutable';
     return 'public, max-age=3600';
 }
 

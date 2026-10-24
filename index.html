@@ -7,15 +7,6 @@
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <title>SkyWeather · 云际天气</title>
-    <!-- Three.js importmap：优先用本地 vendor/，离线可用；CDN 作为兜底 -->
-    <script type="importmap">
-    {
-      "imports": {
-        "three": "./vendor/three.module.js",
-        "three/addons/": "./vendor/addons/"
-      }
-    }
-    </script>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap">
@@ -291,24 +282,6 @@
             opacity: 0.85;
             filter: blur(1.5px);
             will-change: transform;
-            /* WebGL 启用时隐藏旧 Canvas 2D */
-        }
-        body.has-webgl #weather-canvas-far,
-        body.has-webgl #weather-canvas {
-            display: none;
-        }
-        #weather-canvas-webgl {
-            position: fixed;
-            inset: 0;
-            width: 100%;
-            height: 100%;
-            pointer-events: none;
-            z-index: 1;
-            display: none;
-            will-change: transform;
-        }
-        body.has-webgl #weather-canvas-webgl {
-            display: block;
         }
         #weather-canvas {
             position: fixed;
@@ -1694,7 +1667,6 @@
 
 <canvas id="weather-canvas-far" aria-hidden="true"></canvas>
 <canvas id="weather-canvas" aria-hidden="true"></canvas>
-<canvas id="weather-canvas-webgl" aria-hidden="true"></canvas>
 <div id="weather-flash"></div>
 
 <div class="app">
@@ -2176,10 +2148,6 @@
         if (e.gamma == null) return;
         // gamma: 左右倾斜 -90~90
         _tiltX = clamp(e.gamma / 45, -1, 1);
-        // 同步给 WebGL 渲染器
-        if (window.skyRenderer && window.skyRenderer._ready) {
-            try { window.skyRenderer.setTilt(_tiltX); } catch (e) {}
-        }
     }
     function enableTilt() {
         if (_tiltEnabled) return;
@@ -2259,10 +2227,6 @@
         _hour = new Date().getHours() + new Date().getMinutes() / 60;
         _dayFactor = getDayFactor(_hour);
         _sunPos = getSunPosition(_hour);
-        // 同步给 WebGL 渲染器
-        if (window.skyRenderer && window.skyRenderer._ready) {
-            try { window.skyRenderer.setDayFactor(_dayFactor); } catch (e) {}
-        }
     }
     updateDayNight();
     // 每 5 分钟刷新一次昼夜状态
@@ -3373,19 +3337,6 @@
 
     // ---- 动画主循环（双 Canvas + 平滑过渡 + 噪声时间）----
     function startAnimation(type, force = false) {
-        // 优先使用 WebGL 渲染器（小米天气级动画）
-        if (window.skyRenderer && window.skyRenderer._ready) {
-            try {
-                window.skyRenderer.setWeather(type, animIntensity, windSpeed);
-                // 同步停止旧 Canvas 2D 循环
-                if (animationId) { cancelAnimationFrame(animationId); animationId = null; }
-                currentAnim = type;
-                return;
-            } catch (e) {
-                console.warn('[SkyWeather WebGL] setWeather 失败，回退 Canvas 2D:', e);
-                // 继续执行 Canvas 2D 路径
-            }
-        }
         if (animationId) cancelAnimationFrame(animationId);
         if (lightningTimer) { clearTimeout(lightningTimer); lightningTimer = null; }
         // 同种天气切换（如切换城市查询）：不重建粒子，windSpeed/animIntensity 已在调用前更新
@@ -5228,58 +5179,6 @@
         try { await loadByIP(true); }
         catch (e) { console.log('自动定位未成功', e.message); }
     })();
-</script>
-
-<!-- ===================== WebGL 渲染器（小米天气级动画）===================== -->
-<!-- 通过 ES module 引入 Three.js + weather-renderer.js，自动初始化 -->
-<!-- 【已停用 2026-10-24】file:// 直接打开时 ES module 被 CORS 拦截，始终回退 Canvas 2D；
-     而线上 https 会启用 WebGL 3D 场景（蓝天渐变 + 地面 + god rays），两套动画观感差异很大，
-     造成"本地打开正常、线上异常"。现统一使用 Canvas 2D 动画；如需恢复 WebGL 场景，
-     把 ENABLE_WEBGL_RENDERER 改回 true 即可。 -->
-<script type="module">
-    const ENABLE_WEBGL_RENDERER = false;
-    if (ENABLE_WEBGL_RENDERER) try {
-        const { SkyWeatherRenderer } = await import('./weather-renderer.js');
-        const canvas = document.getElementById('weather-canvas-webgl');
-        // 用一次性离屏 canvas 探测 WebGL 支持。
-        // 不能在真实 canvas 上探测再 loseContext()：同一 canvas 的 getContext() 会返回
-        // 同一个已丢失的上下文（isContextLost=true, precision=null），three.js 随后创建
-        // WebGLRenderer 必然抛 "Cannot read properties of null (reading 'precision')"，
-        // 导致永远静默回退到 Canvas 2D。实测 Chromium 下就是这个行为。
-        const probeCanvas = document.createElement('canvas');
-        const testCtx = probeCanvas.getContext('webgl2') || probeCanvas.getContext('webgl');
-        if (testCtx) {
-            const loseExt = testCtx.getExtension('WEBGL_lose_context');
-            if (loseExt) loseExt.loseContext();
-        }
-        if (testCtx) {
-            const renderer = new SkyWeatherRenderer(canvas);
-            renderer.init();
-            renderer._ready = true;
-            window.skyRenderer = renderer;
-            document.body.classList.add('has-webgl');
-            // 取消可能正在运行的 Canvas 2D 循环，避免两套动画并存
-            if (typeof animationId !== 'undefined' && animationId) {
-                cancelAnimationFrame(animationId);
-                animationId = null;
-            }
-            if (typeof lightningTimer !== 'undefined' && lightningTimer) {
-                clearTimeout(lightningTimer);
-                lightningTimer = null;
-            }
-            // 应用当前昼夜状态
-            renderer.setDayFactor(_dayFactor);
-            // 如果已经有天气，立即应用
-            if (typeof currentAnim !== 'undefined' && currentAnim) {
-                renderer.setWeather(currentAnim, animIntensity, windSpeed);
-            }
-            console.log('[SkyWeather WebGL] 渲染器初始化成功');
-        } else {
-            console.warn('[SkyWeather WebGL] 当前浏览器不支持 WebGL，使用 Canvas 2D');
-        }
-    } catch (e) {
-        console.warn('[SkyWeather WebGL] 渲染器加载失败，使用 Canvas 2D：', e);
-    }
 </script>
 </body>
 </html>

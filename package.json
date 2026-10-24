@@ -2,7 +2,7 @@
     "name": "skyweather",
     "version": "1.0.0",
     "private": true,
-    "description": "SkyWeather · 云际天气 - Web 天气应用（WebGL 动态背景）",
+    "description": "SkyWeather · 云际天气 - Web 天气应用（Canvas 动态天气背景）",
     "license": "MIT",
     "repository": {
         "type": "git",
@@ -13,11 +13,6 @@
         "check": "node build.js check",
         "start": "node server.js",
         "dev": "node server.js",
-        "postinstall": "node copy-vendor.js",
-        "copy-vendor": "node copy-vendor.js",
         "sync:web": "node build.js"
-    },
-    "dependencies": {
-        "three": "^0.160.1"
     }
 }

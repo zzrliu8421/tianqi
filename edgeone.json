@@ -1,5 +1,5 @@
 {
-    "buildCommand": "node copy-vendor.js && node build.js",
+    "buildCommand": "node build.js",
     "outputDirectory": "./",
     "nodeVersion": "20.18.0"
 }
