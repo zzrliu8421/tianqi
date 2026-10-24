@@ -619,9 +619,9 @@ function adviceCacheSet(key, value) {
 }
 
 /** 调用 OpenAI 兼容 chat/completions(Web fetch 版),返回首个 choice 文本 */
-async function callLLMOnce(city, data, env) {
+async function callLLMOnce(city, data, env, model) {
     const base = String((env && env.AI_BASE_URL) || 'https://open.bigmodel.cn/api/paas/v4').replace(/\/+$/, '');
-    const model = String((env && env.AI_MODEL) || 'glm-4.7-flash');
+    const useModel = model || String((env && env.AI_MODEL) || 'glm-4.7-flash');
     const res = await fetch(base + '/chat/completions', {
         method: 'POST',
         headers: {
@@ -630,7 +630,7 @@ async function callLLMOnce(city, data, env) {
             'User-Agent': 'SkyWeather-Proxy/1.0',
         },
         body: JSON.stringify({
-            model,
+            model: useModel,
             messages: [
                 { role: 'system', content: AI_SYSTEM_PROMPT },
                 { role: 'user', content: `城市：${city}\n天气数据：${JSON.stringify(data)}` },
@@ -676,12 +676,17 @@ async function handleAiAdvice(context) {
 
     if (env.ZHIPU_API_KEY) {
         const inputNumbers = collectInputNumbers(data);
-        for (let attempt = 1; attempt <= 2; attempt++) {
+        // 依次尝试主模型与备用模型(各一次),全部失败再走规则降级
+        const models = [
+            String(env.AI_MODEL || 'glm-4.7-flash'),
+            String(env.AI_FALLBACK_MODEL || 'glm-4-flash'),
+        ];
+        for (const model of models) {
             let content = null;
             try {
-                content = await callLLMOnce(city, data, env);
+                content = await callLLMOnce(city, data, env, model);
             } catch (e) {
-                console.error(`[ai] LLM 调用失败（第 ${attempt} 次，city=${city}）:`, e && e.message);
+                console.error(`[ai] LLM 调用失败（${model}，city=${city}）:`, e && e.message);
             }
             if (content) {
                 const advice = parseAdviceText(content);
@@ -694,7 +699,7 @@ async function handleAiAdvice(context) {
                     adviceCacheSet(cacheKey, value);
                     return json(200, Object.assign({ cached: false }, value));
                 }
-                console.warn(`[ai] 第 ${attempt} 次输出未通过接地校验（city=${city}）`);
+                console.warn(`[ai] ${model} 输出未通过接地校验（city=${city}）`);
             }
         }
     }

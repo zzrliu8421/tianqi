@@ -192,6 +192,8 @@ const QWEATHER_GEO_PREFIX = QWEATHER_HOST ? '/geo' : '';
 // AI_BASE_URL 容错：允许结尾斜杠
 const AI_BASE_URL = (ENV.AI_BASE_URL || 'https://open.bigmodel.cn/api/paas/v4').replace(/\/+$/, '');
 const AI_MODEL = ENV.AI_MODEL || 'glm-4.7-flash';
+// 故障转移:主模型拥堵/异常时换备用模型重试(Flash 系免费档高峰期常见 429)
+const AI_FALLBACK_MODEL = ENV.AI_FALLBACK_MODEL || 'glm-4-flash';
 
 // system prompt：约束 LLM 只能引用输入数值、输出严格 JSON（中文，面向普通市民生活建议）
 const AI_SYSTEM_PROMPT = '你是一个天气生活建议助手。规则：只能使用输入数据中出现的数值，严禁编造或推算任何新数值；不要提及"数据来源"；输出严格的 JSON：{"summary":"一句话总结(≤30字)","tips":["建议1","建议2","建议3"]}，每条建议≤40字、面向普通市民生活（穿衣、出行、晾晒、运动、防护等），语气友好。';
@@ -634,7 +636,7 @@ function readJsonBody(req, maxBytes) {
  * 调用 OpenAI 兼容的 chat/completions（Bearer ZHIPU_API_KEY），返回首个 choice 的文本。
  * 日志只记错误消息，绝不打印 Authorization 头 / Key（遵循现有脱敏模式）。
  */
-function callLLMOnce(city, data) {
+function callLLMOnce(city, data, model) {
     return new Promise((resolve, reject) => {
         let target;
         try {
@@ -643,7 +645,7 @@ function callLLMOnce(city, data) {
             return reject(new Error('invalid AI_BASE_URL'));
         }
         const payload = JSON.stringify({
-            model: AI_MODEL,
+            model: model || AI_MODEL,
             messages: [
                 { role: 'system', content: AI_SYSTEM_PROMPT },
                 { role: 'user', content: `城市：${city}\n天气数据：${JSON.stringify(data)}` },
@@ -722,13 +724,14 @@ async function handleAiAdvice(req, res) {
 
     if (ENV.ZHIPU_API_KEY) {
         const inputNumbers = collectInputNumbers(data);
-        for (let attempt = 1; attempt <= 2; attempt++) {
+        // 依次尝试主模型与备用模型(各一次),全部失败再走规则降级
+        for (const model of [AI_MODEL, AI_FALLBACK_MODEL]) {
             let content = null;
             try {
-                content = await callLLMOnce(city, data);
+                content = await callLLMOnce(city, data, model);
             } catch (e) {
                 // 日志只记错误消息（不含 Authorization / Key，遵循现有脱敏模式）
-                console.error(`[ai] LLM 调用失败（第 ${attempt} 次，city=${city}）:`, e.message);
+                console.error(`[ai] LLM 调用失败（${model}，city=${city}）:`, e.message);
             }
             if (content) {
                 const advice = parseAdviceText(content);
@@ -741,7 +744,7 @@ async function handleAiAdvice(req, res) {
                     adviceCacheSet(cacheKey, value);
                     return sendJSON(res, 200, Object.assign({ cached: false }, value));
                 }
-                console.warn(`[ai] 第 ${attempt} 次输出未通过接地校验（city=${city}）`);
+                console.warn(`[ai] ${model} 输出未通过接地校验（city=${city}）`);
             }
         }
     }
