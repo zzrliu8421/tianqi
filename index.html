@@ -2265,8 +2265,8 @@
         }
     }
     updateDayNight();
-    // 每 5 分钟刷新一次昼夜状态（句柄保存下来，页面卸载时清理）
-    const _dayNightTimer = setInterval(updateDayNight, 5 * 60 * 1000);
+    // 每 5 分钟刷新一次昼夜状态
+    setInterval(updateDayNight, 5 * 60 * 1000);
 
     // ---- 水滴溅射特效（多向喷射 + 高光点）----
     class Splash {
@@ -5220,32 +5220,6 @@
         document.addEventListener('mouseup', endDrag);
     })();
 
-    // ===================== 生命周期清理 =====================
-    // 页面真正卸载（非 bfcache）时释放定时器 / 动画帧 / WebGL 资源；
-    // 进入 bfcache 时只暂停，恢复时继续，避免返回页面后背景冻结。
-    let _pageCleaned = false;
-    function cleanupPage() {
-        if (_pageCleaned) return;
-        _pageCleaned = true;
-        clearInterval(_dayNightTimer);
-        clearTimeout(searchDebounceTimer);
-        if (animationId) { cancelAnimationFrame(animationId); animationId = null; }
-        if (lightningTimer) { clearTimeout(lightningTimer); lightningTimer = null; }
-        if (window.skyRenderer && typeof window.skyRenderer.dispose === 'function') {
-            try { window.skyRenderer.dispose(); } catch (e) {}
-        }
-    }
-    window.addEventListener('pagehide', (e) => {
-        if (e.persisted) {
-            if (window.skyRenderer) window.skyRenderer.setPaused(true);
-            return;
-        }
-        cleanupPage();
-    });
-    window.addEventListener('pageshow', (e) => {
-        if (e.persisted && window.skyRenderer) window.skyRenderer.setPaused(false);
-    });
-
     // ===================== 初始化 =====================
     (async function init() {
         renderHistory();
@@ -5294,7 +5268,7 @@
             if (typeof currentAnim !== 'undefined' && currentAnim) {
                 renderer.setWeather(currentAnim, animIntensity, windSpeed);
             }
-            console.log('[SkyWeather WebGL] 渲染器初始化成功，画质档位: ' + renderer.tier + '（' + (renderer.quality && renderer.quality.label) + '）');
+            console.log('[SkyWeather WebGL] 渲染器初始化成功');
         } else {
             console.warn('[SkyWeather WebGL] 当前浏览器不支持 WebGL，使用 Canvas 2D');
         }
