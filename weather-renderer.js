@@ -689,9 +689,11 @@ export class SkyWeatherRenderer {
         varying float vLayer;
         varying float vDepth;
         void main() {
-          // 雨滴形状：竖向拉长的椭圆
+          // 雨滴形状：竖向拉长的雨丝
+          // 横向压紧坐标使椭圆在 quad 内部渐隐到 0（纵向 |c.y|=0.5 处 d=0.5 → alpha=0），
+          // 不能压纵向：那会让上下边缘 alpha≈0.7，雨滴渲染成实心矩形
           vec2 c = gl_PointCoord - 0.5;
-          c.y *= 0.3; // 拉长
+          c.x *= 2.2;
           float d = length(c);
           float a = smoothstep(0.5, 0.0, d);
           // 远处更淡
@@ -1117,12 +1119,12 @@ export class SkyWeatherRenderer {
     switch (type) {
       case 'sunny':
         v.sun = 1;
-        v.stars = blend > 0.5 ? 1 : 0.3;
+        v.stars = blend; // 星星亮度直接跟随夜晚程度，白天无星
         break;
       case 'partlyCloudy':
         v.sun = 0.7;
         v.clouds = 0.6;
-        v.stars = blend > 0.5 ? 0.5 : 0;
+        v.stars = blend * 0.5;
         break;
       case 'cloudy':
         v.clouds = 1;
@@ -1387,23 +1389,30 @@ export class SkyWeatherRenderer {
     }
     ud.layers.forEach(({ group, depth }) => {
       const speed = (0.3 + depth * 0.6) * wind;
+      // 云层亮度：夜晚压暗成剪影（否则纯白云在黑夜天空上刺眼），
+      // 雷雨云再压暗偏灰，雨天/阴天略压
+      let bright = 0.22 + 0.78 * this.dayFactor;
+      if (this.targetType === 'storm') bright *= 0.5;
+      else if (this.targetType === 'rain') bright *= 0.72;
+      else if (this.targetType === 'cloudy') bright *= 0.85;
       group.children.forEach((sprite) => {
         sprite.position.x += speed * dt * 5;
         // 循环
         if (sprite.position.x > 500) sprite.position.x = -500;
         // 微浮动
         sprite.position.y += Math.sin(this.elapsed * 0.5 + sprite.userData.phase) * dt * 2;
-        // 闪电时云朵变亮
+        // 闪电时云朵被瞬间照亮
         if (ud.flashStrength > 0) {
           const baseOp = 0.5 + depth * 0.3;
-          sprite.material.opacity = baseOp + ud.flashStrength * 0.6;
-          sprite.material.color.setRGB(1, 1, 1 + ud.flashStrength * 0.3);
+          const f = ud.flashStrength;
+          sprite.material.opacity = baseOp + f * 0.6;
+          sprite.material.color.setRGB(bright + f * 0.6, bright + f * 0.55, bright + f * 0.7);
         } else {
           const baseOp = (0.5 + depth * 0.3) * this.curVisibility.clouds;
           if (Math.abs(sprite.material.opacity - baseOp) > 0.01) {
             sprite.material.opacity = baseOp;
           }
-          sprite.material.color.setRGB(1, 1, 1);
+          sprite.material.color.setRGB(bright, bright, Math.min(1, bright * 1.06));
         }
       });
     });
