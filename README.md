@@ -2,6 +2,8 @@
 
 一个简洁、现代的天气应用，支持城市搜索、IP 定位（IPv4 / IPv6）、实时天气、24 小时预报、7 天预报、空气质量 AQI，以及基于 **WebGL（Three.js）** 的沉浸式动态天气背景（8 种天气 + 昼夜 + 后期辉光，移动端按设备画像自动选择画质档位）。
 
+> 在线体验：https://weather.sylv.top ｜ 最近更新：2026-10-24 ｜ 代码许可：MIT
+
 ---
 
 ## 功能特性
@@ -27,6 +29,20 @@
 - **搜索历史**：本地存储最近搜索城市，最多 8 条，支持一键清空。
 - **随机背景图**：可切换 Bing / 随机风景背景。
 - **移动端适配**：`apple-mobile-web-app`、theme-color、viewport-fit、safe-area 适配。注意：这不是完整 PWA（未提供 manifest / service worker）。
+
+---
+
+## 项目状态（2026-10-24）
+
+- **已完成**：WebGL 渲染器初始化修复、请求并发死锁修复、代理白名单 / 限流 / Origin 校验、移动端三级画质与帧率自适应、vendor 依赖裁剪（21.7MB → 0.66MB）、无障碍与页面生命周期、MIT 许可。
+- **在线**：https://weather.sylv.top（EdgeOne Pages + 边缘函数）。
+- **已知限制**：
+  - 尚无自动化测试与 lint，验收依赖手动清单（见「开发与验证」）；
+  - 未实现浏览器 GPS 定位与完整 PWA（manifest / service worker）；
+  - 前端仍是单文件结构（`index.html` 约 5.3k 行），尚未模块化；
+  - 随机背景图来自第三方接口，版权未明确，公开演示前建议替换；
+  - 低端设备会自动降到 medium / low 画质，Bloom 关闭。
+- **近期重点**：把工程成果转化为可验证的研究成果（渲染预算与自适应降级实验）。
 
 ---
 
@@ -112,11 +128,20 @@
 
 ## 快速开始
 
-### 1. 克隆仓库
+### 1. 克隆并安装依赖
 
 ```bash
-git clone https://github.com/your-username/tianqi.git
+git clone https://github.com/zzrliu8421/tianqi.git
 cd tianqi
+npm install
+```
+
+`npm install` 会触发 `postinstall` 自动执行 `copy-vendor.js`，把渲染器只用到的 Three.js 子集（9 个文件、约 0.66MB）拷到 `vendor/`。如果跳过安装，页面仍可运行，但 WebGL 渲染器会降级为 Canvas 2D。
+
+也可以单独刷新 vendor：
+
+```bash
+npm run copy-vendor
 ```
 
 ### 2. 配置 API Key
@@ -227,15 +252,15 @@ server {
 
 2. **代理侧**：在另一台服务器上运行 `server.js`，并在 `.env` 中设置 `ALLOWED_ORIGINS` 为前端的完整 Origin（如 `https://weather.example.com`）。代理默认只接受同源请求，只把 *.example.com 之类通配留给平台层，不在这里放开；响应会按请求 Origin 回显 `Access-Control-Allow-Origin`。
 
-### 方式 C：纯静态部署（不再使用代理）
+### 方式 C：纯静态部署（不使用代理）
 
-如果不需要隐藏 Key（例如内部使用），可像旧版本那样直接构建并部署：
+如果只是做静态展示、不要求国内天气精度，可以只构建前端并部署：
 
 ```bash
 node build.js
 ```
 
-> 注意：自代理模式上线后，`build.js` 生成的 `config.js` **不再包含真实 Key**，纯静态部署将无法调用高德 / 和风 / IPnews 等需要 Key 的 API。仅 Open-Meteo 等免 Key 数据源可用。
+> 注意：`build.js` 生成的 `config.js` 只含布尔标志，**不会包含真实 Key**。纯静态部署无法调用高德 / 和风 / IPnews 等需要 Key 的 API，只能使用 Open-Meteo、GeoDB 等免 Key 数据源（定位精度与 AQI 数据完整度会下降）。
 
 ### 方式 D：EdgeOne Pages 边缘函数（推荐，可用性最高）
 
@@ -265,7 +290,7 @@ EdgeOne 边缘节点 (edge-functions/api/[[path]].js)
 ├── edge-functions/
 │   └── api/
 │       └── [[path]].js     # 边缘函数：catch-all 处理所有 /api/* 请求
-├── edgeone.json            # 构建配置（buildCommand: node build.js）
+├── edgeone.json            # 构建配置（buildCommand: node copy-vendor.js && node build.js）
 ├── server.js               # 保留，仅用于方式 A（自建服务器）
 ├── build.js                # 构建时生成只含布尔值的 config.js
 └── index.html              # 前端（不修改，仍请求同源 /api/*）
@@ -294,7 +319,7 @@ EdgeOne 边缘节点 (edge-functions/api/[[path]].js)
 1. 把代码推送到 GitHub / GitLab 仓库（`.env` 会被 `.gitignore` 自动忽略，安全）
 2. 在 EdgeOne Pages 控制台「新建项目」→ 选择仓库 → 框架预设选「无」
 3. 构建配置会自动读取项目根目录的 `edgeone.json`：
-   - 构建命令：`node build.js`
+   - 构建命令：`node copy-vendor.js && node build.js`
    - 输出目录：`./`
    - Node 版本：`20.18.0`
 4. 点击「部署」，等待构建完成
@@ -323,19 +348,22 @@ CLI 会读取本地 `.env` 注入到 `context.env`，行为与线上一致。默
 
 #### 边缘函数路由表
 
+只放行前端实际使用的路径（与 `server.js` 的白名单一致），其余返回 403：
+
 | 前端请求 | 上游目标 | 注入的 Key |
 |---|---|---|
 | `GET /api/status` | （无上游）返回 provider 布尔值 | — |
-| `GET /api/amap/<path>` | `https://restapi.amap.com/<path>` | `key=AMAP_KEY` |
-| `GET /api/qweather/geo/<path>` | `https://geoapi.qweather.com/<path>` | `key=QWEATHER_KEY` |
-| `GET /api/qweather/dev/<path>` | `https://devapi.qweather.com/<path>` | `key=QWEATHER_KEY` |
-| `GET /api/ipnews/<path>` | `https://ipnews.io/<path>` | `api-key=IPNEWS_KEY` |
+| `GET /api/amap/v3/ip`、`/v3/geocode/geo`、`/v3/geocode/regeo`、`/v3/weather/weatherInfo` | `https://restapi.amap.com/...` | `key=AMAP_KEY` |
+| `GET /api/qweather/geo/v2/city/lookup` | `https://geoapi.qweather.com/...` | `key=QWEATHER_KEY` |
+| `GET /api/qweather/dev/v7/weather/now`、`/24h`、`/7d`、`/v7/air/now` | `https://devapi.qweather.com/...` | `key=QWEATHER_KEY` |
+| `GET /api/ipnews/api/v1/json/<ip>` | `https://ipnews.io/...` | `api-key=IPNEWS_KEY` |
 
-未匹配 `/api/*` 的请求会回退到静态资源。
+未匹配 `/api/*` 的请求会回退到静态资源；命中前缀但不在白名单内的路径返回 403；GET 之外的方法返回 405。
 
 #### 安全与限制说明
 
-- **CORS**：边缘函数对通过 Origin 校验的请求附加 `Access-Control-Allow-Origin: *`；异源请求在业务逻辑前就被 403 拒绝，因此 `*` 不会放开未授权站点（如确需跨域，请在边缘函数环境变量里配置 `ALLOWED_ORIGINS`）
+- **访问控制**：路径白名单 + Origin 校验（异源 403）+ 尽力而为的 IP 限流（90 次/分钟，429 + `Retry-After`）；如确需跨域，请在边缘函数环境变量里配置 `ALLOWED_ORIGINS`。
+- **CORS**：边缘函数对通过 Origin 校验的请求附加 `Access-Control-Allow-Origin: *`；异源请求在业务逻辑前就被 403 拒绝，因此 `*` 不会放开未授权站点。
 - **超时**：单次上游请求超时 10s（通过 EdgeOne 特有的 `eo.timeoutSetting` 配置）；EdgeOne 边缘函数单次执行 CPU 时间限制 200ms（不含 I/O 等待）
 - **CPU 限制**：边缘函数单次执行 CPU 时间片 200ms，本项目代理逻辑远低于此限制
 - **代码包大小**：单个函数代码包 ≤ 5MB，本文件远低于此限制
@@ -366,6 +394,36 @@ CLI 会读取本地 `.env` 注入到 `context.env`，行为与线上一致。默
 
 ---
 
+## 开发与验证
+
+项目目前没有自动化测试与 lint，改完代码后按下面的清单手动验收：
+
+```bash
+# 语法检查
+node --check server.js
+node --check build.js
+node --check copy-vendor.js
+node --check "edge-functions/api/[[path]].js"
+# weather-renderer.js 是 ES Module：复制为 .mjs 后再检查
+node --check /path/to/weather-renderer.mjs
+
+# 启动并检查配置
+npm start
+curl http://localhost:8787/api/status
+```
+
+人工检查清单：
+
+- 首屏自动定位成功，天气卡片正常渲染；
+- 快速连点两次刷新，不出现一直停在骨架屏（此前的死锁回归点）；
+- 控制台出现 `[SkyWeather WebGL] 渲染器初始化成功，画质档位: ...`；
+- 搜索历史可用键盘 ↑ / ↓ / Enter 选择，Esc 关闭；
+- 切换标签页后动画暂停，返回后恢复；
+- 8 种天气（晴 / 多云 / 阴 / 雨 / 雷暴 / 雪 / 雾 / 霾）背景切换正常；
+- 低端设备或 `prefers-reduced-motion` 下画质档位降为 low（Bloom 关闭、分辨率降低）。
+
+---
+
 ## 浏览器支持
 
 - Chrome / Edge / Firefox / Safari 最新版（需支持 WebGL 2）
@@ -373,6 +431,27 @@ CLI 会读取本地 `.env` 注入到 `context.env`，行为与线上一致。默
 - 尊重 `prefers-reduced-motion`：Canvas 2D 路径停止动画，WebGL 路径切到低画质 + 20fps + 动画减速
 - WebGL 不可用时自动降级为 Canvas 2D 粒子动画
 - 标签页切到后台时暂停渲染；页面卸载时释放 GPU 资源（`dispose()`）
+
+---
+
+## 更新日志
+
+### 2026-10-24
+
+- 修复 WebGL 初始化探测 bug（此前在 Chromium 内核下会静默回退 Canvas 2D）；
+- 修复并发请求死锁（连点刷新可能永久停在骨架屏）；
+- 代理加固：路径白名单、IP 限流、Origin 校验、静态目录防泄露、gzip 与长缓存；
+- 移动端三级画质与帧率自适应；vendor 依赖裁剪（21.7MB → 0.66MB）；
+- 无障碍：aria-live / aria-busy、搜索历史键盘操作、对比度、错误重试事件委托；
+- 生命周期：dispose、后台暂停、定时器清理；补 MIT LICENSE。
+
+### 2026-07-05
+
+- 移除 Flutter / Android / Electron 相关代码，收敛为 Web 端。
+
+### 2026-06-19
+
+- Web 端重构与代理模式（API Key 收敛到服务端）。
 
 ---
 
