@@ -14,7 +14,7 @@
  *      - GET /api/caiyun/<path>         → https://api.caiyunapp.com/<path>，token 注入路径段：
  *        /api/caiyun/v2.6/<lon>,<lat>/weather → /v2.6/<CAIYUN_TOKEN>/<lon>,<lat>/weather
  *      - POST /api/ai/advice            → AI 天气生活建议：按模型链依次 POST <baseUrl>/chat/completions
- *        （首选 Agnes：agnes-3.0-flash → agnes-2.5-flash；次选智谱：glm-4.7-flash → glm-4-flash，
+ *        （首选 Agnes：agnes-2.5-flash → agnes-3.0-flash；次选智谱：glm-4.7-flash → glm-4-flash，
  *        Bearer 对应供应商 Key）。输出做"接地校验"：响应文本中的每个数字必须来自请求 data 的
  *        数值集合，未通过则沿链换下一个模型；全部失败 / 未配置 Key / 上游异常 →
  *        规则降级（mode:"rule"）。结果按 city+hour 缓存 1 小时；限流收紧为 10 次/分/IP
@@ -193,33 +193,38 @@ const QWEATHER_GEO_PREFIX = QWEATHER_HOST ? '/geo' : '';
 
 // ===================== AI 天气生活建议配置 =====================
 // AI 建议模型链（依次尝试，全部失败走规则降级 mode:"rule"）：
-// 首选供应商 Agnes（OpenAI 兼容中转）：agnes-3.0-flash → agnes-2.5-flash；
+// 首选供应商 Agnes（OpenAI 兼容中转）：agnes-2.5-flash → agnes-3.0-flash。
+// 2026-10-25 A/B 实测：3.0 约四成输出编造输入外数值被接地校验拦下、通过时文风偏硬；
+// 2.5 文风最活且通过率高，故 2.5 升首选、3.0 退居备选。
 // 次选供应商智谱：glm-4.7-flash → glm-4-flash（免费档高峰期常见 429）。
 // 未配置对应 Key 的供应商整段跳过；一个 Key 都没配时直接规则降级。
 const ZHIPU_BASE_URL = (ENV.AI_BASE_URL || 'https://open.bigmodel.cn/api/paas/v4').replace(/\/+$/, '');
 const AI_PROVIDER_CHAIN = [
-    { provider: 'agnes', baseUrl: 'https://api.agnes-ai.cn/v1', apiKey: ENV.AGNES_API_KEY, model: 'agnes-3.0-flash' },
     { provider: 'agnes', baseUrl: 'https://api.agnes-ai.cn/v1', apiKey: ENV.AGNES_API_KEY, model: 'agnes-2.5-flash' },
+    { provider: 'agnes', baseUrl: 'https://api.agnes-ai.cn/v1', apiKey: ENV.AGNES_API_KEY, model: 'agnes-3.0-flash' },
     { provider: 'zhipu', baseUrl: ZHIPU_BASE_URL, apiKey: ENV.ZHIPU_API_KEY, model: ENV.AI_MODEL || 'glm-4.7-flash' },
     { provider: 'zhipu', baseUrl: ZHIPU_BASE_URL, apiKey: ENV.ZHIPU_API_KEY, model: ENV.AI_FALLBACK_MODEL || 'glm-4-flash' },
 ];
 
 // system prompt：约束 LLM 只能引用输入数值、输出严格 JSON；
-// 写作定位是"有生活温度的天气伙伴"——页面已有规则版指数卡片（穿衣/带伞/
-// 防晒等），允许谈同样的话题，但必须比卡片更深一层：讲清原因、落到时段
-// 场景、带出身体与心情层面的关照，不做卡片结论的简单复述
+// 写作定位是"有生活温度的天气伙伴"——条数与字数不做硬性限制（校验只守宽松
+// 上限），靠一对"套话 vs 想要的"风格示例（刻意不含数字，防被照抄）把文风
+// 拉向具体时段、体感与惦记，避免公文腔与卡片结论的复述
 const AI_SYSTEM_PROMPT = [
     '你是天气伙伴，像关心朋友一样，基于给定的真实天气数据给用户写今日提醒。',
     '硬性规则：',
-    '1. 只能使用输入数据中出现的数值，严禁编造或推算任何新数值；',
-    '2. 页面的指数卡片已经给出"穿什么衣服、带不带伞、要不要防晒洗车"这类基础结论。这些话题可以写，但必须写出卡片给不了的深度：结合具体数值讲清"为什么"、落到具体时段或场景说"什么时候该怎么做"，或带出身体与心情层面的关照；把卡片结论原样换个说法，等于没写；',
-    '3. 不要提及"数据来源"；不要用"建议您""请注意"等公文腔，也不要以"建议"开头，用"你"的自然口吻。',
-    '写什么（共 3 条，每条必须落到具体时间点或生活场景）：',
-    '- 结合早高峰、午休、傍晚、夜间等时间节点，说出门、通勤、回家路上的具体留意点；',
-    '- 关心身体与心情：昼夜温差的疲惫感、阴雨天的沉闷、大风天的干燥等，给一点温暖的宽慰；',
-    '- 具体场景如开窗通风、晾晒收衣、接送孩子、遛狗散步、夜间开车，用细节打动人，可以有淡淡的幽默，但不要感叹号轰炸。',
-    '写完自查：任何一条如果换个城市、换一天也成立，那就是套话，重写。',
-    '输出严格的 JSON：{"summary":"一句有温度的天气速览(≤30字)","tips":["提醒1","提醒2","提醒3"]}，每条 25~60 字，语气像朋友发来的问候。',
+    '1. 只能使用输入数据中出现的数值，严禁编造；也不要做任何推算或换算——不写"比实际高出3度"这类算出来的差值，不把 17:15 说成"下午5点15分"，保留数值原有的单位与写法；',
+    '2. 不要提及"数据来源"；文案里不要出现英文字段名或缩写（uv、aqi、pop、tmax、sunset 之类），一律用中文名词（紫外线指数、空气质量指数、降水概率、最高气温、日落时间）；不要用"建议您""请注意"等公文腔，也不要以"建议"开头，用"你"的自然口吻。',
+    '页面已有指数卡片交代穿衣、带伞、防晒这类基础结论。这些话题可以写，但要么讲得更深（结合具体数值说清"为什么"、落到时段或场景说"什么时候该怎么做"），要么带出身体与心情层面的关照；原样复述卡片结论等于没写。',
+    '条数与字数不设硬性限制：建议 2~4 条，每条几句话说透就好，长短跟着内容走，不为凑数注水。可以从这些角度找感觉：',
+    '- 早高峰、午休、傍晚、夜间等时间节点，出门、通勤、回家路上的具体留意点；',
+    '- 昼夜温差的疲惫、阴雨天的沉闷、大风天的干燥，给一点身体和心情上的宽慰；',
+    '- 开窗通风、晾晒收衣、接送孩子、遛狗散步、夜间开车这类具体场景，细节里带点淡淡的幽默。',
+    '风格示例（同一份提醒的对比，感受差别即可，不要照抄内容）：',
+    '× 套话："今日温差较大，建议适时增减衣物，注意保暖，出门携带雨具。"——换个城市换一天都成立，谁都能写；',
+    '√ 想要的："太阳傍晚就下班了，风一吹，体感比预报里的数字更诚实。回家那段路记得把衣领立起来，进门前在楼道里缓一缓，别让温差扑个满怀。"——有具体时间、有体感、有一点点惦记。',
+    '写完自查：任何一条如果换个城市、换一天也成立，那就是套话，重写；结论也不得与数据矛盾（紫外线很强就不能说不用防晒，空气优良就别让人戴口罩）。',
+    '输出严格的 JSON：{"summary":"一两句有温度的天气速览","tips":["提醒1","提醒2"]}，语气像朋友发来的问候，不要感叹号轰炸。最后再强调一次：所有数值只能原样引用输入，禁止加减差值、禁止时间换算（17:15 就是 17:15）。',
 ].join('\n');
 
 // 数字提取（含小数、负数；"18.5°C" 这类带单位形式取 18.5）
@@ -534,23 +539,28 @@ function parseAdviceText(text) {
 }
 
 /**
+ * 找出文本中不在输入数值集合里的数字（接地校验与失败日志共用）。
+ */
+function findUngroundedNumbers(text, inputNumbers) {
+    const found = text.match(NUMBER_RE) || [];
+    return found.filter(raw => !inputNumbers.has(String(Number(raw))));
+}
+
+/**
  * 接地校验（核心）：结构合法 + 响应文本里出现的每个数字（含小数，允许
  * "18.5°C" 这类带单位形式）都必须能在输入 data 的数值集合中找到。
- * 字数上限取宽松值（summary≤60 / 单条 tip≤80），严格字数交给 prompt 约束。
+ * 字数只守宽松上限（summary≤80 / 单条 tip≤150，条数 1~6），细粒度的
+ * 条数与文风交给 prompt 约束，不做硬卡。
  */
 function isGroundedAdvice(advice, inputNumbers) {
     if (!advice || typeof advice !== 'object' || Array.isArray(advice)) return false;
-    if (typeof advice.summary !== 'string' || !advice.summary.trim() || advice.summary.length > 60) return false;
-    if (!Array.isArray(advice.tips) || advice.tips.length === 0 || advice.tips.length > 5) return false;
+    if (typeof advice.summary !== 'string' || !advice.summary.trim() || advice.summary.length > 80) return false;
+    if (!Array.isArray(advice.tips) || advice.tips.length === 0 || advice.tips.length > 6) return false;
     for (const tip of advice.tips) {
-        if (typeof tip !== 'string' || !tip.trim() || tip.length > 80) return false;
+        if (typeof tip !== 'string' || !tip.trim() || tip.length > 150) return false;
     }
     const text = advice.summary + '\n' + advice.tips.join('\n');
-    const found = text.match(NUMBER_RE) || [];
-    for (const raw of found) {
-        if (!inputNumbers.has(String(Number(raw)))) return false;
-    }
-    return true;
+    return findUngroundedNumbers(text, inputNumbers).length === 0;
 }
 
 /**
@@ -674,8 +684,8 @@ function callLLMOnce(city, data, provider) {
                 { role: 'system', content: AI_SYSTEM_PROMPT },
                 { role: 'user', content: `城市：${city}\n当前时段：${data.month}月 ${data.hour != null ? data.hour + '点' : ''}\n天气数据：${JSON.stringify(data)}\n\n请写出有生活温度的今日提醒。穿衣、带伞、防晒这类话题页面卡片已有基础结论，可以谈，但要更深一层——讲清原因、落到具体时段或场景、给出卡片没有的关照，不要只复述卡片结论。` },
             ],
-            temperature: 0.6,
-            max_tokens: 500,
+            temperature: 0.7,
+            max_tokens: 800,
         });
         const upstreamReq = https.request({
             hostname: target.hostname,
@@ -746,11 +756,18 @@ async function handleAiAdvice(req, res) {
     const hit = adviceCacheGet(cacheKey);
     if (hit) return sendJSON(res, 200, Object.assign({ cached: true }, hit));
 
-    // 沿模型链依次尝试（供应商内主→备、供应商间首选→次选），全部失败再走规则降级
+    // 沿模型链依次尝试（供应商内主→备、供应商间首选→次选），全部失败再走规则降级。
+    // 链路总预算 12s（< 前端 15s 超时）：预算耗尽不再发起新尝试，直接规则降级，
+    // 保证服务端总能及时响应；成功结果会进缓存，下一次同城市同时段秒回
     const chain = AI_PROVIDER_CHAIN.filter(p => p.apiKey);
     if (chain.length) {
         const inputNumbers = collectInputNumbers(data);
+        const chainDeadline = Date.now() + 12000;
         for (const p of chain) {
+            if (Date.now() >= chainDeadline) {
+                console.warn(`[ai] 模型链 12s 预算耗尽（city=${city}），提前转入规则降级`);
+                break;
+            }
             let content = null;
             try {
                 content = await callLLMOnce(city, data, p);
@@ -769,7 +786,15 @@ async function handleAiAdvice(req, res) {
                     adviceCacheSet(cacheKey, value);
                     return sendJSON(res, 200, Object.assign({ cached: false }, value));
                 }
-                console.warn(`[ai] ${p.provider}/${p.model} 输出未通过接地校验（city=${city}）`);
+                // 记录越界数字与原文开头（脱敏：不含请求/密钥信息），便于诊断模型在编造什么
+                if (advice && typeof advice.summary === 'string') {
+                    const badNums = findUngroundedNumbers(advice.summary + '\n' + (Array.isArray(advice.tips) ? advice.tips.join('\n') : ''), inputNumbers);
+                    console.warn(`[ai] ${p.provider}/${p.model} 输出未通过接地校验（city=${city}），越界数字: [${badNums.join(', ')}] 原文:`,
+                        content.slice(0, 120).replace(/\s+/g, ' '));
+                } else {
+                    console.warn(`[ai] ${p.provider}/${p.model} 输出无法解析为约定 JSON（city=${city}）:`,
+                        content.slice(0, 120).replace(/\s+/g, ' '));
+                }
             }
         }
     }
