@@ -377,7 +377,8 @@
             animation: pulse-glow 2s ease-in-out infinite;
         }
 
-        .badge.ipv6 .dot {
+        .badge.ipv6 .dot,
+        .badge.ip .dot {
             background: var(--accent);
             box-shadow: 0 0 8px var(--accent-glow);
         }
@@ -470,6 +471,7 @@
         }
         .btn-primary:hover { transform: translateY(-2px); box-shadow: 0 10px 28px var(--accent-glow), 0 0 0 1px rgba(255, 255, 255, 0.15) inset; }
         .btn-primary:active { transform: translateY(0) scale(0.97); }
+        .btn.is-busy { opacity: .6; pointer-events: none; }
 
         .btn-ghost {
             width: 52px;
@@ -915,34 +917,9 @@
             color: var(--text-tertiary);
             margin-top: var(--space-1);
         }
-        .detail-card .dc-extra {
-            font-size: var(--fs-xs);
-            color: var(--text-secondary);
-            margin-top: var(--space-2);
-            display: flex;
-            align-items: center;
-            gap: var(--space-1);
-            font-weight: 500;
-        }
-        .detail-card .dc-bar {
-            flex: 1;
-            height: 3px;
-            background: var(--glass-3);
-            border-radius: var(--r-pill);
-            overflow: hidden;
-            margin-top: var(--space-3);
-        }
-        .detail-card .dc-bar-fill {
-            height: 100%;
-            background: var(--accent-gradient);
-            border-radius: var(--r-pill);
-            transform-origin: left;
-            transition: transform 1s var(--ease-out);
-        }
 
         /* AQI 卡片 */
         .aqi-card {
-            grid-column: 1 / -1;
             display: flex;
             align-items: center;
             gap: var(--space-4);
@@ -1028,6 +1005,7 @@
         /* 左右列容器 */
         .main-left { display: flex; flex-direction: column; gap: var(--space-5); min-width: 0; }
         .main-right { display: flex; flex-direction: column; gap: var(--space-5); min-width: 0; }
+        .env-card { display: flex; flex-direction: column; gap: var(--space-3); }
 
         /* 右侧栏 */
         .side-col { display: flex; flex-direction: column; gap: var(--space-5); min-width: 0; }
@@ -1093,48 +1071,38 @@
         .hourly-scroll::-webkit-scrollbar-thumb { background: var(--glass-3); border-radius: 2px; }
         .hourly-scroll::-webkit-scrollbar-thumb:hover { background: var(--glass-4); }
 
-        .hour-card {
-            flex: 0 0 auto;
-            min-width: 76px;
-            padding: var(--space-4) var(--space-3);
-            background: var(--glass-1);
-            border: 1px solid var(--border-1);
-            border-radius: var(--r-lg);
-            text-align: center;
-            scroll-snap-align: start;
-            transition: background-color var(--dur-normal) var(--ease), transform var(--dur-normal) var(--ease), border-color var(--dur-normal) var(--ease), box-shadow var(--dur-normal) var(--ease);
-            cursor: pointer;
+        /* 24 小时温度曲线:温度标签悬浮于曲线上方,曲线贯穿整卡(横向滚动) */
+        .hourly-curve-inner { position: relative; width: max-content; }
+        .hour-curve-svg { position: absolute; top: 0; left: 0; display: block; pointer-events: none; }
+        .hour-cols { display: flex; }
+        .hour-col {
+            width: 64px;
+            flex: none;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: var(--space-1);
+            padding-top: 92px;
             position: relative;
+            scroll-snap-align: start;
         }
-        .hour-card:hover { background: var(--glass-2); transform: translateY(-3px); border-color: var(--border-2); }
-        .hour-card.now { background: var(--glass-3); border-color: var(--accent); box-shadow: 0 0 20px var(--accent-glow); }
-        .hour-card.now .h-time { color: var(--accent); font-weight: 600; }
-        .hour-card .h-time {
-            font-size: var(--fs-xs);
-            color: var(--text-tertiary);
-            margin-bottom: var(--space-2);
-            font-variant-numeric: tabular-nums;
-        }
-        .hour-card .h-icon {
-            width: 32px;
-            height: 32px;
-            margin: var(--space-2) auto;
-            color: var(--accent);
-        }
-        .hour-card .h-temp {
-            font-size: var(--fs-sm);
+        .hour-col .h-temp {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            text-align: center;
+            font-size: var(--fs-base);
             font-weight: 600;
-            margin-top: var(--space-2);
             color: var(--text-primary);
             font-variant-numeric: tabular-nums;
         }
-        .hour-card .h-pop {
-            font-size: 0.65rem;
-            color: var(--accent);
-            margin-top: 2px;
-            font-weight: 600;
-        }
-        .hour-card .h-pop:empty { display: none; }
+        .hour-col .h-icon { display: flex; color: var(--text-secondary); }
+        .hour-col .h-icon svg { width: 26px; height: 26px; }
+        .hour-col .h-wind { font-size: var(--fs-xs); color: var(--text-tertiary); white-space: nowrap; }
+        .hour-col .h-time { font-size: var(--fs-xs); color: var(--text-tertiary); font-variant-numeric: tabular-nums; }
+        .hour-col.now .h-temp { color: var(--accent); }
+        .hour-col.now .h-time { color: var(--accent); font-weight: 600; }
 
         /* 多日预报 */
         .forecast-list { display: flex; flex-direction: column; gap: var(--space-2); }
@@ -1213,11 +1181,24 @@
             gap: var(--space-3);
         }
         /* 智 · AI 生活建议(无内容时完全隐藏,不占位) */
-        .ai-advice { display: none; margin-top: var(--space-3); padding-top: var(--space-3); border-top: 1px dashed var(--border-1); }
-        .ai-advice.show { display: block; }
-        .ai-summary { font-size: .92rem; font-weight: 600; margin-bottom: var(--space-2); }
+        /* AI 生活建议独立面板：loading / done / fallback 三态（data-state 驱动） */
+        .ai-panel[data-state] .ai-pane { display: none; }
+        .ai-panel[data-state="loading"] .ai-pane.ai-loading { display: block; }
+        .ai-panel[data-state="done"] .ai-pane.ai-content { display: block; }
+        .ai-panel[data-state="fallback"] .ai-pane.ai-fallback { display: flex; }
+        .ai-tag { font-size: .6rem; font-weight: 500; padding: 2px 8px; border-radius: var(--r-pill); background: linear-gradient(135deg, rgba(125, 211, 252, .22), rgba(129, 140, 248, .22)); color: #c7e9ff; }
+        .ai-status { font-size: .66rem; padding: 3px 10px; border-radius: var(--r-pill); background: rgba(125, 211, 252, .14); color: var(--accent); transition: background-color var(--dur-normal) var(--ease), color var(--dur-normal) var(--ease); }
+        .ai-panel[data-state="done"] .ai-status { background: rgba(74, 222, 128, .14); color: #4ade80; }
+        .ai-panel[data-state="fallback"] .ai-status { background: rgba(251, 191, 36, .14); color: #fbbf24; }
+        .ai-loading-row { display: flex; align-items: center; gap: 9px; margin-bottom: var(--space-1); }
+        .ai-orb { width: 18px; height: 18px; border-radius: 50%; flex: none; background: conic-gradient(#7dd3fc, #818cf8, #7dd3fc); animation: spin 1.2s linear infinite; }
+        .ai-loading-text { font-size: .78rem; color: var(--text-secondary); }
+        .ai-loading .sk { height: 12px; border-radius: 7px; margin-top: var(--space-2); }
+        .ai-summary { font-size: .92rem; font-weight: 600; margin-bottom: var(--space-2); line-height: 1.55; }
         .ai-tips { margin: 0; padding-left: 1.2em; display: grid; gap: .35em; font-size: .86rem; opacity: .92; }
         .ai-note { margin-top: var(--space-2); font-size: .68rem; opacity: .55; }
+        .ai-fallback { align-items: center; gap: 9px; font-size: .78rem; color: #fbbf24; background: rgba(251, 191, 36, .07); border: 1px dashed rgba(251, 191, 36, .35); border-radius: var(--r-md); padding: 11px 13px; }
+        .ai-fallback svg { width: 15px; height: 15px; flex: none; }
         .life-tip-card {
             background: var(--glass-1);
             border: 1px solid var(--border-1);
@@ -1303,7 +1284,12 @@
             display: flex;
             flex-direction: column;
             gap: var(--space-5);
-            align-self: start;
+        }
+        .skeleton-panel {
+            padding: var(--space-5);
+            display: flex;
+            flex-direction: column;
+            gap: 0.7rem;
         }
         .sk {
             background: linear-gradient(105deg, var(--glass-1) 0%, var(--glass-3) 50%, var(--glass-1) 100%);
@@ -1608,7 +1594,7 @@
             .forecast-item .f-day small { font-size: 0.6rem; }
             .forecast-item .f-desc { font-size: var(--fs-xs); }
             .forecast-item .f-temps { font-size: var(--fs-xs); }
-            .hour-card { min-width: 64px; padding: var(--space-3) var(--space-2); }
+            .hour-col .h-temp { font-size: var(--fs-sm); }
             .location-city { font-size: var(--fs-2xl); }
             /* 移动端减少 backdrop-filter 开销 */
             .glass { backdrop-filter: blur(16px) saturate(130%); -webkit-backdrop-filter: blur(16px) saturate(130%); }
@@ -1632,7 +1618,6 @@
                 gap: var(--space-5);
                 align-items: start;
             }
-            .detail-grid { grid-template-columns: repeat(3, 1fr); }
             .current-card { gap: var(--space-5); }
         }
 
@@ -1652,7 +1637,6 @@
                 gap: var(--space-6);
                 align-items: start;
             }
-            .detail-grid { grid-template-columns: repeat(3, 1fr); gap: var(--space-4); }
         }
 
         @media (max-height: 500px) and (orientation: landscape) {
@@ -1672,8 +1656,7 @@
         .btn:focus-visible,
         .search-input:focus-visible,
         .quick-city:focus-visible,
-        .history-item:focus-visible,
-        .hour-card:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+        .history-item:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
     </style>
 </head>
 <body>
@@ -1689,9 +1672,9 @@
             <span>SkyWeather · 云际天气</span>
         </div>
         <div class="topbar-meta">
-            <div class="badge ipv6" id="net-badge" data-time="--:--" data-status="检测网络中" title="当前网络连接信息">
+            <div class="badge" id="net-badge" data-time="--:--" data-status="定位中" title="定位方式：GPS 优先，不可用时自动降级 IP 定位">
                 <span class="dot"></span>
-                <span class="update-text"><span id="net-text">检测网络中</span></span>
+                <span class="update-text"><span id="net-text">定位中</span></span>
             </div>
             <div class="badge" id="last-update" data-time="--:--">
                 <span class="dot"></span>
@@ -1942,6 +1925,8 @@
         car: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 17h2c.6 0 1-.4 1-1v-3c0-.9-.7-1.7-1.5-1.9C18.7 10.6 16 10 16 10s-1.3-1.4-2.2-2.3c-.5-.4-1.1-.7-1.8-.7H5c-.6 0-1.1.4-1.4.9l-1.4 2.9A3.7 3.7 0 0 0 2 12v4c0 .6.4 1 1 1h2"/><circle cx="7" cy="17" r="2"/><path d="M9 17h6"/><circle cx="17" cy="17" r="2"/></svg>`,
         flower: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M12 16.5A4.5 4.5 0 1 1 7.5 12 4.5 4.5 0 1 1 12 7.5a4.5 4.5 0 1 1 4.5 4.5 4.5 4.5 0 1 1-4.5 4.5"/><path d="M12 7.5V9"/><path d="M7.5 12H9"/><path d="M16.5 12H15"/><path d="M12 16.5V15"/><path d="m8 8 1.88 1.88"/><path d="M14.12 9.88 16 8"/><path d="m8 16 1.88-1.88"/><path d="M14.12 14.12 16 16"/></svg>`,
         lightbulb: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 14c.2-1 .7-1.7 1.5-2.5 1-.9 1.5-2.2 1.5-3.5A6 6 0 0 0 6 8c0 1 .2 2.2 1.5 3.5.7.7 1.3 1.5 1.5 2.5"/><path d="M9 18h6"/><path d="M10 22h4"/></svg>`,
+        sparkles: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9.94 15.5a2 2 0 0 0-1.44-1.44l-6.13-1.58a.5.5 0 0 1 0-.96l6.13-1.59A2 2 0 0 0 9.94 8.5l1.58-6.14a.5.5 0 0 1 .96 0l1.59 6.14a2 2 0 0 0 1.43 1.43l6.14 1.59a.5.5 0 0 1 0 .96l-6.14 1.58a2 2 0 0 0-1.43 1.44l-1.59 6.13a.5.5 0 0 1-.96 0z"/><path d="M20 3v4"/><path d="M22 5h-4"/><path d="M4 17v2"/><path d="M5 18H3"/></svg>`,
+        plugZap: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 3 6.34 8"/><path d="M18 3l-.34 5"/><path d="M12 9v2.5"/><path d="M4 8h16"/><path d="M6 8a6 6 0 0 0 12 0"/><path d="m9.5 13-1.5 4h4l-1.5 4"/></svg>`,
     };
 
     // ===================== DOM 引用 =====================
@@ -3705,46 +3690,13 @@
         return true;
     }
 
-    async function detectNetwork() {
-        const setStatus = (status, ipv6 = false) => {
-            netBadge.classList.toggle('ipv6', ipv6);
-            netBadge.setAttribute('data-status', status);
-            netText.textContent = status;
-        };
-
-        // 复用 fetchPublicIP（与 locateIP 共享缓存，避免重复探测）
-        const { isIPv6, ok } = await fetchPublicIP();
-        if (ok) {
-            setStatus(isIPv6 ? 'IPv6 已连接' : 'IPv4 网络', isIPv6);
-            return isIPv6;
-        }
-
-        // Fallback：RTCPeerConnection 本地候选检测（最后一道防线，仅依赖公网候选）
-        try {
-            const pc = new RTCPeerConnection({ iceServers: [] });
-            pc.createDataChannel('');
-            const candidates = new Set();
-            pc.onicecandidate = (e) => {
-                if (!e.candidate) return;
-                const ip = /([0-9a-fA-F:.]{7,})/.exec(e.candidate.candidate)?.[1];
-                if (ip) candidates.add(ip);
-            };
-            await new Promise((resolve) => {
-                pc.createOffer().then(o => pc.setLocalDescription(o));
-                setTimeout(resolve, 1200);
-            });
-            pc.close();
-            // 仅使用公网候选，避免 fe80:: 等链路本地地址被误判为 IPv6
-            const publicCandidates = Array.from(candidates).filter(isPublicIP);
-            const hasV4 = publicCandidates.some(ip => !ip.includes(':'));
-            const hasV6 = publicCandidates.some(ip => ip.includes(':'));
-            const isV6 = hasV6 && !hasV4;
-            setStatus(isV6 ? 'IPv6 已连接' : (hasV4 || hasV6 ? 'IPv4 网络' : '网络检测失败'), isV6);
-            return isV6;
-        } catch {
-            setStatus('网络检测失败');
-            return false;
-        }
+    // ===================== 定位方式徽章 =====================
+    // mode: 'gps'（浏览器 GPS，绿点）| 'ip'（IP 定位，蓝点）| 其他（中性灰绿点）
+    function setNetBadge(text, mode = '') {
+        netBadge.classList.toggle('ipv6', mode === 'ipv6');
+        netBadge.classList.toggle('ip', mode === 'ip');
+        netBadge.setAttribute('data-status', text);
+        netText.textContent = text;
     }
 
     // ===================== API 提供者 =====================
@@ -4396,7 +4348,7 @@
     }
 
     // ===================== 天气服务：多源降级 =====================
-    // 缓存公网 IP 与网络类型，避免 detectNetwork 和 locateIP 重复探测
+    // 缓存公网 IP 与网络类型，locateIP 的 IPv4/IPv6 分流复用（每次会话只探测一次）
     let _cachedPublicIP = null;
     let _cachedIsIPv6 = null;
     let _ipFetchDone = false;
@@ -4455,7 +4407,7 @@
             }
         } catch (e) { console.warn('[IP] ipify 检测失败:', e.message); }
 
-        // 全部失败：不缓存，允许 detectNetwork 走 RTCPeerConnection 兜底
+        // 全部失败：不缓存，允许下次定位重新探测
         return { ip: null, isIPv6: false, ok: false };
     }
 
@@ -4588,7 +4540,8 @@
         // ===================== GPS 定位 =====================
         // 浏览器 Geolocation API 获取坐标（精度远高于 IP 定位，但需用户授权，
         // 且浏览器要求 HTTPS 或 localhost 安全上下文，否则 API 不可用）
-        async locateGPS(signal) {
+        // opts.timeout 默认 15s；自动定位传更短的超时，失败可尽快降级 IP
+        async locateGPS(signal, opts = {}) {
             if (!('geolocation' in navigator)) {
                 throw new Error(window.isSecureContext
                     ? '当前浏览器不支持 GPS 定位'
@@ -4602,7 +4555,7 @@
                         3: '定位超时，请重试',
                     };
                     reject(new Error(messages[err.code] || err.message || 'GPS 定位失败'));
-                }, { enableHighAccuracy: true, timeout: 15000, maximumAge: 5 * 60 * 1000 });
+                }, { enableHighAccuracy: true, timeout: opts.timeout || 15000, maximumAge: 5 * 60 * 1000 });
             });
             const lat = pos.coords.latitude;
             const lon = pos.coords.longitude;
@@ -4765,24 +4718,74 @@
 
     function showLoading() {
         weatherDisplay.setAttribute('aria-busy', 'true');
+        setQueryBusy(true);
+        // 骨架形状对齐真实布局:左列(实况卡/AI 面板/生活建议/日出日落)+ 右列(环境卡/24h 曲线/7天),避免加载完成时结构跳变
         weatherDisplay.innerHTML = `
-            <div class="glass current-card skeleton-card">
-                <div style="display:flex;gap:1rem;align-items:center">
-                    <div class="sk sk-circle"></div>
-                    <div style="flex:1;display:flex;flex-direction:column;gap:0.5rem">
-                        <div class="sk sk-line sm"></div>
-                        <div class="sk sk-line"></div>
+            <div class="main-left">
+                <div class="glass current-card skeleton-card">
+                    <div style="display:flex;gap:1rem;align-items:center">
+                        <div class="sk sk-circle"></div>
+                        <div style="flex:1;display:flex;flex-direction:column;gap:0.5rem">
+                            <div class="sk sk-line sm"></div>
+                            <div class="sk sk-line"></div>
+                        </div>
+                    </div>
+                    <div class="sk sk-line lg"></div>
+                    <div class="sk sk-line md"></div>
+                    <div class="sk" style="height:8px;width:82%;border-radius:4px"></div>
+                </div>
+                <div class="glass panel skeleton-panel">
+                    <div style="display:flex;align-items:center;gap:0.6rem">
+                        <div class="sk" style="width:118px;height:16px"></div>
+                        <div class="sk" style="width:66px;height:20px;border-radius:999px;margin-left:auto"></div>
+                    </div>
+                    <div class="sk" style="height:13px"></div>
+                    <div class="sk" style="height:13px;width:84%"></div>
+                    <div class="sk" style="height:13px;width:62%"></div>
+                </div>
+                <div class="glass panel skeleton-panel">
+                    <div class="sk" style="width:96px;height:16px"></div>
+                    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:0.6rem">
+                        ${[1,2,3,4,5,6].map(() => '<div class="sk" style="height:84px;border-radius:12px"></div>').join('')}
                     </div>
                 </div>
-                <div class="sk sk-line lg"></div>
-                <div style="display:grid;grid-template-columns:repeat(2,1fr);gap:0.75rem">
-                    ${[1,2,3,4,5,6].map(() => '<div class="sk sk-line" style="height:88px"></div>').join('')}
+                <div class="glass panel skeleton-panel">
+                    <div style="display:flex;justify-content:space-between;align-items:center">
+                        <div class="sk" style="width:92px;height:16px"></div>
+                        <div class="sk" style="width:74px;height:12px"></div>
+                    </div>
+                    <div class="sk" style="height:96px;border-radius:14px"></div>
                 </div>
             </div>
-            <div class="side-col">
-                <div class="glass panel">
-                    <div class="sk sk-line sm" style="width:40%;margin-bottom:1rem"></div>
-                    <div style="display:flex;gap:0.5rem">${[1,2,3,4,5].map(() => '<div class="sk" style="width:64px;height:96px;border-radius:12px"></div>').join('')}</div>
+            <div class="main-right">
+                <div class="glass panel skeleton-panel">
+                    <div style="display:flex;align-items:center;gap:0.6rem">
+                        <div class="sk" style="width:96px;height:16px"></div>
+                        <div class="sk" style="width:60px;height:12px;border-radius:999px;margin-left:auto"></div>
+                    </div>
+                    <div style="display:flex;align-items:center;gap:0.9rem">
+                        <div class="sk" style="width:64px;height:64px;border-radius:50%;flex:none"></div>
+                        <div style="flex:1;display:flex;flex-direction:column;gap:0.45rem">
+                            <div class="sk" style="width:36%;height:15px"></div>
+                            <div class="sk" style="width:70%;height:11px"></div>
+                            <div class="sk" style="width:55%;height:11px"></div>
+                        </div>
+                    </div>
+                    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:0.5rem">
+                        ${[1,2,3,4,5,6].map(() => '<div class="sk" style="height:76px;border-radius:10px"></div>').join('')}
+                    </div>
+                </div>
+                <div class="glass panel skeleton-panel">
+                    <div style="display:flex;align-items:center;gap:0.6rem">
+                        <div class="sk" style="width:110px;height:16px"></div>
+                        <div class="sk" style="width:120px;height:12px;border-radius:999px;margin-left:auto"></div>
+                    </div>
+                    <div class="sk" style="height:56px;border-radius:10px"></div>
+                    <div style="display:flex;gap:0.5rem">${[1,2,3,4,5,6].map(() => '<div class="sk" style="width:56px;height:72px;border-radius:10px"></div>').join('')}</div>
+                </div>
+                <div class="glass panel skeleton-panel">
+                    <div class="sk" style="width:88px;height:16px"></div>
+                    ${[1,2,3,4,5].map(() => '<div class="sk" style="height:38px;border-radius:10px"></div>').join('')}
                 </div>
             </div>
         `;
@@ -4790,6 +4793,7 @@
 
     function showError(msg) {
         weatherDisplay.setAttribute('aria-busy', 'false');
+        setQueryBusy(false);
         weatherDisplay.innerHTML = `
             <div class="glass current-card" style="grid-column:1/-1">
                 <div class="error" role="alert">
@@ -4804,6 +4808,7 @@
 
     function showEmpty() {
         weatherDisplay.setAttribute('aria-busy', 'false');
+        setQueryBusy(false);
         weatherDisplay.innerHTML = `
             <div class="glass current-card" style="grid-column:1/-1">
                 <div class="empty">
@@ -4920,6 +4925,23 @@
                         <div class="dc-label">${item.label}</div>
                     </div>
                 `).join('')}
+            </div>
+        `;
+    }
+
+    // 环境卡:AQI + 实况详情(自主信息卡拆出,置右列顶部,构成"数据流"入口)
+    function renderEnvCard(current, daily0) {
+        const aqi = renderAQI(current);
+        const details = renderDetails(current, daily0);
+        if (!aqi && !details) return '';
+        return `
+            <div class="glass panel reveal d2 env-card">
+                <div class="section-head">
+                    <div class="section-title">${ICONS.wind2}<span>空气与实况</span></div>
+                    <span class="section-action">实时更新</span>
+                </div>
+                ${aqi}
+                ${details}
             </div>
         `;
     }
@@ -5152,18 +5174,54 @@
                         </div>
                     `).join('')}
                 </div>
-                <div id="ai-advice" class="ai-advice" aria-live="polite"></div>
             </div>
         `;
     }
 
     // ===================== 智 · AI 生活建议(数据接地)=====================
     // 输入:当前渲染使用的校准/融合后结构化数据(与页面展示同源);
-    // 服务端 /api/ai/advice 代理大模型并做数值校验,失败时本区块静默隐藏
-    // (规则版生活提示仍然在页面上,不出现空态)。
+    // 面板三态:loading(骨架占位) → done(展示生成结果) / fallback(降级提示)。
+    // 服务端无 Key / 接地校验失败 / 请求异常时展示降级占位,
+    // 本地规则版生活提示始终在页面,不出现空态。
+    function renderAIPanel() {
+        return `
+            <div class="glass panel reveal d3 ai-panel" id="ai-panel" data-state="loading">
+                <div class="section-head">
+                    <div class="section-title">${ICONS.sparkles}<span>AI 生活建议</span><span class="ai-tag">AI</span></div>
+                    <span class="ai-status" id="ai-status">正在生成…</span>
+                </div>
+                <div class="ai-pane ai-loading" aria-hidden="true">
+                    <div class="ai-loading-row">
+                        <span class="ai-orb"></span>
+                        <span class="ai-loading-text">AI 正在结合当前实测数据生成建议…</span>
+                    </div>
+                    <div class="sk"></div>
+                    <div class="sk" style="width:86%"></div>
+                    <div class="sk" style="width:64%"></div>
+                </div>
+                <div class="ai-pane ai-content" aria-live="polite"></div>
+                <div class="ai-pane ai-fallback" role="status">
+                    ${ICONS.plugZap}
+                    <span>AI 建议暂不可用，已自动展示下方本地规则建议</span>
+                </div>
+            </div>
+        `;
+    }
+
+    function setAIPanelState(state, statusText) {
+        const panel = document.getElementById('ai-panel');
+        if (!panel) return;
+        panel.setAttribute('data-state', state);
+        const pill = document.getElementById('ai-status');
+        if (pill && statusText) pill.textContent = statusText;
+    }
+
+    // 陈旧响应防护:换城市重新渲染会使旧请求结果失效,token 不匹配直接丢弃
+    let _aiToken = 0;
     async function loadAIAdvice(data) {
-        const box = document.getElementById('ai-advice');
-        if (!box || !data?.current) return;
+        const panel = document.getElementById('ai-panel');
+        if (!panel || !data?.current) return;
+        const myToken = ++_aiToken;
         const np = locNowParts();
         const payload = {
             city: data.location?.city || '',
@@ -5179,10 +5237,13 @@
                 pm25: data.current.aqiPm25 != null ? Math.round(data.current.aqiPm25) : null,
                 tmax: data.daily?.[0]?.maxTemp != null ? Math.round(data.daily[0].maxTemp) : null,
                 tmin: data.daily?.[0]?.minTemp != null ? Math.round(data.daily[0].minTemp) : null,
+                sunrise: data.daily?.[0]?.sunrise || null,
+                sunset: data.daily?.[0]?.sunset || null,
                 month: new Date().getMonth() + 1,
                 hour: np.h,
             },
         };
+        const t0 = performance.now();
         try {
             const res = await fetchJSON(`${CONFIG.API_BASE}/api/ai/advice`, {
                 method: 'POST',
@@ -5190,15 +5251,23 @@
                 body: JSON.stringify(payload),
                 timeout: 15000,
             });
-            // 服务端无 Key/校验失败时返回规则版;规则版与页面既有建议重复,不重复渲染
-            if (!res || res.mode !== 'ai' || !res.tips?.length) return;
-            box.innerHTML = `
-                <div class="ai-summary">${escapeHTML(res.summary || '')}</div>
-                <ul class="ai-tips">${res.tips.map(t => `<li>${escapeHTML(t)}</li>`).join('')}</ul>
-                <div class="ai-note">建议由 AI 基于当前实测数据生成,仅供参考</div>
-            `;
-            box.classList.add('show');
-        } catch (e) { /* 静默降级:保留规则版建议 */ }
+            if (myToken !== _aiToken) return;
+            if (res && res.mode === 'ai' && res.tips?.length) {
+                const secs = ((performance.now() - t0) / 1000).toFixed(1);
+                panel.querySelector('.ai-content').innerHTML = `
+                    <div class="ai-summary">${escapeHTML(res.summary || '')}</div>
+                    <ul class="ai-tips">${res.tips.map(t => `<li>${escapeHTML(t)}</li>`).join('')}</ul>
+                    <div class="ai-note">建议由 AI 基于当前实测数据生成,仅供参考</div>
+                `;
+                setAIPanelState('done', `已生成 · ${secs}s`);
+            } else {
+                // 服务端返回规则版:与页面指数卡重复,不重复渲染,面板降级占位
+                setAIPanelState('fallback', '已降级 · 本地规则');
+            }
+        } catch (e) {
+            if (myToken !== _aiToken) return;
+            setAIPanelState('fallback', '已降级 · 本地规则');
+        }
     }
 
     function renderHourly(hourly) {
@@ -5206,14 +5275,31 @@
         // "现在"高亮按展示城市的钟表时间对齐(跨时区不错位)
         const np = locNowParts();
         const nowLabel = `${String(np.h).padStart(2, '0')}:${String(np.m).padStart(2, '0')}`;
-        const cards = hourly.slice(0, 24).map((h, i) => {
-            const isNow = i === 0 || h.label === nowLabel;
+        const hours = hourly.slice(0, 24);
+        const temps = hours.map(h => Number(h.temp)).filter(t => !isNaN(t));
+        if (!temps.length) return '';
+        // 降水概述:首个降水概率≥40% 的时段,否则视为短时无降水
+        const wet = hours.find(h => (h.precipProbability ?? 0) >= 40);
+        const summary = wet ? `${wet.label} 前后或有降水` : '未来短时间内无降水';
+        // 温度 → 曲线纵坐标:温度越高点越靠上,标签悬浮在对应点上方
+        const COL = 64, CURVE_H = 92, TOP = 40, BOTTOM = 78;
+        const min = Math.min(...temps), max = Math.max(...temps);
+        const range = (max - min) || 1;
+        const ptY = t => TOP + (1 - (t - min) / range) * (BOTTOM - TOP);
+        const width = hours.length * COL;
+        const pts = hours.map((h, i) => ({ x: i * COL + COL / 2, y: ptY(Number(h.temp)) }));
+        // 首尾向外延伸到卡片边缘,曲线贯穿整卡
+        const path = smoothPath([{ x: 0, y: pts[0].y }, ...pts, { x: width, y: pts[pts.length - 1].y }]);
+        let nowIdx = hours.findIndex(h => h.label === nowLabel);
+        if (nowIdx < 0) nowIdx = 0;
+        const cols = hours.map((h, i) => {
+            const isNow = i === nowIdx;
             return `
-                <div class="hour-card ${isNow ? 'now' : ''}">
-                    <div class="h-time">${isNow ? '现在' : escapeHTML(h.label)}</div>
+                <div class="hour-col${isNow ? ' now' : ''}">
+                    <span class="h-temp" style="top:${Math.max(0, Math.round(pts[i].y - 30))}px">${Math.round(h.temp)}°</span>
                     <div class="h-icon">${hourIcon(h)}</div>
-                    <div class="h-temp">${Math.round(h.temp)}°</div>
-                    <div class="h-pop">${fmtPop(h.precipProbability)}</div>
+                    <div class="h-wind">${windLevelLabel(h.windSpeed) || '&nbsp;'}</div>
+                    <div class="h-time">${isNow ? '现在' : escapeHTML(h.label)}</div>
                 </div>
             `;
         }).join('');
@@ -5221,11 +5307,43 @@
             <div class="glass panel reveal d2">
                 <div class="section-head">
                     <div class="section-title">${ICONS.clock}<span>24 小时预报</span></div>
-                    <span class="section-action">逐时更新</span>
+                    <span class="section-action">${escapeHTML(summary)}</span>
                 </div>
-                <div class="hourly-scroll">${cards}</div>
+                <div class="hourly-scroll">
+                    <div class="hourly-curve-inner" style="width:${width}px">
+                        <svg class="hour-curve-svg" width="${width}" height="${CURVE_H}" viewBox="0 0 ${width} ${CURVE_H}" aria-hidden="true">
+                            <path d="${path}" fill="none" stroke="#fbbf24" stroke-width="2" stroke-linecap="round" opacity="0.9"/>
+                            <circle cx="${pts[nowIdx].x.toFixed(1)}" cy="${pts[nowIdx].y.toFixed(1)}" r="7" fill="rgba(255,255,255,0.18)"/>
+                            <circle cx="${pts[nowIdx].x.toFixed(1)}" cy="${pts[nowIdx].y.toFixed(1)}" r="3.5" fill="#ffffff"/>
+                        </svg>
+                        <div class="hour-cols">${cols}</div>
+                    </div>
+                </div>
             </div>
         `;
+    }
+
+    // 蒲福风级:km/h → 中国惯用"X级"
+    function windLevelLabel(kmh) {
+        if (kmh == null || kmh === '') return '';
+        const v = Number(kmh);
+        if (isNaN(v)) return '';
+        const bounds = [1, 6, 12, 20, 29, 39, 50, 62, 75, 89, 103, 118];
+        let lv = bounds.findIndex(b => v < b);
+        if (lv < 0) lv = 12;
+        return `${lv}级`;
+    }
+
+    // Catmull-Rom → 三次贝塞尔,把温度点连成平滑曲线
+    function smoothPath(pts) {
+        let d = `M ${pts[0].x.toFixed(1)} ${pts[0].y.toFixed(1)}`;
+        for (let i = 0; i < pts.length - 1; i++) {
+            const p0 = pts[Math.max(0, i - 1)], p1 = pts[i], p2 = pts[i + 1], p3 = pts[Math.min(pts.length - 1, i + 2)];
+            const c1x = p1.x + (p2.x - p0.x) / 6, c1y = p1.y + (p2.y - p0.y) / 6;
+            const c2x = p2.x - (p3.x - p1.x) / 6, c2y = p2.y - (p3.y - p1.y) / 6;
+            d += ` C ${c1x.toFixed(1)} ${c1y.toFixed(1)}, ${c2x.toFixed(1)} ${c2y.toFixed(1)}, ${p2.x.toFixed(1)} ${p2.y.toFixed(1)}`;
+        }
+        return d;
     }
 
     function renderDaily(daily) {
@@ -5302,19 +5420,20 @@
             <div class="main-left">
                 <div class="current-card glass reveal d1">
                     ${renderCurrentHead(data)}
-                    ${renderAQI(cur)}
-                    ${renderDetails(cur, daily0)}
                 </div>
+                ${renderAIPanel()}
                 ${renderLifeTips(cur, daily0)}
+                ${renderSunArc(daily0)}
             </div>
             <div class="main-right">
-                ${renderSunArc(daily0)}
+                ${renderEnvCard(cur, daily0)}
                 ${renderHourly(data.hourly)}
                 ${renderDaily(data.daily)}
             </div>
         `;
         weatherDisplay.setAttribute('aria-busy', 'false');
-        // 智 · AI 生活建议:渲染完成后异步加载,失败静默(规则版生活提示已在页面)
+        setQueryBusy(false);
+        // 智 · AI 生活建议:渲染完成后异步加载,失败/规则版时面板降级占位(本地规则建议始终在页面)
         loadAIAdvice(data);
     }
 
@@ -5328,6 +5447,11 @@
     let lastCity = null;
     let isLoading = false;
     let searchDebounceTimer = null;
+
+    // 查询按钮 busy 态:任意查询路径(GPS/IP/城市/刷新)loading 时置灰,进入终态(渲染/错误/空态)解除
+    function setQueryBusy(busy) {
+        btnSearch.classList.toggle('is-busy', busy);
+    }
     // 请求去重：新请求发起时取消上一个进行中的请求，token 防止陈旧响应渲染
     let _activeAbortController = null;
     let _requestToken = 0;
@@ -5355,13 +5479,9 @@
             const loc = await WeatherService.locateIP(myController.signal);
             // 防陈旧响应：若已被新请求取代则静默退出
             if (myToken !== _requestToken) return;
-            // 徽章网络类型复用 fetchPublicIP 的检测结果（loc._ipv6 仅表示 Provider 是否支持 IPv6，不代表当前网络）
-            const { isIPv6: netIsIPv6 } = await fetchPublicIP();
-            netBadge.classList.toggle('ipv6', netIsIPv6);
-            netBadge.setAttribute('data-status', netIsIPv6 ? 'IPv6 已连接' : 'IPv4 网络');
-            netText.textContent = netIsIPv6 ? 'IPv6 已连接' : 'IPv4 网络';
             const data = await WeatherService.getWeather(loc, myController.signal);
             if (myToken !== _requestToken) return;
+            setNetBadge('IP 定位', 'ip');
             lastCity = loc.city;
             cityInput.value = loc.city;
             renderWeather(data);
@@ -5381,7 +5501,9 @@
         }
     }
 
-    async function loadByGPS() {
+    // opts.silent：自动定位场景，失败不弹错误（由调用方降级到 IP）
+    // opts.timeout：GPS 获取超时（毫秒），默认走 locateGPS 的 15s
+    async function loadByGPS(opts = {}) {
         // 请求去重与防陈旧响应机制同 loadByIP
         _abortActiveRequest();
         const myController = new AbortController();
@@ -5390,26 +5512,53 @@
         isLoading = true;
         showLoading();
         try {
-            const loc = await WeatherService.locateGPS(myController.signal);
+            const loc = await WeatherService.locateGPS(myController.signal, { timeout: opts.timeout });
             if (myToken !== _requestToken) return;
             const data = await WeatherService.getWeather(loc, myController.signal);
             if (myToken !== _requestToken) return;
+            setNetBadge('GPS 定位', 'gps');
             lastCity = loc.city;
             cityInput.value = loc.city;
             renderWeather(data);
             showToast(`已通过 GPS 定位到 ${loc.city}`, 'success');
+            return true;
         } catch (e) {
             // 用户主动取消（请求去重）不报错
-            if (e && e.name === 'AbortError') return;
-            if (myToken !== _requestToken) return;
+            if (e && e.name === 'AbortError') return false;
+            if (myToken !== _requestToken) return false;
+            if (opts.silent) return false;
             showError(e.message);
             showToast(e.message, 'error');
+            return false;
         } finally {
             if (myToken === _requestToken) {
                 isLoading = false;
                 if (_activeAbortController === myController) _activeAbortController = null;
             }
         }
+    }
+
+    // ===================== 自动定位：GPS 优先，降级 IP =====================
+    // GPS 精度远高于 IP，作为默认定位方式；权限被拒绝 / 超时 / 不支持时
+    // 自动降级 IP 定位，全程不打扰用户（不弹错误提示）。
+    async function loadAuto() {
+        // 权限预检：明确拒绝过 GPS 授权时跳过 GPS 环节，避免每次刷新都白等超时
+        let gpsUsable = 'geolocation' in navigator && window.isSecureContext;
+        if (gpsUsable && navigator.permissions?.query) {
+            try {
+                const st = await navigator.permissions.query({ name: 'geolocation' });
+                if (st.state === 'denied') gpsUsable = false;
+            } catch (e) { /* permissions 查询不可用时照常尝试 GPS */ }
+        }
+        // GPS 环节内部让位检查：loadByGPS 会把请求序号恰好 +1；若等待 GPS 期间
+        // 用户主动发起了搜索/定位（序号继续增加），loadAuto 立即让位，不再降级抢占
+        if (gpsUsable) {
+            const tokenBefore = _requestToken;
+            if (await loadByGPS({ silent: true, timeout: 8000 })) return;
+            if (_requestToken !== tokenBefore + 1) return;
+        }
+        console.info('[Auto] GPS 定位不可用，降级 IP 定位');
+        await loadByIP(true);
     }
 
     async function loadWeather(city) {
@@ -5644,8 +5793,8 @@
     (async function init() {
         renderHistory();
         showEmpty();
-        // 尝试自动定位（网络检测在 loadByIP 中并行执行）
-        try { await loadByIP(true); }
+        // 自动定位：GPS 优先（精度高、需授权），不可用时自动降级 IP
+        try { await loadAuto(); }
         catch (e) { console.log('自动定位未成功', e.message); }
     })();
 </script>
