@@ -12,9 +12,10 @@ tracker/
 ├── record.js            # 日常:记录各数据源(OM/高德/彩云/和风)当天对 D+1/D+3 的预报
 ├── compare.js           # 次日:昨日记录 vs 实况参照,逐源误差
 ├── live-import.js       # 一次性:把回溯窗口数据转成 live 格式(带 origin 标记,不覆盖真实记录)
-├── report.js            # 汇总 MAE / 偏差 / 降水命中率 POD / 空报率 FAR
+├── report.js            # 汇总 MAE / 偏差 / 降水命中率 POD / 空报率 FAR + 融·数据驱动权重
 ├── report-models.js     # 多模式指标汇总(城市 × 模式矩阵)
 ├── report-sources.js    # 多源汇总:高德+和风/彩云(取 data/sources)+ OM(取 data/backfill)
+├── official-aqi.js      # 官方值对照:每日国标 AQI 同屏抽查(自算/彩云自动,天气网人工补录)
 ├── make_charts.py       # 证据图表(误差趋势 / 分城市技巧),依赖 matplotlib
 ├── make_charts_extra.py # 多模式与多商业源图表
 ├── make_charts_sources.py # 多源对比图(reports/sources-compare.png)
@@ -26,7 +27,9 @@ tracker/
 │   ├── live-compare/    # 逐日逐源对比结果(实况=OM day-0 在线获取)
 │   ├── summary.json     # 汇总指标(前端"误差带"数字来源)
 │   ├── summary-models.json # 多模式汇总
-│   └── summary-sources.json # 多商业源汇总
+│   ├── summary-sources.json # 多商业源汇总
+│   ├── weights.json     # 融·数据驱动权重(report.js 生成,前端加权融合直接消费)
+│   └── official-check.md # 官方值对照记录(AQI 校准证据链,按日幂等)
 ├── reports/             # 最终产物(图表 PNG + 汇总/逐日 CSV,附件素材)
 └── archive/             # 过程性/临时文件归档(见 archive/README.md,均可由脚本重新生成)
 ```
@@ -64,6 +67,20 @@ tracker/
 
 可引用的发现:**提前 1 天彩云最准,提前 3 天高德+和风最稳、彩云衰减最快——不同数据源在不同提前期各有所长**,这是"按提前期择源/加权"(融)的实证依据。图表:`reports/sources-compare.png`,明细:`reports/sources-*-daily.csv`。
 
+## 融 · 数据驱动权重(weights.json)
+
+`report.js` 在汇总指标后,顺带把 `data/live-compare/` 的逐源误差转成**前端可直接消费的融合权重**(样本门槛:≥30 城市日/源/提前期;合格源不足 2 个时保留旧文件):
+
+- **权重**:逆 MAE 归一化(误差越小权重越大),**按提前期分列**——因为"各源在不同提前期各有所长"。当前值(55 天 × 6 城):明日 彩云 0.41 / OM 0.32 / 高德+和风 0.27,第三天反转为 高德+和风 0.36 / OM 0.35 / 彩云 0.29;
+- **融合期望误差 fusedMae**:加权后的期望 MAE(明日 ±0.72°C / 第三天 ±1.17°C),前端"误差带"明日/第三天两档即取此值;
+- **分歧角标阈值 badge**:该提前期"同日各源最高温极差"的 p90(明日 1.0°C / 第三天 2.6°C)。实测标定结论:**固定 2°C 阈值对明日完全失效(330 例中 0 例触发,p95 仅 1.3°C),对第三天才有效(触发 18%,触发时各源实际误差 39% ≥2°C)**——故阈值按提前期自适应,由数据滚动更新(城市/季节差异随窗口累积自动体现)。
+
+前端消费方式:`index.html` 启动时 fetch `tracker/data/weights.json`(失败退回内置默认值,离线演示可用),`crossValidate` 升级为加权融合——主源 + 独立对证源(高德/和风同源只取一)按权重融合明日/第三天最高最低温,超阈值挂"多源分歧"角标,正常融合时挂淡色"加权融合"徽标披露数据加工方式。
+
+## 官方值对照记录(data/official-check.md)
+
+`official-aqi.js` 每日对 6 城做国标 AQI 同屏对照:**自算**(彩云六项实时浓度 → HJ 633-2012,与前端 calcCNAQI 同一套断点)vs **彩云上报**(aqi.chn)vs **中国天气网**(人工补录列)。注意自算输入是实时浓度(与页面展示同口径,非官方逐日 24h 均值),差值本身即记录对象。和风空气接口 v7/air/now 已在专属 Host 废弃(403 Deprecated,新版需 JWT),探测失败自动跳过该列,迁移后自动恢复。
+
 
 
 ## 使用
@@ -79,11 +96,11 @@ python tracker/make_charts.py   # 生成 reports/*.png 图表
 
 `record.js`/`compare.js` 从仓库根目录 `.env` 读 Key(进程环境变量优先,便于 CI 注入)。
 
-## 定时运行(GitHub Actions,已配置)
+## 定时运行(GitHub Actions,已上线)
 
-工作流文件:`.github/workflows/track.yml`——每天北京时间 00:10 自动执行:record 存档当日各源预报 → 对最近 3 天逐日 compare(day-0 实况有 2~3 天延迟,幂等合并,数据到齐自动补上)→ 数据 commit 回仓库。
+工作流文件:`.github/workflows/track.yml`——每天北京时间 00:10 自动执行:record 存档当日各源预报 → 对最近 3 天逐日 compare(day-0 实况有 2~3 天延迟,幂等合并,数据到齐自动补上)→ report 重算汇总与融合权重 → official-aqi 官方值对照 → 数据 commit 回仓库(2026-10-25 已验证全链路跑通)。
 
-首次使用:在仓库 **Settings → Secrets and variables → Actions** 添加 `AMAP_KEY`、`CAIYUN_TOKEN`(和风 Key 修复后补 `QWEATHER_KEY`/`QWEATHER_HOST`),然后在 Actions 页手动触发一次验证。核心配置:
+Secrets 已配置:`AMAP_KEY` / `CAIYUN_TOKEN` / `QWEATHER_KEY` / `QWEATHER_HOST`。核心配置:
 
 ```yaml
 name: forecast-track
@@ -108,6 +125,12 @@ jobs:
           QWEATHER_HOST: ${{ secrets.QWEATHER_HOST }}
       - run: |
           for d in 1 2 3; do node tracker/compare.js "$(date -u -d "-$d day" +%F)" || true; done
+      - run: node tracker/report.js          # 汇总指标 + 融合权重 weights.json
+      - run: node tracker/official-aqi.js || true   # 官方值对照(失败不影响整体)
+        env:
+          CAIYUN_TOKEN: ${{ secrets.CAIYUN_TOKEN }}
+          QWEATHER_KEY: ${{ secrets.QWEATHER_KEY }}
+          QWEATHER_HOST: ${{ secrets.QWEATHER_HOST }}
       - run: |
           git config user.name "tracker-bot" && git config user.email "tracker-bot@users.noreply.github.com"
           git add tracker/data && git commit -m "tracker: $(date -u +%F) 日常预报记录与对比" || true
@@ -119,5 +142,6 @@ git 提交历史即为"研究日志",Actions 运行记录即为过程证据。
 ## 已知事项
 
 - 和风 Key 绑定专属 API Host 后,通用域名 `devapi/geoapi.qweather.com` 永远返回 403 "Invalid Host"——**预期行为**,配置了 `QWEATHER_HOST` 的 `record.js` 与应用代理都会自动走专属域名;若专属域名也报 403 "Security Restriction",说明控制台的安全限制(来源白名单)还没放行/生效;
-- 彩云免费档 `daily` 常只返回 3 天,D+3 记为 null 属正常;
+- **和风空气接口 v7/air/now 已在专属 Host 废弃**(2026-10-25 实测 403 Deprecated;v2/air、airpred 均 404,新版空气 API 走 JWT 认证)。影响:前端和风主源时 AQI 回退"Open-Meteo 浓度 + 国标自算"(已实现);official-aqi.js 的和风列自动跳过,迁移 JWT 后恢复;
+- 彩云免费档 `daily` 常只返回 3 天,D+3 记为 null 属正常;彩云接口偶发 429 限流,脚本已带一次退避重试;
 - 观察记录(2026-10-24):高德与和风的逐日温度数值完全一致,两者底层疑似同源——多源交叉验证时,彩云 / Open-Meteo 相对独立,作为对证源更有意义(前端 crossValidate 的选源规则与此一致)。

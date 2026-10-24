@@ -2,7 +2,9 @@
 # 每天 北京时间 00:10(UTC 16:10):
 #   1. record:存档各数据源(Open-Meteo/高德/彩云/和风)当天对 D+1/D+3 的预报
 #   2. compare:对最近 3 天逐日对比(实况 day-0 有 2~3 天延迟,幂等合并,数据到齐自动补上)
-#   3. 数据 commit 回仓库 —— git 历史即研究日志,Actions 运行记录即过程证据
+#   3. report:重算汇总指标 + 融·数据驱动权重(weights.json,前端融合直接消费)
+#   4. official-aqi:官方值对照抽查(彩云自动/和风探测/中国天气网人工补录)
+#   5. 数据 commit 回仓库 —— git 历史即研究日志,Actions 运行记录即过程证据
 #
 # 首次使用:在本仓库 Settings → Secrets and variables → Actions 添加
 #   AMAP_KEY / CAIYUN_TOKEN / QWEATHER_KEY / QWEATHER_HOST(与本地 .env 同名同值;
@@ -43,6 +45,16 @@ jobs:
             echo "== compare $day =="
             node tracker/compare.js "$day" || true
           done
+
+      - name: 汇总指标与融合权重(summary.json + weights.json)
+        run: node tracker/report.js
+
+      - name: 官方值对照抽查(AQI 证据链,失败不影响整体)
+        run: node tracker/official-aqi.js || true
+        env:
+          CAIYUN_TOKEN: ${{ secrets.CAIYUN_TOKEN }}
+          QWEATHER_KEY: ${{ secrets.QWEATHER_KEY }}
+          QWEATHER_HOST: ${{ secrets.QWEATHER_HOST }}
 
       - name: 提交数据
         run: |
