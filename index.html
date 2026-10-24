@@ -5232,8 +5232,13 @@
 
 <!-- ===================== WebGL 渲染器（小米天气级动画）===================== -->
 <!-- 通过 ES module 引入 Three.js + weather-renderer.js，自动初始化 -->
+<!-- 【已停用 2026-10-24】file:// 直接打开时 ES module 被 CORS 拦截，始终回退 Canvas 2D；
+     而线上 https 会启用 WebGL 3D 场景（蓝天渐变 + 地面 + god rays），两套动画观感差异很大，
+     造成"本地打开正常、线上异常"。现统一使用 Canvas 2D 动画；如需恢复 WebGL 场景，
+     把 ENABLE_WEBGL_RENDERER 改回 true 即可。 -->
 <script type="module">
-    try {
+    const ENABLE_WEBGL_RENDERER = false;
+    if (ENABLE_WEBGL_RENDERER) try {
         const { SkyWeatherRenderer } = await import('./weather-renderer.js');
         const canvas = document.getElementById('weather-canvas-webgl');
         // 用一次性离屏 canvas 探测 WebGL 支持。
