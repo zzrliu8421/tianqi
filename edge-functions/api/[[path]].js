@@ -123,6 +123,24 @@ const AI_CACHE_TTL_MS = 60 * 60 * 1000;
 const AI_CACHE_MAX = 200;
 const aiCache = new Map();
 
+// 智 · 人群标签(可选,与 server.js 同白名单):白名单外一律忽略(向后兼容旧客户端)
+const AI_GROUPS = {
+    elderly: '老年人',
+    child: '儿童家庭',
+    respiratory: '呼吸道敏感人群',
+    commuter: '通勤族',
+};
+
+// 智 · 运行统计(边缘 isolate 内存,重启/重新部署清零,跨 isolate 不聚合——
+// 数字为局部样本而非全网口径;仅聚合计数,不含任何请求内容/明文)
+const aiStats = { startedAt: new Date().toISOString(), requests: 0, cacheHits: 0, aiOk: 0, ruleFallback: 0 };
+const aiStatByProvider = {};
+function aiStatProvider(provider, model, field) {
+    const o = aiStatByProvider[`${provider}/${model}`] = aiStatByProvider[`${provider}/${model}`]
+        || { calls: 0, ok: 0, groundingFail: 0, upstreamFail: 0 };
+    o[field]++;
+}
+
 // system prompt（与 server.js 保持一致）：约束 LLM 只能引用输入数值、输出严格 JSON；
 // 写作定位是"有生活温度的天气伙伴"——条数与字数不做硬性限制（校验只守宽松
 // 上限），靠一对"套话 vs 想要的"风格示例（刻意不含数字，防被照抄）把文风
@@ -548,7 +566,9 @@ function validateAdvicePayload(body) {
             return null;
         }
     }
-    return { city, data };
+    // 智 · 人群标签(可选)
+    const group = typeof body.group === 'string' && AI_GROUPS[body.group] ? body.group : null;
+    return { city, data, group };
 }
 
 /** 输入数值集合:data 中所有数值 + 字符串值里出现的数字("东北风3级" 里的 3) */
@@ -663,7 +683,7 @@ function adviceCacheSet(key, value) {
 }
 
 /** 调用 OpenAI 兼容 chat/completions(Web fetch 版),返回首个 choice 文本 */
-async function callLLMOnce(city, data, provider) {
+async function callLLMOnce(city, data, provider, group) {
     const res = await fetch(provider.baseUrl + '/chat/completions', {
         method: 'POST',
         headers: {
@@ -675,7 +695,7 @@ async function callLLMOnce(city, data, provider) {
             model: provider.model,
             messages: [
                 { role: 'system', content: AI_SYSTEM_PROMPT },
-                { role: 'user', content: `城市：${city}\n当前时段：${data.month}月 ${data.hour != null ? data.hour + '点' : ''}\n天气数据：${JSON.stringify(data)}\n\n请写出有生活温度的今日提醒。穿衣、带伞、防晒这类话题页面卡片已有基础结论，可以谈，但要更深一层——讲清原因、落到具体时段或场景、给出卡片没有的关照，不要只复述卡片结论。` },
+                { role: 'user', content: `城市：${city}\n当前时段：${data.month}月 ${data.hour != null ? data.hour + '点' : ''}\n天气数据：${JSON.stringify(data)}\n\n请写出有生活温度的今日提醒。穿衣、带伞、防晒这类话题页面卡片已有基础结论，可以谈，但要更深一层——讲清原因、落到具体时段或场景、给出卡片没有的关照，不要只复述卡片结论。${group ? `\n本条提醒面向人群：${AI_GROUPS[group]}——请从这一人群的切身场景出发（出行安全、健康防护、作息安排等），数值规则不变。` : ''}` },
             ],
             temperature: 0.7,
             max_tokens: 800,
@@ -705,16 +725,18 @@ async function handleAiAdvice(context) {
         return json(400, { error: 'invalid payload: need {city: string<=20, data: flat object of numbers/short strings}' });
     }
     const { city, data } = payload;
+    const group = payload.group || null;
 
-    // 缓存 key:city+hour(data.hour 为 0-23 整数则用之,否则用当前小时)
+    // 缓存 key:city+hour+人群(人群标签改变建议内容,必须参与键)
     const hourRaw = data.hour;
     const hour = typeof hourRaw === 'number' && Number.isInteger(hourRaw) && hourRaw >= 0 && hourRaw <= 23
         ? hourRaw
         : new Date().getHours();
-    const cacheKey = `${city}|${hour}`;
+    const cacheKey = `${city}|${hour}|${group || ''}`;
 
+    aiStats.requests++;
     const hit = adviceCacheGet(cacheKey);
-    if (hit) return json(200, Object.assign({ cached: true }, hit));
+    if (hit) { aiStats.cacheHits++; return json(200, Object.assign({ cached: true }, hit)); }
 
     // 沿模型链依次尝试（供应商内主→备、供应商间首选→次选），全部失败再走规则降级。
     // 链路总预算 12s（与 server.js 一致）：预算耗尽不再发起新尝试，直接规则降级
@@ -729,13 +751,17 @@ async function handleAiAdvice(context) {
             }
             let content = null;
             try {
-                content = await callLLMOnce(city, data, p);
+                content = await callLLMOnce(city, data, p, group);
             } catch (e) {
                 console.error(`[ai] LLM 调用失败（${p.provider}/${p.model}，city=${city}）:`, e && e.message);
+                aiStatProvider(p.provider, p.model, 'upstreamFail');
             }
             if (content) {
+                aiStatProvider(p.provider, p.model, 'calls');
                 const advice = parseAdviceText(content);
                 if (advice && isGroundedAdvice(advice, inputNumbers)) {
+                    aiStatProvider(p.provider, p.model, 'ok');
+                    aiStats.aiOk++;
                     const value = {
                         mode: 'ai',
                         summary: advice.summary.trim(),
@@ -744,6 +770,7 @@ async function handleAiAdvice(context) {
                     adviceCacheSet(cacheKey, value);
                     return json(200, Object.assign({ cached: false }, value));
                 }
+                aiStatProvider(p.provider, p.model, 'groundingFail');
                 // 记录越界数字与原文开头（脱敏：不含请求/密钥信息），便于诊断模型在编造什么
                 if (advice && typeof advice.summary === 'string') {
                     const badNums = findUngroundedNumbers(advice.summary + '\n' + (Array.isArray(advice.tips) ? advice.tips.join('\n') : ''), inputNumbers);
@@ -758,6 +785,7 @@ async function handleAiAdvice(context) {
     }
 
     // 规则降级(无 Key / 校验失败 / 上游异常),不缓存
+    aiStats.ruleFallback++;
     return json(200, Object.assign({ cached: false }, buildRuleAdvice(city, data)));
 }
 
@@ -793,6 +821,17 @@ export default async function onRequest(context) {
 
     // GET → 主处理逻辑（带尽力而为的 IP 限流）
     if (method === 'GET') {
+        const pathname = new URL(request.url).pathname;
+        // 智 · AI 建议运行统计(isolate 局部口径,聚合计数不含请求内容)
+        if (pathname === '/api/ai/stats') {
+            return json(200, {
+                ...aiStats,
+                byProvider: aiStatByProvider,
+                cacheSize: aiCache.size,
+                scope: 'edge-isolate(单隔离实例局部统计,不代表全网)',
+                generatedAt: new Date().toISOString(),
+            });
+        }
         const limit = checkRateLimit(request);
         if (!limit.allowed) {
             return json(429, { error: 'too many requests' }, {

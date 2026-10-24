@@ -383,6 +383,12 @@
             box-shadow: 0 0 8px var(--accent-glow);
         }
 
+        /* 示 · 语音播报按钮:复用徽章胶囊外观,播报中点亮 */
+        .speak-btn { cursor: pointer; font-family: inherit; font-size: inherit; }
+        .speak-btn:hover { border-color: var(--border-2); color: var(--text-primary); }
+        .speak-btn.is-speaking { color: var(--accent); border-color: var(--accent); }
+        .speak-btn.is-speaking .dot { background: var(--accent); box-shadow: 0 0 8px var(--accent-glow); animation: pulse-glow 2s ease-in-out infinite; }
+
         /* 搜索 */
         .search {
             display: flex;
@@ -1197,6 +1203,18 @@
         .ai-summary { font-size: .92rem; font-weight: 600; margin-bottom: var(--space-2); line-height: 1.55; }
         .ai-tips { margin: 0; padding-left: 1.2em; display: grid; gap: .35em; font-size: .86rem; opacity: .92; }
         .ai-note { margin-top: var(--space-2); font-size: .68rem; opacity: .55; }
+        /* 智 · 人群标签 chips(radiogroup) */
+        .ai-groups { display: flex; align-items: center; flex-wrap: wrap; gap: 6px; margin-bottom: var(--space-2); }
+        .ai-groups-label { font-size: .66rem; color: var(--text-tertiary); }
+        .ai-group-btn {
+            font: inherit; font-size: .68rem; padding: 3px 10px;
+            border-radius: var(--r-pill); border: 1px solid var(--border-1);
+            background: var(--glass-1); color: var(--text-secondary); cursor: pointer;
+            transition: background-color var(--dur-normal) var(--ease), color var(--dur-normal) var(--ease), border-color var(--dur-normal) var(--ease);
+        }
+        .ai-group-btn:hover { border-color: var(--border-2); color: var(--text-primary); }
+        .ai-group-btn.active { background: linear-gradient(135deg, rgba(125, 211, 252, .22), rgba(129, 140, 248, .22)); color: #c7e9ff; border-color: transparent; }
+        .ai-group-btn:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
         .ai-fallback { align-items: center; gap: 9px; font-size: .78rem; color: #fbbf24; background: rgba(251, 191, 36, .07); border: 1px dashed rgba(251, 191, 36, .35); border-radius: var(--r-md); padding: 11px 13px; }
         .ai-fallback svg { width: 15px; height: 15px; flex: none; }
         .life-tip-card {
@@ -1680,6 +1698,10 @@
                 <span class="dot"></span>
                 <span class="update-text">更新于 <span id="update-time">--:--</span></span>
             </div>
+            <button class="badge speak-btn" id="speak-btn" type="button" aria-pressed="false" title="语音播报当前天气与可信度信息(多源融合/误差/分歧)" aria-label="语音播报当前天气与可信度信息">
+                <span class="dot" aria-hidden="true"></span>
+                <span class="update-text" aria-hidden="true"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-1px"><path d="M11 5 6 9H2v6h4l5 4z"/><path d="M15.54 8.46a5 5 0 0 1 0 7.07"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14"/></svg> <span id="speak-text">播报</span></span>
+            </button>
         </div>
     </header>
 
@@ -4938,10 +4960,12 @@
         if (cc && cc.warned) {
             const l = cc.perLead[cc.warned[0]];
             const dayLabel = cc.warned[0] === 'd1' ? '明日' : '第三天';
-            crossChip = `<span class="provider-badge" style="background:rgba(251,191,36,.25);color:#fbbf24" title="多源交叉验证:${dayLabel}各源最高温 ${escapeHTML(l.values.join(' / '))},分歧 ${l.spread}°C 超过该提前期历史分歧 p90(${l.threshold}°C)">多源分歧 ${l.spread}°</span>`;
+            const warnText = `多源分歧提醒:${dayLabel}各数据源最高温相差${l.spread}摄氏度,超过历史分歧水平${l.threshold}度`;
+            crossChip = `<span class="provider-badge" role="status" style="background:rgba(251,191,36,.25);color:#fbbf24" title="多源交叉验证:${dayLabel}各源最高温 ${escapeHTML(l.values.join(' / '))},分歧 ${l.spread}°C 超过该提前期历史分歧 p90(${l.threshold}°C)" aria-label="${warnText}">多源分歧 ${l.spread}°</span>`;
         } else if (cc && cc.nSources >= 2) {
             const sample = cc.perLead.d1 || cc.perLead.d3;
-            crossChip = `<span class="provider-badge" style="background:rgba(125,211,252,.15);color:#7dd3fc" title="明日/第三天气温按实测误差加权融合(参与源:${escapeHTML(sample ? sample.values.join(' / ') : '')})">${ICONS.globe}<span>加权融合 ×${cc.nSources}</span></span>`;
+            const prov = `窗口 ${FUSION.windowDays || '?'} 天 · 生成于 ${(FUSION.generatedAt || '').slice(0, 10)}`;
+            crossChip = `<span class="provider-badge" style="background:rgba(125,211,252,.15);color:#7dd3fc" title="明日/第三天气温按实测误差加权融合(参与源:${escapeHTML(sample ? sample.values.join(' / ') : '')};权重${escapeHTML(prov)})" aria-label="明日与第三天气温由${cc.nSources}个数据源按历史误差加权融合">${ICONS.globe}<span>加权融合 ×${cc.nSources}</span></span>`;
         }
         const countryBadge = `<span class="country-badge">${escapeHTML(countryBadgeLabel(loc))}</span>`;
         return `
@@ -5272,12 +5296,37 @@
     // 面板三态:loading(骨架占位) → done(展示生成结果) / fallback(降级提示)。
     // 服务端无 Key / 接地校验失败 / 请求异常时展示降级占位,
     // 本地规则版生活提示始终在页面,不出现空态。
+    // 智 · 人群标签:建议面向人群(与服务端白名单一致);选择持久化,服务端缓存键含人群
+    const AI_GROUP_OPTIONS = [
+        { key: 'elderly', label: '老人' },
+        { key: 'child', label: '儿童' },
+        { key: 'respiratory', label: '呼吸道敏感' },
+        { key: 'commuter', label: '通勤' },
+    ];
+    const AI_GROUP_LABELS = { elderly: '老人', child: '儿童家庭', respiratory: '呼吸道敏感人群', commuter: '通勤族' };
+    function aiGroupSelected() {
+        try { return localStorage.getItem('weather_ai_group') || ''; } catch { return ''; }
+    }
+    function syncAIGroupUI() {
+        const sel = aiGroupSelected();
+        document.querySelectorAll('.ai-group-btn').forEach(b => {
+            const on = (b.dataset.group || '') === sel;
+            b.classList.toggle('active', on);
+            b.setAttribute('aria-checked', on ? 'true' : 'false');
+        });
+    }
+
     function renderAIPanel() {
+        const sel = aiGroupSelected();
         return `
             <div class="glass panel reveal d3 ai-panel" id="ai-panel" data-state="loading">
                 <div class="section-head">
                     <div class="section-title">${ICONS.sparkles}<span>AI 生活建议</span><span class="ai-tag">AI</span></div>
                     <span class="ai-status" id="ai-status">正在生成…</span>
+                </div>
+                <div class="ai-groups" role="radiogroup" aria-label="按人群定制建议">
+                    <span class="ai-groups-label">面向人群</span>
+                    ${AI_GROUP_OPTIONS.map(g => `<button type="button" class="ai-group-btn${sel === g.key ? ' active' : ''}" role="radio" aria-checked="${sel === g.key ? 'true' : 'false'}" data-group="${g.key}">${g.label}</button>`).join('')}
                 </div>
                 <div class="ai-pane ai-loading" aria-hidden="true">
                     <div class="ai-loading-row">
@@ -5331,6 +5380,7 @@
                 month: new Date().getMonth() + 1,
                 hour: np.h,
             },
+            group: aiGroupSelected() || null,
         };
         const t0 = performance.now();
         try {
@@ -5346,7 +5396,7 @@
                 panel.querySelector('.ai-content').innerHTML = `
                     <div class="ai-summary">${escapeHTML(res.summary || '')}</div>
                     <ul class="ai-tips">${res.tips.map(t => `<li>${escapeHTML(t)}</li>`).join('')}</ul>
-                    <div class="ai-note">建议由 AI 基于当前实测数据生成,仅供参考</div>
+                    <div class="ai-note">${aiGroupSelected() && AI_GROUP_LABELS[aiGroupSelected()] ? `面向${AI_GROUP_LABELS[aiGroupSelected()]} · ` : ''}建议由 AI 基于当前实测数据生成,仅供参考</div>
                 `;
                 setAIPanelState('done', `已生成 · ${secs}s`);
             } else {
@@ -5459,7 +5509,7 @@
                         <div>${escapeHTML(d.weather || '--')}</div>
                         <div class="f-pop">${fmtPop(d.precipProbability)}</div>
                     </div>
-                    <div class="f-temps"><span class="f-temp-low">${Math.round(d.minTemp)}°</span><span class="f-temp-high">${Math.round(d.maxTemp)}°</span>${i >= 1 ? `<small style="opacity:.5;font-size:.64rem" title="预报不确定性:基于 8 周回溯实测平均误差">±${BAND[Math.min(i, 6)]}°</small>` : ''}</div>
+                    <div class="f-temps"><span class="f-temp-low">${Math.round(d.minTemp)}°</span><span class="f-temp-high">${Math.round(d.maxTemp)}°</span>${i >= 1 ? `<small style="opacity:.5;font-size:.64rem" title="预报不确定性:基于实测误差的期望值" aria-label="该日预报不确定性约正负${BAND[Math.min(i, 6)]}摄氏度">±${BAND[Math.min(i, 6)]}°</small>` : ''}</div>
                     <div class="f-bar"><div class="f-bar-fill" style="left:${left}%;width:${width}%"></div></div>
                 </div>
             `;
@@ -5476,6 +5526,7 @@
     }
 
     function renderWeather(data) {
+        _lastWeatherData = data; // 供语音播报等后续增强读取最近一次成功渲染的数据
         const cur = data.current;
         const daily0 = data.daily?.[0] || {};
         const weatherType = resolveWeatherType(cur);
@@ -5883,6 +5934,65 @@
     })();
 
     // ===================== 初始化 =====================
+    // ===================== 示 · 语音播报(纳入可信度信息) =====================
+    // Web Speech API 本地合成,零依赖。播报文本不只是天气数值,还带"可信度":
+    // 多源融合披露、明日误差带、多源分歧警示——与页面可信呈现口径一致。
+    let _lastWeatherData = null; // 最近一次成功渲染的天气数据(renderWeather 更新)
+    function speakWeatherText(data) {
+        const cur = data.current, loc = data.location || {};
+        const parts = [];
+        if (data._provider) parts.push(`数据来自${data._provider}。`);
+        parts.push(`${loc.city || '当前城市'}现在${Math.round(cur.temp)}度,${cur.weather || ''},体感${Math.round(cur.feelsLike)}度。`);
+        if (cur.aqi != null) parts.push(`空气质量指数${Math.round(cur.aqi)}。`);
+        const d1 = data.daily?.[1];
+        if (d1 && d1.maxTemp != null) {
+            const band1 = (FUSION && FUSION.fusedMae && FUSION.fusedMae.d1 != null) ? FUSION.fusedMae.d1 : 0.8;
+            parts.push(`明天最高${Math.round(d1.maxTemp)}度${d1.minTemp != null ? `,最低${Math.round(d1.minTemp)}度` : ''},误差约正负${band1}度。`);
+        }
+        const cc = data._crossCheck;
+        if (cc && cc.warned) {
+            const l = cc.perLead[cc.warned[0]];
+            parts.push(`请注意,多个数据源对${cc.warned[0] === 'd1' ? '明日' : '后天'}气温分歧达${l.spread}度,建议临近再确认。`);
+        } else if (cc && cc.nSources >= 2) {
+            parts.push(`预报已由${cc.nSources}个数据源按历史误差加权融合。`);
+        }
+        return parts.join('');
+    }
+    function setSpeakUI(on) {
+        const btn = document.getElementById('speak-btn');
+        if (!btn) return;
+        btn.classList.toggle('is-speaking', on);
+        btn.setAttribute('aria-pressed', on ? 'true' : 'false');
+        const t = document.getElementById('speak-text');
+        if (t) t.textContent = on ? '停止' : '播报';
+    }
+    document.getElementById('speak-btn')?.addEventListener('click', () => {
+        if (!('speechSynthesis' in window)) { showToast('当前浏览器不支持语音播报', 'error'); return; }
+        if (speechSynthesis.speaking || speechSynthesis.pending) { speechSynthesis.cancel(); setSpeakUI(false); return; }
+        if (!_lastWeatherData) { showToast('暂无可播报的天气数据', 'error'); return; }
+        const u = new SpeechSynthesisUtterance(speakWeatherText(_lastWeatherData));
+        u.lang = 'zh-CN';
+        u.rate = 1.05;
+        u.onend = () => setSpeakUI(false);
+        u.onerror = () => setSpeakUI(false);
+        setSpeakUI(true);
+        speechSynthesis.speak(u);
+    });
+    window.addEventListener('beforeunload', () => { if ('speechSynthesis' in window) speechSynthesis.cancel(); });
+
+    // 智 · 人群标签切换:持久化选择并即时重取建议(服务端缓存键含人群,换组必出新结果)
+    document.addEventListener('click', (e) => {
+        const btn = e.target.closest && e.target.closest('.ai-group-btn');
+        if (!btn) return;
+        const g = btn.dataset.group || '';
+        try {
+            if (g && aiGroupSelected() !== g) localStorage.setItem('weather_ai_group', g);
+            else if (!g || aiGroupSelected() === g) localStorage.removeItem('weather_ai_group');
+        } catch { /* 无 localStorage 时仅本次会话生效 */ }
+        syncAIGroupUI();
+        if (_lastWeatherData) loadAIAdvice(_lastWeatherData);
+    });
+
     (async function init() {
         renderHistory();
         showEmpty();

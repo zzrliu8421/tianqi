@@ -206,6 +206,14 @@ const AI_PROVIDER_CHAIN = [
     { provider: 'zhipu', baseUrl: ZHIPU_BASE_URL, apiKey: ENV.ZHIPU_API_KEY, model: ENV.AI_FALLBACK_MODEL || 'glm-4-flash' },
 ];
 
+// 智 · 人群标签(可选):建议的面向人群,白名单校验,白名单外一律忽略(向后兼容旧客户端)
+const AI_GROUPS = {
+    elderly: '老年人',
+    child: '儿童家庭',
+    respiratory: '呼吸道敏感人群',
+    commuter: '通勤族',
+};
+
 // system prompt：约束 LLM 只能引用输入数值、输出严格 JSON；
 // 写作定位是"有生活温度的天气伙伴"——条数与字数不做硬性限制（校验只守宽松
 // 上限），靠一对"套话 vs 想要的"风格示例（刻意不含数字，防被照抄）把文风
@@ -238,6 +246,20 @@ const AI_CACHE_MAX = 200;
 const AI_MAX_BODY_BYTES = 16 * 1024;
 
 const aiCache = new Map();
+
+// 智 · 运行统计(进程内存累计,重启清零;只聚合计数,不含任何请求内容/明文)。
+// 供 GET /api/ai/stats 输出"可核查的运行数据"——缓存命中即省下的上游调用量,
+// 各链路成员的调用/通过/拦截计数即接地校验拦截率的直接证据(成本与合规复核)。
+const aiStats = {
+    startedAt: new Date().toISOString(),
+    requests: 0, cacheHits: 0, aiOk: 0, ruleFallback: 0,
+};
+const aiStatByProvider = {}; // provider/model → { calls, ok, groundingFail, upstreamFail }
+function aiStatProvider(provider, model, field) {
+    const o = aiStatByProvider[`${provider}/${model}`] = aiStatByProvider[`${provider}/${model}`]
+        || { calls: 0, ok: 0, groundingFail: 0, upstreamFail: 0 };
+    o[field]++;
+}
 const aiRateBuckets = new Map();
 
 // ===================== 工具函数 =====================
@@ -499,7 +521,9 @@ function validateAdvicePayload(body) {
             return null;
         }
     }
-    return { city, data };
+    // 智 · 人群标签(可选)
+    const group = typeof body.group === 'string' && AI_GROUPS[body.group] ? body.group : null;
+    return { city, data, group };
 }
 
 /**
@@ -670,7 +694,7 @@ function readJsonBody(req, maxBytes) {
  * 调用 OpenAI 兼容的 chat/completions（Bearer 供应商 API Key），返回首个 choice 的文本。
  * 日志只记错误消息，绝不打印 Authorization 头 / Key（遵循现有脱敏模式）。
  */
-function callLLMOnce(city, data, provider) {
+function callLLMOnce(city, data, provider, group) {
     return new Promise((resolve, reject) => {
         let target;
         try {
@@ -682,7 +706,7 @@ function callLLMOnce(city, data, provider) {
             model: provider.model,
             messages: [
                 { role: 'system', content: AI_SYSTEM_PROMPT },
-                { role: 'user', content: `城市：${city}\n当前时段：${data.month}月 ${data.hour != null ? data.hour + '点' : ''}\n天气数据：${JSON.stringify(data)}\n\n请写出有生活温度的今日提醒。穿衣、带伞、防晒这类话题页面卡片已有基础结论，可以谈，但要更深一层——讲清原因、落到具体时段或场景、给出卡片没有的关照，不要只复述卡片结论。` },
+                { role: 'user', content: `城市：${city}\n当前时段：${data.month}月 ${data.hour != null ? data.hour + '点' : ''}\n天气数据：${JSON.stringify(data)}\n\n请写出有生活温度的今日提醒。穿衣、带伞、防晒这类话题页面卡片已有基础结论，可以谈，但要更深一层——讲清原因、落到具体时段或场景、给出卡片没有的关照，不要只复述卡片结论。${group ? `\n本条提醒面向人群：${AI_GROUPS[group]}——请从这一人群的切身场景出发（出行安全、健康防护、作息安排等），数值规则不变。` : ''}` },
             ],
             temperature: 0.7,
             max_tokens: 800,
@@ -745,16 +769,18 @@ async function handleAiAdvice(req, res) {
     }
     const city = payload.city;
     const data = payload.data;
+    const group = payload.group || null;
 
-    // 缓存 key：city+hour（data.hour 为 0-23 整数则用之，否则用服务器当前小时）
+    // 缓存 key：city+hour+人群(人群标签改变建议内容,必须参与键)
     const hourRaw = data.hour;
     const hour = typeof hourRaw === 'number' && Number.isInteger(hourRaw) && hourRaw >= 0 && hourRaw <= 23
         ? hourRaw
         : new Date().getHours();
-    const cacheKey = `${city}|${hour}`;
+    const cacheKey = `${city}|${hour}|${group || ''}`;
 
+    aiStats.requests++;
     const hit = adviceCacheGet(cacheKey);
-    if (hit) return sendJSON(res, 200, Object.assign({ cached: true }, hit));
+    if (hit) { aiStats.cacheHits++; return sendJSON(res, 200, Object.assign({ cached: true }, hit)); }
 
     // 沿模型链依次尝试（供应商内主→备、供应商间首选→次选），全部失败再走规则降级。
     // 链路总预算 12s（< 前端 15s 超时）：预算耗尽不再发起新尝试，直接规则降级，
@@ -770,14 +796,18 @@ async function handleAiAdvice(req, res) {
             }
             let content = null;
             try {
-                content = await callLLMOnce(city, data, p);
+                content = await callLLMOnce(city, data, p, group);
             } catch (e) {
                 // 日志只记错误消息（不含 Authorization / Key，遵循现有脱敏模式）
                 console.error(`[ai] LLM 调用失败（${p.provider}/${p.model}，city=${city}）:`, e.message);
+                aiStatProvider(p.provider, p.model, 'upstreamFail');
             }
             if (content) {
+                aiStatProvider(p.provider, p.model, 'calls');
                 const advice = parseAdviceText(content);
                 if (advice && isGroundedAdvice(advice, inputNumbers)) {
+                    aiStatProvider(p.provider, p.model, 'ok');
+                    aiStats.aiOk++;
                     const value = {
                         mode: 'ai',
                         summary: advice.summary.trim(),
@@ -786,6 +816,7 @@ async function handleAiAdvice(req, res) {
                     adviceCacheSet(cacheKey, value);
                     return sendJSON(res, 200, Object.assign({ cached: false }, value));
                 }
+                aiStatProvider(p.provider, p.model, 'groundingFail');
                 // 记录越界数字与原文开头（脱敏：不含请求/密钥信息），便于诊断模型在编造什么
                 if (advice && typeof advice.summary === 'string') {
                     const badNums = findUngroundedNumbers(advice.summary + '\n' + (Array.isArray(advice.tips) ? advice.tips.join('\n') : ''), inputNumbers);
@@ -800,6 +831,7 @@ async function handleAiAdvice(req, res) {
     }
 
     // 规则降级（无 Key / 校验失败 / 上游异常），不缓存
+    aiStats.ruleFallback++;
     return sendJSON(res, 200, Object.assign({ cached: false }, buildRuleAdvice(city, data)));
 }
 
@@ -832,6 +864,18 @@ function handleApi(req, res) {
             qweather: !!ENV.QWEATHER_KEY,
             caiyun: !!ENV.CAIYUN_TOKEN,
             ipnews: !!ENV.IPNEWS_KEY,
+        });
+    }
+
+    // /api/ai/stats → 智 · AI 建议运行统计(聚合计数,不含请求内容;进程内存,重启清零)。
+    // 缓存命中数即省下的上游调用量,各链路成员的 通过/拦截 计数即接地校验拦截率证据
+    if (pathname === '/api/ai/stats') {
+        return sendJSON(res, 200, {
+            ...aiStats,
+            byProvider: aiStatByProvider,
+            cacheSize: aiCache.size,
+            uptimeSec: Math.round(process.uptime()),
+            generatedAt: new Date().toISOString(),
         });
     }
 
