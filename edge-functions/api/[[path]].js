@@ -433,12 +433,15 @@ async function handleGet(context) {
 
     // 和风专属 API Host：配置后 geo 与天气统一走同一域名，GeoAPI 路径加 /geo 服务前缀；
     // 未配置则回退通用域名（官方将逐步停用）。容错：允许带 https:// 前缀或结尾斜杠。
+    // 注意：base 覆盖只允许作用于和风两个上游——无条件传入会劫持高德/彩云/ipnews
+    // 的基地址（线上曾因此导致这三家全部 404：请求被发到和风域名下的不存在路径）。
     const qwHost = String(env.QWEATHER_HOST || '')
         .replace(/^https?:\/\//i, '')
         .replace(/\/+$/, '')
         .trim()
         .toLowerCase();
-    const qwOpts = qwHost
+    const isQwUpstream = matched.upstream === 'qweather_geo' || matched.upstream === 'qweather_dev';
+    const qwOpts = qwHost && isQwUpstream
         ? {
             base: `https://${qwHost}`,
             pathPrefix: matched.upstream === 'qweather_geo' ? '/geo' : '',
