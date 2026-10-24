@@ -621,7 +621,7 @@ function adviceCacheSet(key, value) {
 /** 调用 OpenAI 兼容 chat/completions(Web fetch 版),返回首个 choice 文本 */
 async function callLLMOnce(city, data, env) {
     const base = String((env && env.AI_BASE_URL) || 'https://open.bigmodel.cn/api/paas/v4').replace(/\/+$/, '');
-    const model = String((env && env.AI_MODEL) || 'glm-4-flash');
+    const model = String((env && env.AI_MODEL) || 'glm-4.7-flash');
     const res = await fetch(base + '/chat/completions', {
         method: 'POST',
         headers: {

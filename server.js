@@ -191,7 +191,7 @@ const QWEATHER_GEO_PREFIX = QWEATHER_HOST ? '/geo' : '';
 // 未配置 ZHIPU_API_KEY 时 POST /api/ai/advice 不报错，直接走规则降级（mode:"rule"）
 // AI_BASE_URL 容错：允许结尾斜杠
 const AI_BASE_URL = (ENV.AI_BASE_URL || 'https://open.bigmodel.cn/api/paas/v4').replace(/\/+$/, '');
-const AI_MODEL = ENV.AI_MODEL || 'glm-4-flash';
+const AI_MODEL = ENV.AI_MODEL || 'glm-4.7-flash';
 
 // system prompt：约束 LLM 只能引用输入数值、输出严格 JSON（中文，面向普通市民生活建议）
 const AI_SYSTEM_PROMPT = '你是一个天气生活建议助手。规则：只能使用输入数据中出现的数值，严禁编造或推算任何新数值；不要提及"数据来源"；输出严格的 JSON：{"summary":"一句话总结(≤30字)","tips":["建议1","建议2","建议3"]}，每条建议≤40字、面向普通市民生活（穿衣、出行、晾晒、运动、防护等），语气友好。';
