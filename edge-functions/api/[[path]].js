@@ -9,7 +9,7 @@
  *
  * 工作原理：
  *   1. 从 context.env 读取 AMAP_KEY / QWEATHER_KEY / QWEATHER_HOST / IPNEWS_KEY / CAIYUN_TOKEN
- *      / ZHIPU_API_KEY / AI_BASE_URL / AI_MODEL
+ *      / AGNES_API_KEY（AI 首选供应商 Agnes）/ ZHIPU_API_KEY（AI 次选供应商智谱）/ AI_BASE_URL / AI_MODEL
  *      （环境变量需在 EdgeOne Pages 控制台 → 项目 → 环境变量 中配置）
  *   2. 按前端请求路径分流，附加对应 Key 后用 fetch 转发到上游
  *   3. 透传上游响应（含 Content-Type / Cache-Control），自动附加 CORS 头
@@ -30,11 +30,12 @@
  *   GET /api/ipnews/<path>        → https://ipnews.io/<path>?<query>&api-key=IPNEWS_KEY
  *   GET /api/caiyun/<path>        → https://api.caiyunapp.com/<path>，CAIYUN_TOKEN 注入路径段：
  *                                   /api/caiyun/v2.6/<lon>,<lat>/weather → /v2.6/<token>/<lon>,<lat>/weather
- *   POST /api/ai/advice           → AI 天气生活建议：POST ${AI_BASE_URL}/chat/completions
- *                                   （Bearer ZHIPU_API_KEY，模型 AI_MODEL）。输出做"接地校验"：
- *                                   响应文本中的每个数字必须来自请求 data 的数值集合，
- *                                   失败重试一次；未配置 Key / 校验失败 / 上游异常 →
- *                                   规则降级（mode:"rule"）。结果按 city+hour 缓存 1 小时
+ *   POST /api/ai/advice           → AI 天气生活建议：按模型链依次 POST <baseUrl>/chat/completions
+ *                                   （首选 Agnes：agnes-3.0-flash → agnes-2.5-flash；次选智谱：
+ *                                   glm-4.7-flash → glm-4-flash，Bearer 对应供应商 Key）。
+ *                                   输出做"接地校验"：响应文本中的每个数字必须来自请求 data 的
+ *                                   数值集合，未通过则沿链换下一个模型；全部失败 / 未配置 Key /
+ *                                   上游异常 → 规则降级（mode:"rule"）。结果按 city+hour 缓存 1 小时
  *
  *   和风天气：配置 QWEATHER_HOST（专属 API Host）后，geo 与天气统一走
  *   https://<QWEATHER_HOST>/...，且 GeoAPI 路径带 /geo 服务前缀。
@@ -122,8 +123,39 @@ const AI_CACHE_TTL_MS = 60 * 60 * 1000;
 const AI_CACHE_MAX = 200;
 const aiCache = new Map();
 
-// system prompt：约束 LLM 只能引用输入数值、输出严格 JSON（中文，面向普通市民生活建议）
-const AI_SYSTEM_PROMPT = '你是一个天气生活建议助手。规则：只能使用输入数据中出现的数值，严禁编造或推算任何新数值；不要提及"数据来源"；输出严格的 JSON：{"summary":"一句话总结(≤30字)","tips":["建议1","建议2","建议3"]}，每条建议≤40字、面向普通市民生活（穿衣、出行、晾晒、运动、防护等），语气友好。';
+// system prompt（与 server.js 保持一致）：约束 LLM 只能引用输入数值、输出严格 JSON；
+// 写作定位是"有生活温度的天气伙伴"——页面已有规则版指数卡片（穿衣/带伞/防晒等），
+// 允许谈同样的话题，但必须比卡片更深一层：讲清原因、落到时段场景、
+// 带出身体与心情层面的关照，不做卡片结论的简单复述
+const AI_SYSTEM_PROMPT = [
+    '你是天气伙伴，像关心朋友一样，基于给定的真实天气数据给用户写今日提醒。',
+    '硬性规则：',
+    '1. 只能使用输入数据中出现的数值，严禁编造或推算任何新数值；',
+    '2. 页面的指数卡片已经给出"穿什么衣服、带不带伞、要不要防晒洗车"这类基础结论。这些话题可以写，但必须写出卡片给不了的深度：结合具体数值讲清"为什么"、落到具体时段或场景说"什么时候该怎么做"，或带出身体与心情层面的关照；把卡片结论原样换个说法，等于没写；',
+    '3. 不要提及"数据来源"；不要用"建议您""请注意"等公文腔，也不要以"建议"开头，用"你"的自然口吻。',
+    '写什么（共 3 条，每条必须落到具体时间点或生活场景）：',
+    '- 结合早高峰、午休、傍晚、夜间等时间节点，说出门、通勤、回家路上的具体留意点；',
+    '- 关心身体与心情：昼夜温差的疲惫感、阴雨天的沉闷、大风天的干燥等，给一点温暖的宽慰；',
+    '- 具体场景如开窗通风、晾晒收衣、接送孩子、遛狗散步、夜间开车，用细节打动人，可以有淡淡的幽默，但不要感叹号轰炸。',
+    '写完自查：任何一条如果换个城市、换一天也成立，那就是套话，重写。',
+    '输出严格的 JSON：{"summary":"一句有温度的天气速览(≤30字)","tips":["提醒1","提醒2","提醒3"]}，每条 25~60 字，语气像朋友发来的问候。',
+].join('\n');
+
+// AI 建议模型链（与 server.js 保持一致，依次尝试，全部失败走规则降级 mode:"rule"）：
+// 首选供应商 Agnes（OpenAI 兼容中转）：agnes-3.0-flash → agnes-2.5-flash；
+// 次选供应商智谱：glm-4.7-flash → glm-4-flash。
+// 未配置对应 Key 的供应商整段跳过；一个 Key 都没配时直接规则降级。
+function buildAIProviderChain(env) {
+    const zhipuBase = String((env && env.AI_BASE_URL) || 'https://open.bigmodel.cn/api/paas/v4').replace(/\/+$/, '');
+    const agnesKey = String((env && env.AGNES_API_KEY) || '');
+    const zhipuKey = String((env && env.ZHIPU_API_KEY) || '');
+    return [
+        { provider: 'agnes', baseUrl: 'https://api.agnes-ai.cn/v1', apiKey: agnesKey, model: 'agnes-3.0-flash' },
+        { provider: 'agnes', baseUrl: 'https://api.agnes-ai.cn/v1', apiKey: agnesKey, model: 'agnes-2.5-flash' },
+        { provider: 'zhipu', baseUrl: zhipuBase, apiKey: zhipuKey, model: String((env && env.AI_MODEL) || 'glm-4.7-flash') },
+        { provider: 'zhipu', baseUrl: zhipuBase, apiKey: zhipuKey, model: String((env && env.AI_FALLBACK_MODEL) || 'glm-4-flash') },
+    ].filter(p => p.apiKey);
+}
 
 // 数字提取（含小数、负数；"18.5°C" 这类带单位形式取 18.5）
 const NUMBER_RE = /-?\d+(?:\.\d+)?/g;
@@ -619,24 +651,22 @@ function adviceCacheSet(key, value) {
 }
 
 /** 调用 OpenAI 兼容 chat/completions(Web fetch 版),返回首个 choice 文本 */
-async function callLLMOnce(city, data, env, model) {
-    const base = String((env && env.AI_BASE_URL) || 'https://open.bigmodel.cn/api/paas/v4').replace(/\/+$/, '');
-    const useModel = model || String((env && env.AI_MODEL) || 'glm-4.7-flash');
-    const res = await fetch(base + '/chat/completions', {
+async function callLLMOnce(city, data, provider) {
+    const res = await fetch(provider.baseUrl + '/chat/completions', {
         method: 'POST',
         headers: {
             'Content-Type': 'application/json',
-            'Authorization': `Bearer ${env.ZHIPU_API_KEY}`,
+            'Authorization': `Bearer ${provider.apiKey}`,
             'User-Agent': 'SkyWeather-Proxy/1.0',
         },
         body: JSON.stringify({
-            model: useModel,
+            model: provider.model,
             messages: [
                 { role: 'system', content: AI_SYSTEM_PROMPT },
-                { role: 'user', content: `城市：${city}\n天气数据：${JSON.stringify(data)}` },
+                { role: 'user', content: `城市：${city}\n当前时段：${data.month}月 ${data.hour != null ? data.hour + '点' : ''}\n天气数据：${JSON.stringify(data)}\n\n请写出有生活温度的今日提醒。穿衣、带伞、防晒这类话题页面卡片已有基础结论，可以谈，但要更深一层——讲清原因、落到具体时段或场景、给出卡片没有的关照，不要只复述卡片结论。` },
             ],
-            temperature: 0.5,
-            max_tokens: 400,
+            temperature: 0.6,
+            max_tokens: 500,
         }),
     });
     if (!res.ok) throw new Error(`LLM upstream HTTP ${res.status}`);
@@ -647,7 +677,7 @@ async function callLLMOnce(city, data, env, model) {
     return content;
 }
 
-/** POST /api/ai/advice 主逻辑:校验 → 查缓存 → LLM(接地校验,重试一次)→ 规则降级 */
+/** POST /api/ai/advice 主逻辑:校验 → 查缓存 → 沿模型链 LLM(接地校验,失败换下一模型)→ 规则降级 */
 async function handleAiAdvice(context) {
     const { request, env } = context;
     let body;
@@ -674,19 +704,16 @@ async function handleAiAdvice(context) {
     const hit = adviceCacheGet(cacheKey);
     if (hit) return json(200, Object.assign({ cached: true }, hit));
 
-    if (env.ZHIPU_API_KEY) {
+    // 沿模型链依次尝试（供应商内主→备、供应商间首选→次选），全部失败再走规则降级
+    const chain = buildAIProviderChain(env);
+    if (chain.length) {
         const inputNumbers = collectInputNumbers(data);
-        // 依次尝试主模型与备用模型(各一次),全部失败再走规则降级
-        const models = [
-            String(env.AI_MODEL || 'glm-4.7-flash'),
-            String(env.AI_FALLBACK_MODEL || 'glm-4-flash'),
-        ];
-        for (const model of models) {
+        for (const p of chain) {
             let content = null;
             try {
-                content = await callLLMOnce(city, data, env, model);
+                content = await callLLMOnce(city, data, p);
             } catch (e) {
-                console.error(`[ai] LLM 调用失败（${model}，city=${city}）:`, e && e.message);
+                console.error(`[ai] LLM 调用失败（${p.provider}/${p.model}，city=${city}）:`, e && e.message);
             }
             if (content) {
                 const advice = parseAdviceText(content);
@@ -699,7 +726,7 @@ async function handleAiAdvice(context) {
                     adviceCacheSet(cacheKey, value);
                     return json(200, Object.assign({ cached: false }, value));
                 }
-                console.warn(`[ai] ${model} 输出未通过接地校验（city=${city}）`);
+                console.warn(`[ai] ${p.provider}/${p.model} 输出未通过接地校验（city=${city}）`);
             }
         }
     }
