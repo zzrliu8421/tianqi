@@ -252,19 +252,6 @@
             transition: background 1s var(--ease);
         }
 
-        /* 背景图叠加（有背景图时替换主背景层） */
-        body.has-bg-image::before {
-            background-image:
-                linear-gradient(180deg, rgba(11, 15, 25, 0.78) 0%, rgba(11, 15, 25, 0.88) 100%),
-                var(--bg-image, none),
-                radial-gradient(ellipse 80% 60% at 20% 20%, var(--bg-elevated), transparent 50%),
-                radial-gradient(ellipse 70% 50% at 80% 80%, var(--bg-surface), transparent 50%),
-                linear-gradient(180deg, var(--bg-base) 0%, var(--bg-surface) 100%);
-            background-size: cover, cover, auto, auto, auto;
-            background-position: center, center, center, center, center;
-            background-repeat: no-repeat;
-        }
-
         /* accent-glow 装饰层 —— 同样使用固定高度 */
         body::after {
             content: '';
@@ -282,10 +269,6 @@
             pointer-events: none;
             z-index: 0;
             transition: opacity 1s var(--ease), background 1s var(--ease);
-        }
-
-        body.has-bg-image::after {
-            opacity: 0.12;
         }
 
         button, input {
@@ -1729,11 +1712,6 @@
                 <span class="dot"></span>
                 <span class="update-text">更新于 <span id="update-time">--:--</span></span>
             </div>
-            <button class="btn btn-ghost" id="btn-random-bg" aria-label="随机背景图" title="随机背景图">
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                    <rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="m21 15-5-5L5 21"/>
-                </svg>
-            </button>
         </div>
     </header>
 
@@ -1984,7 +1962,6 @@
     const lastUpdateBadge = $('last-update');
     const btnSearch = $('btn-search');
     const btnRefresh = $('btn-refresh');
-    const btnRandomBg = $('btn-random-bg');
 
     // ===================== 天气类型映射 =====================
     const weatherTypeMap = {
@@ -3542,72 +3519,6 @@
         if (themeColorMeta && THEME_COLORS[type]) {
             themeColorMeta.setAttribute('content', THEME_COLORS[type]);
         }
-    }
-
-    // ===================== 随机背景图 =====================
-    const BG_API_URL = 'https://pic.api.sylv.top/image';
-    const BG_STORAGE_KEY = 'skyweather_random_bg_enabled';
-    const BG_IMAGE_URL_KEY = 'skyweather_random_bg_url';
-
-    function getBgEnabled() {
-        try { return localStorage.getItem(BG_STORAGE_KEY) === 'true'; }
-        catch (e) { return false; }
-    }
-
-    function setBgEnabled(enabled) {
-        try { localStorage.setItem(BG_STORAGE_KEY, enabled ? 'true' : 'false'); }
-        catch (e) {}
-    }
-
-    function getCachedBgUrl() {
-        try { return localStorage.getItem(BG_IMAGE_URL_KEY) || ''; }
-        catch (e) { return ''; }
-    }
-
-    function setCachedBgUrl(url) {
-        try { localStorage.setItem(BG_IMAGE_URL_KEY, url || ''); }
-        catch (e) {}
-    }
-
-    function clearBackgroundImage() {
-        document.body.classList.remove('has-bg-image');
-        document.body.style.removeProperty('--bg-image');
-    }
-
-    function applyBackgroundImage(url) {
-        if (!url) return;
-        document.body.style.setProperty('--bg-image', `url(${url})`);
-        document.body.classList.add('has-bg-image');
-    }
-
-    function loadRandomBackground() {
-        if (!getBgEnabled()) return;
-
-        const cached = getCachedBgUrl();
-        if (cached) {
-            applyBackgroundImage(cached);
-            return;
-        }
-
-        // 无缓存时才请求新图，加载后缓存，后续始终复用
-        const imageUrl = `${BG_API_URL}?t=${Date.now()}`;
-        const img = new Image();
-        img.crossOrigin = 'anonymous';
-        img.onload = () => {
-            setCachedBgUrl(imageUrl);
-            applyBackgroundImage(imageUrl);
-        };
-        img.onerror = () => {
-            // 加载失败时保持渐变背景
-        };
-        img.src = imageUrl;
-    }
-
-    function updateRandomBgToggle() {
-        const enabled = getBgEnabled();
-        btnRandomBg.classList.toggle('active', enabled);
-        if (enabled) loadRandomBackground();
-        else clearBackgroundImage();
     }
 
     // ===================== 工具函数 =====================
@@ -5196,12 +5107,6 @@
         promise?.finally(() => setTimeout(() => btnRefresh.classList.remove('spinning'), 600));
     });
 
-    // 随机背景图按钮
-    btnRandomBg.addEventListener('click', () => {
-        setBgEnabled(!getBgEnabled());
-        updateRandomBgToggle();
-    });
-
     historyBox.addEventListener('mousedown', (e) => {
         // 阻止 mousedown 使搜索框失焦，确保下拉项可点击
         if (e.target.closest('.history-item, .history-clear')) {
@@ -5344,7 +5249,6 @@
     // ===================== 初始化 =====================
     (async function init() {
         renderHistory();
-        updateRandomBgToggle();
         showEmpty();
         // 尝试自动定位（网络检测在 loadByIP 中并行执行）
         try { await loadByIP(true); }

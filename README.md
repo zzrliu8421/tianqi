@@ -57,7 +57,6 @@
   - [和风天气](https://dev.qweather.com/)：AQI 空气质量与城市天气。
   - [IPnews](https://ipnews.io/)：IPv6 网络 IP 定位。
   - [GeoDB Cities](https://geodb-cities-api.wirefreethought.com/)：城市搜索与 IP 定位兜底。
-- **图片源**：随机背景图通过 `https://pic.api.sylv.top/image` 获取。
 
 ---
 
