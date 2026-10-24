@@ -2,16 +2,15 @@
 
 沉浸式天气 Web 应用：IP 定位与城市搜索、实时天气、24 小时 / 7 天预报、空气质量，以及 8 种天气 × 昼夜主题的 Canvas 动态天气背景。
 
-在线体验：<https://weather.sylv.top> 
+在线体验：<https://weather.sylv.top>
 
 ## 功能
 
 - **定位**：打开页面自动 IP 定位（IPv4 / IPv6），支持城市搜索、快捷城市、搜索历史（本地保存 8 条）
 - **天气**：实况（温度 / 体感 / 风速 / 湿度 / 气压 / 紫外线）、24 小时逐时预报、7 天预报、日出日落
-- **空气质量**：PM2.5、PM10、NO₂、O₃ 与 AQI（Open-Meteo 为美国 EPA 标准；配置和风 Key 后切换中国标准）
+- **空气质量**：PM2.5、PM10、NO₂、O₃ 与 AQI
 - **动态背景**：Canvas 2D 渲染的云 / 雨 / 雪 / 雾 / 霾 / 雷暴 / 星空动画，昼夜主题与天气平滑过渡，重力感应视差
 - **无障碍**：aria-live 播报、错误提示 role=alert、键盘可操作的搜索历史与重试按钮
-
 
 ## 项目结构
 
@@ -39,42 +38,37 @@
 
 运行时关系：`index.html` 读取 `config.js` 判断服务端配置了哪些数据源；需要 Key 的请求都发往同源 `/api/*`，由 `server.js`（自建部署）或 `edge-functions/api/[[path]].js`（EdgeOne 部署）补 Key 后转发上游。
 
-
 ## 数据源
 
-| 数据 | 来源 | 说明 |
-|---|---|---|
-| 中国实况 / 地理编码 / IP 定位 | [高德地图](https://lbs.amap.com/) | 需 Key |
-| 中国标准 AQI / 城市搜索 | [和风天气](https://dev.qweather.com/) | 需 Key，可选 |
-| 全球天气 / 预报 / 兜底 AQI | [Open-Meteo](https://open-meteo.com/) | 免 Key，默认兜底 |
-| IPv6 IP 定位 | [IPnews](https://ipnews.io/) | 需 Key，可选 |
-| 城市搜索 / IP 定位兜底 | [GeoDB Cities](https://geodb-cities-api.wirefreethought.com/) | 免 Key |
-
-
+| 数据                  | 来源                                                            | 说明         |
+| ------------------- | ------------------------------------------------------------- | ---------- |
+| 中国实况 / 地理编码 / IP 定位 | [高德地图](https://lbs.amap.com/)                                 | 需 Key      |
+| 中国标准 AQI / 城市搜索     | [和风天气](https://dev.qweather.com/)                             | 需 Key，可选   |
+| 全球天气 / 预报 / 兜底 AQI  | [Open-Meteo](https://open-meteo.com/)                         | 免 Key，默认兜底 |
+| IPv6 IP 定位          | [IPnews](https://ipnews.io/)                                  | 需 Key，可选   |
+| 城市搜索 / IP 定位兜底      | [GeoDB Cities](https://geodb-cities-api.wirefreethought.com/) | 免 Key      |
 
 ## 代理与安全
 
 需要 Key 的请求统一走同源 `/api/*` 代理。`server.js` 与 EdgeOne 边缘函数是两套等价实现，路由表一致：
 
-| 前端请求 | 上游 |
-|---|---|
-| `/api/amap/<path>` | restapi.amap.com（注入 `AMAP_KEY`） |
+| 前端请求                       | 上游                                     |
+| -------------------------- | -------------------------------------- |
+| `/api/amap/<path>`         | restapi.amap.com（注入 `AMAP_KEY`）        |
 | `/api/qweather/geo/<path>` | geoapi.qweather.com（注入 `QWEATHER_KEY`） |
 | `/api/qweather/dev/<path>` | devapi.qweather.com（注入 `QWEATHER_KEY`） |
-| `/api/ipnews/<path>` | ipnews.io（注入 `IPNEWS_KEY`） |
-| `/api/status` | 返回服务端已配置的 provider 布尔值 |
+| `/api/ipnews/<path>`       | ipnews.io（注入 `IPNEWS_KEY`）             |
+| `/api/status`              | 返回服务端已配置的 provider 布尔值                 |
 
 代理侧防护：上游路径白名单（其余 403）、Origin 校验（异源拒绝）、单 IP 限流 90 次 / 分钟（429 + Retry-After）、点开头路径与 `node_modules/` 一律 404；文本资源支持 gzip 与缓存。
 
 ## 部署
 
-| 方式 | 做法 | 适用 |
-|---|---|---|
-| 自建服务器 | 配好 `.env` 后 `npm start`（建议 pm2 / systemd 守护），Nginx 反代到 8787 | 有 VPS / NAT 服务器 |
-| EdgeOne Pages | 控制台配置三个 Key（构建 + 运行环境都勾选），关联仓库即可，构建命令读自 `edgeone.json` | 无服务器、全球加速（本项目线上方式） |
-| 纯静态 | `node build.js` 后托管静态文件 | 仅演示；只能用免 Key 数据源 |
-
-
+| 方式            | 做法                                                          | 适用                 |
+| ------------- | ----------------------------------------------------------- | ------------------ |
+| 自建服务器         | 配好 `.env` 后 `npm start`（建议 pm2 / systemd 守护），Nginx 反代到 8787 | 有 VPS / NAT 服务器    |
+| EdgeOne Pages | 控制台配置三个 Key（构建 + 运行环境都勾选），关联仓库即可，构建命令读自 `edgeone.json`      | 无服务器、全球加速（本项目线上方式） |
+| 纯静态           | `node build.js` 后托管静态文件                                     | 仅演示；只能用免 Key 数据源   |
 
 ## 开发与验证
 
@@ -88,8 +82,6 @@ curl http://localhost:8787/api/status
 ```
 
 人工回归要点：首屏定位成功；快速连点刷新不卡死在骨架屏；8 种天气背景切换正常；昼夜主题随本地时间变化。
-
-
 
 ## 许可证
 
