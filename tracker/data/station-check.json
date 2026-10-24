@@ -1,0 +1,273 @@
+{
+ "generatedAt": "2026-10-24T21:11:03.892Z",
+ "reference": "OM Previous Runs day-0 分析值(项目全部精度指标的实况参照) vs GHCN-Daily 地面站逐日实测",
+ "interpretation": "meanDiff 为「参照 − 站点实测」:|meanDiff| 与 MAE 越小,参照越可信,模式检验模式的质疑越弱",
+ "window": {
+  "start": "2026-08-27",
+  "end": "2026-10-21"
+ },
+ "cities": [
+  {
+   "cityId": "beijing",
+   "city": "北京",
+   "station": {
+    "id": "CHM00054405",
+    "name": "HUAILAI",
+    "lat": 40.417,
+    "lon": 115.5,
+    "distKm": 95.68
+   },
+   "tried": [
+    {
+     "id": "CHM00054511",
+     "distKm": 10.63,
+     "overlap": 0
+    },
+    {
+     "id": "CHM00054405",
+     "distKm": 95.68,
+     "overlap": 11
+    },
+    {
+     "id": "CHM00054527",
+     "distKm": 110.65,
+     "overlap": 11
+    }
+   ],
+   "tmax": {
+    "n": 11,
+    "meanDiff": 3.79,
+    "mae": 3.79,
+    "maxAbs": 8.6
+   },
+   "tmin": {
+    "n": 11,
+    "meanDiff": 5.95,
+    "mae": 5.95,
+    "maxAbs": 10.4
+   },
+   "note": "重叠 11 天,样本偏少"
+  },
+  {
+   "cityId": "shanghai",
+   "city": "上海",
+   "station": {
+    "id": "CHM00058362",
+    "name": "SHANGHAI",
+    "lat": 31.4,
+    "lon": 121.467,
+    "distKm": 18.91
+   },
+   "tried": [
+    {
+     "id": "CHW00043204",
+     "distKm": 1.94,
+     "overlap": 0
+    },
+    {
+     "id": "CHM00058367",
+     "distKm": 7.84,
+     "overlap": 0
+    },
+    {
+     "id": "CHM00058362",
+     "distKm": 18.91,
+     "overlap": 24
+    }
+   ],
+   "tmax": {
+    "n": 24,
+    "meanDiff": 1.95,
+    "mae": 2,
+    "maxAbs": 5.3
+   },
+   "tmin": {
+    "n": 24,
+    "meanDiff": -0.45,
+    "mae": 1.26,
+    "maxAbs": 4.1
+   },
+   "note": "重叠 24 天,样本偏少"
+  },
+  {
+   "cityId": "guangzhou",
+   "city": "广州",
+   "tried": [
+    {
+     "id": "CHM00059287",
+     "distKm": 24.76,
+     "overlap": 0
+    },
+    {
+     "id": "MCM00045011",
+     "distKm": 114.17,
+     "overlap": 0
+    },
+    {
+     "id": "CHM00045004",
+     "distKm": 128.48,
+     "overlap": 0
+    },
+    {
+     "id": "CHM00045005",
+     "distKm": 131.04,
+     "overlap": 0
+    }
+   ],
+   "note": "候选 4 站均无 ≥20 天重叠(站点国际交换滞后)"
+  },
+  {
+   "cityId": "chengdu",
+   "city": "成都",
+   "station": {
+    "id": "CHM00056187",
+    "name": "WENJIANG",
+    "lat": 30.75,
+    "lon": 103.867,
+    "distKm": 27.89
+   },
+   "tried": [
+    {
+     "id": "CHM00056294",
+     "distKm": 11.92,
+     "overlap": 0
+    },
+    {
+     "id": "CHM00056187",
+     "distKm": 27.89,
+     "overlap": 24
+    }
+   ],
+   "tmax": {
+    "n": 24,
+    "meanDiff": -0.23,
+    "mae": 1.16,
+    "maxAbs": 2.8
+   },
+   "tmin": {
+    "n": 24,
+    "meanDiff": -0.08,
+    "mae": 0.84,
+    "maxAbs": 2.7
+   },
+   "note": "重叠 24 天,样本偏少"
+  },
+  {
+   "cityId": "nanyang",
+   "city": "南阳",
+   "station": {
+    "id": "CHM00057265",
+    "name": "GUANGHUA",
+    "lat": 32.383,
+    "lon": 111.667,
+    "distKm": 105.25
+   },
+   "tried": [
+    {
+     "id": "CHM00057265",
+     "distKm": 105.25,
+     "overlap": 24
+    }
+   ],
+   "tmax": {
+    "n": 24,
+    "meanDiff": 1.06,
+    "mae": 1.8,
+    "maxAbs": 4.2
+   },
+   "tmin": {
+    "n": 24,
+    "meanDiff": 0.47,
+    "mae": 1.15,
+    "maxAbs": 3.7
+   },
+   "note": "重叠 24 天,样本偏少"
+  },
+  {
+   "cityId": "newyork",
+   "city": "纽约",
+   "station": {
+    "id": "USW00094728",
+    "name": "NY CITY CNTRL PARK",
+    "lat": 40.7789,
+    "lon": -73.9692,
+    "distKm": 8.4
+   },
+   "tried": [
+    {
+     "id": "USC00305816",
+     "distKm": 0.36,
+     "overlap": 0
+    },
+    {
+     "id": "USC00309580",
+     "distKm": 0.36,
+     "overlap": 0
+    },
+    {
+     "id": "US1NYNY0078",
+     "distKm": 3.42,
+     "overlap": 0
+    },
+    {
+     "id": "US1NYKN0025",
+     "distKm": 3.44,
+     "overlap": 0
+    },
+    {
+     "id": "US1NJHD0023",
+     "distKm": 4.27,
+     "overlap": 0
+    },
+    {
+     "id": "USC00300958",
+     "distKm": 5.18,
+     "overlap": 0
+    },
+    {
+     "id": "USC00284339",
+     "distKm": 5.33,
+     "overlap": 0
+    },
+    {
+     "id": "US1NYNY0082",
+     "distKm": 5.88,
+     "overlap": 0
+    },
+    {
+     "id": "US1NYKN0059",
+     "distKm": 6.05,
+     "overlap": 0
+    },
+    {
+     "id": "USC00304632",
+     "distKm": 6.96,
+     "overlap": 0
+    },
+    {
+     "id": "USC00305804",
+     "distKm": 6.96,
+     "overlap": 0
+    },
+    {
+     "id": "USW00094728",
+     "distKm": 8.4,
+     "overlap": 55
+    }
+   ],
+   "tmax": {
+    "n": 55,
+    "meanDiff": 0.89,
+    "mae": 1.05,
+    "maxAbs": 2.6
+   },
+   "tmin": {
+    "n": 55,
+    "meanDiff": -0.19,
+    "mae": 0.8,
+    "maxAbs": 2.7
+   },
+   "note": ""
+  }
+ ]
+}

@@ -15,6 +15,7 @@ tracker/
 ├── report.js            # 汇总 MAE / 偏差 / 降水命中率 POD / 空报率 FAR + 融·数据驱动权重
 ├── report-models.js     # 多模式指标汇总(城市 × 模式矩阵)
 ├── report-sources.js    # 多源汇总:高德+和风/彩云(取 data/sources)+ OM(取 data/backfill)
+├── station-check.js     # 校:GHCN 地面站实测对照,量化 OM day-0 实况参照自身的不确定性
 ├── official-aqi.js      # 官方值对照:每日国标 AQI 同屏抽查(自算/彩云自动,天气网人工补录)
 ├── make_charts.py       # 证据图表(误差趋势 / 分城市技巧),依赖 matplotlib
 ├── make_charts_extra.py # 多模式与多商业源图表
@@ -29,6 +30,8 @@ tracker/
 │   ├── summary-models.json # 多模式汇总
 │   ├── summary-sources.json # 多商业源汇总
 │   ├── weights.json     # 融·数据驱动权重(report.js 生成,前端加权融合直接消费)
+│   ├── station-map.json # 城市→GHCN 候选站映射(缓存,免重复下载全站清单)
+│   ├── station-check.{json,md} # 站点对照结论(整窗重算,幂等覆盖)
 │   └── official-check.md # 官方值对照记录(AQI 校准证据链,按日幂等)
 ├── reports/             # 最终产物(图表 PNG + 汇总/逐日 CSV,附件素材)
 └── archive/             # 过程性/临时文件归档(见 archive/README.md,均可由脚本重新生成)
@@ -77,6 +80,12 @@ tracker/
 
 前端消费方式:`index.html` 启动时 fetch `tracker/data/weights.json`(失败退回内置默认值,离线演示可用),`crossValidate` 升级为加权融合——主源 + 独立对证源(高德/和风同源只取一)按权重融合明日/第三天最高最低温,超阈值挂"多源分歧"角标,正常融合时挂淡色"加权融合"徽标披露数据加工方式。
 
+## 校 · 观测站实况对照(station-check.js)
+
+所有精度指标都用 OM day-0 分析值作"实况参照",它本质仍是模式场——"模式检验模式"是方法论上最容易被质疑的点。`station-check.js` 用 NOAA **GHCN-Daily 地面站逐日实测**(免 Key,NCEI Data Service)与同一窗口的参照对比,量化参照自身的不确定性:站点自动就近匹配(全站清单缓存至 `data/station-map.json`,每城按距离试候选直到重叠 ≥20 天,无达标站时退用重叠最多者并注明样本不足)。
+
+窗口 2026-08-27~10-21 的实测结论:纽约 Central Park 站(8.4km,重叠 55 天)参照平均偏高 **+0.89°C**、MAE 1.05°C;上海 24 天重叠平均差 +1.95°C(样本偏少);成都 -0.23°C;北京/广州因中国站国际交换滞后暂无足够重叠。**解读:参照不确定性约 1°C 量级,与前端误差带(±0.7~1.2°C)同量级——指标相对大小(谁准谁差)不受参照选择影响,绝对值需带着这个不确定度解读。** 重跑:`node tracker/station-check.js`(CI 每日自动)。
+
 ## 官方值对照记录(data/official-check.md)
 
 `official-aqi.js` 每日对 6 城做国标 AQI 同屏对照:**自算**(彩云六项实时浓度 → HJ 633-2012,与前端 calcCNAQI 同一套断点)vs **彩云上报**(aqi.chn)vs **中国天气网**(人工补录列)。注意自算输入是实时浓度(与页面展示同口径,非官方逐日 24h 均值),差值本身即记录对象。和风空气接口 v7/air/now 已在专属 Host 废弃(403 Deprecated,新版需 JWT),探测失败自动跳过该列,迁移后自动恢复。
@@ -90,7 +99,9 @@ node tracker/backfill.js        # 回填最近 8 周(可传起止日期参数)
 node tracker/live-import.js     # 一次性:回溯窗口 → live 格式(55 天,已执行;重跑只补缺失)
 node tracker/record.js          # 每天 1 次,记录各源今日预报(缺 Key 的源自动跳过)
 node tracker/compare.js         # 每天 1 次,对比昨日记录(需昨日已有记录)
-node tracker/report.js          # 随时重跑,汇总 data/ 生成 summary.json 与 CSV
+node tracker/report.js          # 随时重跑,汇总 data/ 生成 summary.json 与 CSV(含融合权重)
+node tracker/station-check.js   # 观测站对照:量化 OM day-0 参照自身不确定性(免 Key)
+node tracker/official-aqi.js    # 官方值对照:国标 AQI 同屏抽查,追加当日小节
 python tracker/make_charts.py   # 生成 reports/*.png 图表
 ```
 
@@ -98,7 +109,7 @@ python tracker/make_charts.py   # 生成 reports/*.png 图表
 
 ## 定时运行(GitHub Actions,已上线)
 
-工作流文件:`.github/workflows/track.yml`——每天北京时间 00:10 自动执行:record 存档当日各源预报 → 对最近 3 天逐日 compare(day-0 实况有 2~3 天延迟,幂等合并,数据到齐自动补上)→ report 重算汇总与融合权重 → official-aqi 官方值对照 → 数据 commit 回仓库(2026-10-25 已验证全链路跑通)。
+工作流文件:`.github/workflows/track.yml`——每天北京时间 00:10 自动执行:record 存档当日各源预报 → 对最近 3 天逐日 compare(day-0 实况有 2~3 天延迟,幂等合并,数据到齐自动补上)→ report 重算汇总与融合权重 → official-aqi 官方值对照 → station-check 观测站对照 → 数据 commit 回仓库(2026-10-25 已验证全链路跑通)。
 
 Secrets 已配置:`AMAP_KEY` / `CAIYUN_TOKEN` / `QWEATHER_KEY` / `QWEATHER_HOST`。核心配置:
 
@@ -131,6 +142,7 @@ jobs:
           CAIYUN_TOKEN: ${{ secrets.CAIYUN_TOKEN }}
           QWEATHER_KEY: ${{ secrets.QWEATHER_KEY }}
           QWEATHER_HOST: ${{ secrets.QWEATHER_HOST }}
+      - run: node tracker/station-check.js || true  # 观测站对照(免 Key,失败不影响整体)
       - run: |
           git config user.name "tracker-bot" && git config user.email "tracker-bot@users.noreply.github.com"
           git add tracker/data && git commit -m "tracker: $(date -u +%F) 日常预报记录与对比" || true

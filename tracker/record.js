@@ -140,6 +140,17 @@ async function fetchQWeather(city, key, host, d1Date, d3Date) {
 
 const fmtFc = (d) => d ? `${d.tmax}/${d.tmin}°C${d.precipProb != null ? ` ${d.precipProb}%` : ''}` : '无';
 
+// 单源失败自动重试一次:CI 出口网络偶发抖动(如 Actions 到高德 restapi 的连接),
+// 间隔 1.5s 重试常能救回;两次都失败才记 error。幂等请求,重试无副作用。
+async function withRetry(fn, label) {
+  try { return await fn(); }
+  catch (e) {
+    console.log(`  ↻ ${label} 首次失败(${String(e.message || e).slice(0, 60)}),1.5s 后重试`);
+    await sleep(1500);
+    return fn();
+  }
+}
+
 async function main() {
   const env = loadEnv();
   const date = todayIn(BASE_TZ);
@@ -160,7 +171,7 @@ async function main() {
     ];
     for (const [name, fn] of tasks) {
       try {
-        const r = await fn();
+        const r = await withRetry(fn, name);
         if (r) {
           sources.push(r.d3 ? r : { ...r, note: '该源未覆盖 D+3' });
           console.log(`  ${city.city} ${name.padEnd(9)} D+1 ${fmtFc(r.d1)} | D+3 ${fmtFc(r.d3)}`);

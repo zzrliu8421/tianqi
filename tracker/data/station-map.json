@@ -1,0 +1,224 @@
+{
+ "beijing": [
+  {
+   "id": "CHM00054511",
+   "name": "BEIJING",
+   "lat": 39.933,
+   "lon": 116.283,
+   "distKm": 10.63
+  },
+  {
+   "id": "CHM00054405",
+   "name": "HUAILAI",
+   "lat": 40.417,
+   "lon": 115.5,
+   "distKm": 95.68
+  },
+  {
+   "id": "CHM00054527",
+   "name": "TIANJIN",
+   "lat": 39.1,
+   "lon": 117.167,
+   "distKm": 110.65
+  }
+ ],
+ "shanghai": [
+  {
+   "id": "CHW00043204",
+   "name": "HUNG CHIA",
+   "lat": 31.2333,
+   "lon": 121.45,
+   "distKm": 1.94
+  },
+  {
+   "id": "CHM00058367",
+   "name": "SHANGHAI/HONGQIAO",
+   "lat": 31.167,
+   "lon": 121.433,
+   "distKm": 7.84
+  },
+  {
+   "id": "CHM00058362",
+   "name": "SHANGHAI",
+   "lat": 31.4,
+   "lon": 121.467,
+   "distKm": 18.91
+  },
+  {
+   "id": "CHM00058477",
+   "name": "DINGHAI",
+   "lat": 30.033,
+   "lon": 122.117,
+   "distKm": 146.79
+  }
+ ],
+ "guangzhou": [
+  {
+   "id": "CHM00059287",
+   "name": "GUANGZHOU",
+   "lat": 23.217,
+   "lon": 113.483,
+   "distKm": 24.76
+  },
+  {
+   "id": "MCM00045011",
+   "name": "MACAU INTL",
+   "lat": 22.15,
+   "lon": 113.592,
+   "distKm": 114.17
+  },
+  {
+   "id": "CHM00045004",
+   "name": "KING'S PARK",
+   "lat": 22.333,
+   "lon": 114.167,
+   "distKm": 128.48
+  },
+  {
+   "id": "CHM00045005",
+   "name": "HONG KONG OBSERVATORY",
+   "lat": 22.3,
+   "lon": 114.167,
+   "distKm": 131.04
+  }
+ ],
+ "chengdu": [
+  {
+   "id": "CHM00056294",
+   "name": "CHENGDU",
+   "lat": 30.667,
+   "lon": 104.017,
+   "distKm": 11.92
+  },
+  {
+   "id": "CHM00056187",
+   "name": "WENJIANG",
+   "lat": 30.75,
+   "lon": 103.867,
+   "distKm": 27.89
+  }
+ ],
+ "nanyang": [
+  {
+   "id": "CHM00057265",
+   "name": "GUANGHUA",
+   "lat": 32.383,
+   "lon": 111.667,
+   "distKm": 105.25
+  },
+  {
+   "id": "CHM00057290",
+   "name": "ZHUMADIAN",
+   "lat": 33,
+   "lon": 114.017,
+   "distKm": 138.68
+  }
+ ],
+ "newyork": [
+  {
+   "id": "USC00305816",
+   "name": "WORLD TRADE CTR",
+   "lat": 40.7106,
+   "lon": -74.0142,
+   "distKm": 0.36
+  },
+  {
+   "id": "USC00309580",
+   "name": "WORLD TRADE CTR",
+   "lat": 40.7103,
+   "lon": -74.0142,
+   "distKm": 0.36
+  },
+  {
+   "id": "US1NYNY0078",
+   "name": "STUYVESANT SQUARE PARK - NEW Y",
+   "lat": 40.7339,
+   "lon": -73.9844,
+   "distKm": 3.42
+  },
+  {
+   "id": "US1NYKN0025",
+   "name": "BROOKLYN 3.1 NW",
+   "lat": 40.6846,
+   "lon": -73.9867,
+   "distKm": 3.44
+  },
+  {
+   "id": "US1NJHD0023",
+   "name": "JERSEY CITY 1.6 NNE",
+   "lat": 40.7326,
+   "lon": -74.051,
+   "distKm": 4.27
+  },
+  {
+   "id": "USC00300958",
+   "name": "BROOKLYN",
+   "lat": 40.6892,
+   "lon": -73.955,
+   "distKm": 5.18
+  },
+  {
+   "id": "USC00284339",
+   "name": "JERSEY CITY",
+   "lat": 40.7419,
+   "lon": -74.0572,
+   "distKm": 5.33
+  },
+  {
+   "id": "US1NYNY0082",
+   "name": "MATTHEWS PALMER PLAYGROUND - N",
+   "lat": 40.7613,
+   "lon": -73.9929,
+   "distKm": 5.88
+  },
+  {
+   "id": "US1NYKN0059",
+   "name": "BROOKLYN 2.4 WSW",
+   "lat": 40.6597,
+   "lon": -73.9828,
+   "distKm": 6.05
+  },
+  {
+   "id": "USC00304632",
+   "name": "LAUREL HILL",
+   "lat": 40.7333,
+   "lon": -73.9333,
+   "distKm": 6.96
+  },
+  {
+   "id": "USC00305804",
+   "name": "NEW YORK LAUREL HILL",
+   "lat": 40.7333,
+   "lon": -73.9333,
+   "distKm": 6.96
+  },
+  {
+   "id": "USW00094728",
+   "name": "NY CITY CNTRL PARK",
+   "lat": 40.7789,
+   "lon": -73.9692,
+   "distKm": 8.4
+  },
+  {
+   "id": "US1NJHD0016",
+   "name": "SECAUCUS 0.8 NNE",
+   "lat": 40.7913,
+   "lon": -74.0603,
+   "distKm": 9.98
+  },
+  {
+   "id": "US1NYKN0003",
+   "name": "BROOKLYN 2.4 SW",
+   "lat": 40.6194,
+   "lon": -73.9859,
+   "distKm": 10.28
+  },
+  {
+   "id": "US1NJHD0017",
+   "name": "SECAUCUS 1.2 NNE",
+   "lat": 40.797,
+   "lon": -74.0557,
+   "distKm": 10.41
+  }
+ ]
+}
