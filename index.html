@@ -1212,6 +1212,12 @@
             grid-template-columns: repeat(3, 1fr);
             gap: var(--space-3);
         }
+        /* 智 · AI 生活建议(无内容时完全隐藏,不占位) */
+        .ai-advice { display: none; margin-top: var(--space-3); padding-top: var(--space-3); border-top: 1px dashed var(--border-1); }
+        .ai-advice.show { display: block; }
+        .ai-summary { font-size: .92rem; font-weight: 600; margin-bottom: var(--space-2); }
+        .ai-tips { margin: 0; padding-left: 1.2em; display: grid; gap: .35em; font-size: .86rem; opacity: .92; }
+        .ai-note { margin-top: var(--space-2); font-size: .68rem; opacity: .55; }
         .life-tip-card {
             background: var(--glass-1);
             border: 1px solid var(--border-1);
@@ -2274,8 +2280,22 @@
         const y = 0.5 - Math.sin(t * Math.PI) * 0.42;
         return { x, y, visible: true };
     }
+    // 当前展示城市的 UTC 偏移(秒);null 表示未定位,按设备时间
+    let _locOffsetSec = null;
+
+    // 展示城市的"钟表时间"时分(按城市时区),供昼夜主题/日照弧使用
+    function locNowParts() {
+        if (_locOffsetSec != null) {
+            const d = new Date(Date.now() + _locOffsetSec * 1000);
+            return { h: d.getUTCHours(), m: d.getUTCMinutes() };
+        }
+        const d = new Date();
+        return { h: d.getHours(), m: d.getMinutes() };
+    }
+
     function updateDayNight() {
-        _hour = new Date().getHours() + new Date().getMinutes() / 60;
+        const p = locNowParts();
+        _hour = p.h + p.m / 60;
         _dayFactor = getDayFactor(_hour);
         _sunPos = getSunPosition(_hour);
     }
@@ -3578,18 +3598,21 @@
     }
 
     function getWeekday(date) {
-        const d = date ? new Date(date) : new Date();
+        // 'YYYY-MM-DD' 若按 UTC 解析,负时区会错一天;统一按本地正午解析
+        const d = date ? new Date(date.length === 10 ? date + 'T12:00' : date) : new Date();
         const days = ['周日', '周一', '周二', '周三', '周四', '周五', '周六'];
         return days[d.getDay()];
     }
 
     function formatTime(date) {
+        // OM/彩云返回的本地时间字符串直接截取,避免跨时区解析错位
+        if (typeof date === 'string' && date.includes('T')) return date.slice(11, 16);
         const d = new Date(date);
         return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
     }
 
     function formatDate(d) {
-        const date = new Date(d);
+        const date = new Date(typeof d === 'string' && d.length === 10 ? d + 'T12:00' : d);
         return `${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
     }
 
@@ -3757,7 +3780,8 @@
     }
 
     async function fetchOpenMeteoAQI(lat, lon, signal) {
-        const url = `https://air-quality-api.open-meteo.com/v1/air-quality?latitude=${lat}&longitude=${lon}&current=us_aqi,pm10,pm2_5,nitrogen_dioxide,ozone`;
+        // 取六项污染物浓度,中国 AQI 由前端按 HJ 633-2012 自算,不再使用 us_aqi
+        const url = `https://air-quality-api.open-meteo.com/v1/air-quality?latitude=${lat}&longitude=${lon}&current=pm10,pm2_5,nitrogen_dioxide,sulphur_dioxide,ozone,carbon_monoxide`;
         return fetchJSON(url, { signal }).catch(() => null);
     }
 
@@ -3765,15 +3789,19 @@
         if (!data.current) throw new Error('Open-Meteo 数据异常');
         const cur = data.current;
         const weather = wmoText(cur.weather_code);
-        const now = new Date();
+        // 时区修复:OM 返回的是地点本地钟表时间(无偏移),按浏览器时区解析会导致
+        // 24 小时列表错位/昼夜主题错乱,统一换算到"当地钟表时间轴"再比较(docs 失真②)
+        const offSec = data.utc_offset_seconds ?? 0;
+        const nowLoc = Date.now() + offSec * 1000;
         let currentPop = null;
         const hourly = [];
         for (let i = 0; i < (data.hourly?.time?.length || 0); i++) {
-            const t = new Date(data.hourly.time[i]);
-            if (t < now) continue;
+            const tStr = data.hourly.time[i];
+            const tLoc = Date.parse(tStr.length === 16 ? tStr + ':00Z' : tStr + 'Z');
+            if (tLoc < nowLoc - 60000) continue;
             if (hourly.length >= 24) break;
             const pop = data.hourly.precipitation_probability[i];
-            if (currentPop === null && Math.abs(t.getTime() - now.getTime()) < 3600000) currentPop = pop;
+            if (currentPop === null && Math.abs(tLoc - nowLoc) < 3600000) currentPop = pop;
             hourly.push({
                 time: data.hourly.time[i],
                 label: formatTime(data.hourly.time[i]),
@@ -3806,6 +3834,7 @@
                 lat: loc.lat,
                 lon: loc.lon,
                 timezone: data.timezone || loc.timezone || 'UTC',
+                utcOffsetSec: data.utc_offset_seconds ?? null,
             },
             current: {
                 temp: cur.temperature_2m,
@@ -3829,14 +3858,65 @@
         };
     }
 
+    // ============ 中国 AQI 自算(HJ 633-2012)============
+    // IAQI 分段线性插值断点表:浓度(24h 均值,O₃ 为 8h 滑动)→ IAQI
+    // CO 单位 mg/m³(Open-Meteo 为 µg/m³,入口处换算);O₃ 超 800µg/m³ 按 300+ 封顶展示
+    const CN_AQI_BREAKPOINTS = {
+        pm25: [[0, 0], [35, 50], [75, 100], [115, 150], [150, 200], [250, 300], [350, 400], [500, 500]],
+        pm10: [[0, 0], [50, 50], [150, 100], [250, 150], [350, 200], [420, 300], [500, 400], [600, 500]],
+        so2:  [[0, 0], [50, 50], [150, 100], [475, 150], [800, 200], [1600, 300], [2100, 400], [2620, 500]],
+        no2:  [[0, 0], [40, 50], [80, 100], [180, 150], [280, 200], [565, 300], [750, 400], [940, 500]],
+        co:   [[0, 0], [2, 50], [4, 100], [14, 150], [24, 200], [36, 300], [48, 400], [60, 500]],
+        o3:   [[0, 0], [100, 50], [160, 100], [215, 150], [265, 200], [800, 300]],
+    };
+    const CN_AQI_NAMES = { pm25: 'PM2.5', pm10: 'PM10', so2: 'SO₂', no2: 'NO₂', co: 'CO', o3: 'O₃' };
+
+    function iaqiOf(bps, c) {
+        if (c == null || !isFinite(c) || c < 0) return null;
+        if (c >= bps[bps.length - 1][0]) return bps[bps.length - 1][1];
+        for (let i = 1; i < bps.length; i++) {
+            const [cLo, iLo] = bps[i - 1], [cHi, iHi] = bps[i];
+            if (c <= cHi) return Math.round(((iHi - iLo) / (cHi - cLo)) * (c - cLo) + iLo);
+        }
+        return null;
+    }
+
+    // 输入六项浓度(µg/m³),返回 { aqi, primary } 或 null
+    function calcCNAQI({ pm25, pm10, so2, no2, co, o3 }) {
+        const items = [
+            ['pm25', pm25], ['pm10', pm10], ['so2', so2],
+            ['no2', no2], ['co', co != null ? co / 1000 : null], ['o3', o3],
+        ];
+        let aqi = null, primaryKey = null;
+        for (const [key, val] of items) {
+            const iaqi = iaqiOf(CN_AQI_BREAKPOINTS[key], val);
+            if (iaqi == null) continue;
+            if (aqi == null || iaqi > aqi) { aqi = iaqi; primaryKey = key; }
+        }
+        if (aqi == null) return null;
+        // 技术规定:IAQI > 50 时才报告首要污染物
+        const primary = aqi > 50 ? CN_AQI_NAMES[primaryKey] : null;
+        return { aqi, primary };
+    }
+
     function mergeAQI(target, aqiData) {
         const current = aqiData?.current;
         if (!current) return target;
-        target.current.aqi = current.us_aqi != null ? parseInt(current.us_aqi) : target.current.aqi;
         target.current.aqiPm25 = current.pm2_5 != null ? parseFloat(current.pm2_5).toFixed(1) : target.current.aqiPm25;
         target.current.aqiPm10 = current.pm10 != null ? parseFloat(current.pm10).toFixed(1) : target.current.aqiPm10;
         target.current.aqiNo2 = current.nitrogen_dioxide != null ? parseFloat(current.nitrogen_dioxide).toFixed(1) : target.current.aqiNo2;
+        target.current.aqiSo2 = current.sulphur_dioxide != null ? parseFloat(current.sulphur_dioxide).toFixed(1) : target.current.aqiSo2;
         target.current.aqiO3 = current.ozone != null ? parseFloat(current.ozone).toFixed(1) : target.current.aqiO3;
+        target.current.aqiCo = current.carbon_monoxide != null ? parseFloat(current.carbon_monoxide).toFixed(1) : target.current.aqiCo;
+        const cn = calcCNAQI({
+            pm25: current.pm2_5, pm10: current.pm10, so2: current.sulphur_dioxide,
+            no2: current.nitrogen_dioxide, co: current.carbon_monoxide, o3: current.ozone,
+        });
+        if (cn) {
+            target.current.aqi = cn.aqi;
+            target.current.aqiPrimary = cn.primary;
+            target.current.aqiStandard = 'HJ 633-2012 自算';
+        }
         return target;
     }
 
@@ -3900,6 +3980,7 @@
                 uv: null,
                 precipProbability: hr.precipitation?.[0]?.probability != null ? Math.round(hr.precipitation[0].probability) : null,
                 aqi: aq.aqi?.chn != null ? parseInt(aq.aqi.chn) : null,
+                aqiStandard: aq.aqi?.chn != null ? '中国国标(彩云)' : null,
                 aqiPm25: aq.pm25 ?? null,
                 aqiPm10: aq.pm10 ?? null,
                 aqiNo2: aq.no2 ?? null,
@@ -4117,6 +4198,7 @@
                         lat: loc.lat,
                         lon: loc.lon,
                         timezone: 'Asia/Shanghai',
+                        utcOffsetSec: enriched?.location?.utcOffsetSec ?? 8 * 3600,
                     },
                     current: {
                         temp,
@@ -4136,6 +4218,8 @@
                         aqiPm10: enriched?.current?.aqiPm10 ?? null,
                         aqiNo2: enriched?.current?.aqiNo2 ?? null,
                         aqiO3: enriched?.current?.aqiO3 ?? null,
+                        aqiStandard: enriched?.current?.aqiStandard ?? null,
+                        aqiPrimary: enriched?.current?.aqiPrimary ?? null,
                     },
                     hourly: enriched?.hourly || [],
                     daily,
@@ -4389,6 +4473,30 @@
         return HMT_KEYWORDS.some(k => text.includes(k));
     }
 
+    // ===================== 融 · 多源交叉验证(静态权重版) =====================
+    // 主源成功后,再用一个独立数据源核对"明日最高气温";分歧 >2°C 时
+    // 在 UI 挂"双源分歧"角标,一致则不打扰。验证失败静默,绝不影响主链路。
+    // 选源规则:主源=高德(其预报本身来自 Open-Meteo)→ 用彩云对证;
+    // 主源=彩云/和风(自有模式)→ 用 Open-Meteo 对证。
+    async function crossValidate(location, data, signal) {
+        try {
+            const mainD1 = data.daily?.[1]?.maxTemp;
+            if (mainD1 == null) return;
+            const pick = data._provider === '高德地图' ? 'caiyun' : 'openmeteo';
+            const p = Providers[pick];
+            if (!p || !p.available() || !p.getWeather) return;
+            const withTimeout = Promise.race([
+                p.getWeather(location, signal),
+                new Promise((_, rej) => setTimeout(() => rej(new Error('交叉验证超时')), 3500)),
+            ]);
+            const other = await withTimeout;
+            const otherD1 = other?.daily?.[1]?.maxTemp;
+            if (otherD1 == null) return;
+            const dTmax = Math.round((otherD1 - mainD1) * 10) / 10;
+            data._crossCheck = { other: p.name, mainD1: Math.round(mainD1), otherD1: Math.round(otherD1), dTmax, shown: Math.abs(dTmax) > 2 };
+        } catch (e) { /* 静默:交叉验证只是增强信息,不能成为失败点 */ }
+    }
+
     const WeatherService = {
         async locateIP(signal) {
             // 分流策略（优化版，减少中国大陆用户的串行步骤）：
@@ -4614,6 +4722,8 @@
                     if (data) {
                         data._provider = p.name;
                         data._ipv6 = p.ipv6;
+                        // 融 · 交叉验证(静默增强,失败不影响返回)
+                        await crossValidate(location, data, signal);
                         // 写入缓存
                         _weatherCache.set(cacheKey, { data, ts: now });
                         return data;
@@ -4709,13 +4819,36 @@
     }
 
     // ===================== 渲染各模块 =====================
+    // 示 · 来源透明:主源 → 完整数据链路说明(悬停徽章可见)
+    function providerChainLabel(data) {
+        const p = data._provider;
+        if (p === '高德地图') return '实况:高德(观测加工) · 预报/AQI:Open-Meteo(AQI 按 HJ 633-2012 自算)';
+        if (p === '彩云天气') return '实况/预报/AQI:彩云天气(短临近散,中国国标 AQI)';
+        if (p === '和风天气') return '实况/预报:和风天气';
+        if (p === 'Open-Meteo') return '实况/预报:Open-Meteo(数值模式) · AQI 按 HJ 633-2012 自算';
+        return p || '';
+    }
+    // 观测值 / 模式值:实况数据的性质标注
+    function obsKindLabel(data) {
+        const p = data._provider;
+        if (p === '高德地图') return '实况·观测';
+        if (p === '彩云天气') return '实况·短临';
+        if (p === '和风天气') return '实况·观测';
+        return '实况·模式值';
+    }
+
     function renderCurrentHead(data) {
         const loc = data.location;
         const cur = data.current;
         const d0 = data.daily?.[0] || {};
         const comfort = getComfort(cur.temp);
         const weatherType = resolveWeatherType(cur);
-        const providerBadge = data._provider ? `<span class="provider-badge">${ICONS.globe}<span>${escapeHTML(data._provider)}</span></span>` : '';
+        const providerBadge = data._provider ? `<span class="provider-badge" title="${escapeHTML(providerChainLabel(data))}">${ICONS.globe}<span>${escapeHTML(data._provider)}</span></span><span class="provider-badge" style="opacity:.8" title="${escapeHTML(obsKindLabel(data))}">${escapeHTML(obsKindLabel(data))}</span>` : '';
+        // 融 · 分歧角标:与第二来源对明日气温的交叉验证结果(>2°C 才展示)
+        const cc = data._crossCheck;
+        const crossChip = cc && cc.shown
+            ? `<span class="provider-badge" style="background:rgba(251,191,36,.25);color:#fbbf24" title="多源交叉验证:${escapeHTML(cc.other)} 预计明日最高 ${cc.dTmax > 0 ? '高' : '低'} ${Math.abs(cc.dTmax)}°C(主源 ${cc.mainD1}° / ${cc.other} ${cc.otherD1}°)">双源分歧 ${cc.dTmax > 0 ? '+' : ''}${cc.dTmax}°</span>`
+            : '';
         const countryBadge = `<span class="country-badge">${escapeHTML(countryBadgeLabel(loc))}</span>`;
         return `
             <div class="current-head">
@@ -4724,6 +4857,7 @@
                         <span>${escapeHTML(loc.city)}</span>
                         ${countryBadge}
                         ${providerBadge}
+                        ${crossChip}
                     </div>
                     <div class="location-meta">
                         ${loc.province ? `<span>${escapeHTML(loc.province)}</span>` : ''}
@@ -4810,9 +4944,10 @@
                     </svg>
                     <div class="aqi-ring-text"><span>${current.aqi}</span><small>AQI</small></div>
                 </div>
-                <div class="aqi-info">
+                    <div class="aqi-info">
                     <div class="aqi-level">${info.level}</div>
                     <div class="aqi-desc">${info.desc}</div>
+                    ${current.aqiStandard ? `<div style="font-size:.66rem;opacity:.65;margin-top:2px">${escapeHTML(current.aqiStandard)}${current.aqiPrimary ? ` · 首要污染物 ${escapeHTML(current.aqiPrimary)}` : ''}</div>` : ''}
                     ${pollutants.length ? `<div class="aqi-pollutants">${pollutants.map(p => `<span class="aqi-pollutant">${p}</span>`).join('')}</div>` : ''}
                 </div>
             </div>
@@ -4823,13 +4958,13 @@
         if (!daily0?.sunrise && !daily0?.sunset) return '';
         const sunrise = daily0.sunrise || '06:00';
         const sunset = daily0.sunset || '18:00';
-        // 计算日照进度
-        const now = new Date();
+        // 计算日照进度(按展示城市的钟表时间)
         const [sh, sm] = sunrise.split(':').map(Number);
         const [eh, em] = sunset.split(':').map(Number);
         const sunriseMin = sh * 60 + sm;
         const sunsetMin = eh * 60 + em;
-        const nowMin = now.getHours() * 60 + now.getMinutes();
+        const np = locNowParts();
+        const nowMin = np.h * 60 + np.m;
         const dayLen = sunsetMin - sunriseMin || 1;
         let progress = 0;
         let isDay = false;
@@ -5017,13 +5152,60 @@
                         </div>
                     `).join('')}
                 </div>
+                <div id="ai-advice" class="ai-advice" aria-live="polite"></div>
             </div>
         `;
     }
 
+    // ===================== 智 · AI 生活建议(数据接地)=====================
+    // 输入:当前渲染使用的校准/融合后结构化数据(与页面展示同源);
+    // 服务端 /api/ai/advice 代理大模型并做数值校验,失败时本区块静默隐藏
+    // (规则版生活提示仍然在页面上,不出现空态)。
+    async function loadAIAdvice(data) {
+        const box = document.getElementById('ai-advice');
+        if (!box || !data?.current) return;
+        const np = locNowParts();
+        const payload = {
+            city: data.location?.city || '',
+            data: {
+                temp: Math.round(data.current.temp * 10) / 10,
+                feelsLike: data.current.feelsLike != null ? Math.round(data.current.feelsLike) : null,
+                weather: data.current.weather || '',
+                humidity: data.current.humidity ?? null,
+                windSpeed: data.current.windSpeed != null ? Math.round(data.current.windSpeed) : null,
+                uv: data.current.uv ?? null,
+                pop: data.current.precipProbability ?? null,
+                aqi: data.current.aqi ?? null,
+                pm25: data.current.aqiPm25 != null ? Math.round(data.current.aqiPm25) : null,
+                tmax: data.daily?.[0]?.maxTemp != null ? Math.round(data.daily[0].maxTemp) : null,
+                tmin: data.daily?.[0]?.minTemp != null ? Math.round(data.daily[0].minTemp) : null,
+                month: new Date().getMonth() + 1,
+                hour: np.h,
+            },
+        };
+        try {
+            const res = await fetchJSON(`${CONFIG.API_BASE}/api/ai/advice`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload),
+                timeout: 15000,
+            });
+            // 服务端无 Key/校验失败时返回规则版;规则版与页面既有建议重复,不重复渲染
+            if (!res || res.mode !== 'ai' || !res.tips?.length) return;
+            box.innerHTML = `
+                <div class="ai-summary">${escapeHTML(res.summary || '')}</div>
+                <ul class="ai-tips">${res.tips.map(t => `<li>${escapeHTML(t)}</li>`).join('')}</ul>
+                <div class="ai-note">建议由 AI 基于当前实测数据生成,仅供参考</div>
+            `;
+            box.classList.add('show');
+        } catch (e) { /* 静默降级:保留规则版建议 */ }
+    }
+
     function renderHourly(hourly) {
         if (!hourly?.length) return '';
-        const nowLabel = formatTime(new Date());
+        // "现在"高亮按展示城市的钟表时间对齐(跨时区不错位)
+        const np = locNowParts();
+        const nowLabel = `${String(np.h).padStart(2, '0')}:${String(np.m).padStart(2, '0')}`;
         const cards = hourly.slice(0, 24).map((h, i) => {
             const isNow = i === 0 || h.label === nowLabel;
             return `
@@ -5048,6 +5230,9 @@
 
     function renderDaily(daily) {
         if (!daily?.length) return '';
+        // 示 · 误差带:来自 tracker 8 周 6 城回溯(336 城市日)的实测 MAE,
+        // 明日 ±0.8°C 起,第三天起 ±1.1°C(tracker/data/summary.json)
+        const BAND = [0.8, 0.8, 1.0, 1.1, 1.1, 1.1, 1.1];
         let minAll = Infinity, maxAll = -Infinity;
         daily.forEach(d => { if (d.minTemp != null) minAll = Math.min(minAll, d.minTemp); if (d.maxTemp != null) maxAll = Math.max(maxAll, d.maxTemp); });
         const range = maxAll - minAll || 1;
@@ -5063,7 +5248,7 @@
                         <div>${escapeHTML(d.weather || '--')}</div>
                         <div class="f-pop">${fmtPop(d.precipProbability)}</div>
                     </div>
-                    <div class="f-temps"><span class="f-temp-low">${Math.round(d.minTemp)}°</span><span class="f-temp-high">${Math.round(d.maxTemp)}°</span></div>
+                    <div class="f-temps"><span class="f-temp-low">${Math.round(d.minTemp)}°</span><span class="f-temp-high">${Math.round(d.maxTemp)}°</span>${i >= 1 ? `<small style="opacity:.5;font-size:.64rem" title="预报不确定性:基于 8 周回溯实测平均误差">±${BAND[Math.min(i, 6)]}°</small>` : ''}</div>
                     <div class="f-bar"><div class="f-bar-fill" style="left:${left}%;width:${width}%"></div></div>
                 </div>
             `;
@@ -5083,6 +5268,9 @@
         const cur = data.current;
         const daily0 = data.daily?.[0] || {};
         const weatherType = resolveWeatherType(cur);
+        // 时区修复:昼夜主题/日照弧切换到展示城市的钟表时间
+        _locOffsetSec = data.location?.utcOffsetSec ?? null;
+        updateDayNight();
 
         // 根据天气数据计算动画强度和风速
         const precip = cur.precipProbability ?? 50;
@@ -5126,6 +5314,8 @@
             </div>
         `;
         weatherDisplay.setAttribute('aria-busy', 'false');
+        // 智 · AI 生活建议:渲染完成后异步加载,失败静默(规则版生活提示已在页面)
+        loadAIAdvice(data);
     }
 
     function updateMeta(data) {

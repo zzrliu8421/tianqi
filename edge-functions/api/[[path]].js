@@ -9,6 +9,7 @@
  *
  * 工作原理：
  *   1. 从 context.env 读取 AMAP_KEY / QWEATHER_KEY / QWEATHER_HOST / IPNEWS_KEY / CAIYUN_TOKEN
+ *      / ZHIPU_API_KEY / AI_BASE_URL / AI_MODEL
  *      （环境变量需在 EdgeOne Pages 控制台 → 项目 → 环境变量 中配置）
  *   2. 按前端请求路径分流，附加对应 Key 后用 fetch 转发到上游
  *   3. 透传上游响应（含 Content-Type / Cache-Control），自动附加 CORS 头
@@ -17,7 +18,8 @@
  *   - 上游路径白名单：只放行前端实际调用的固定路径，其余返回 403 path not allowed
  *   - Origin 校验：带 Origin 头且其 host 与请求 Host 不一致时返回 403
  *   - 限流：若运行时能拿到客户端 IP（X-Forwarded-For / X-Real-IP），每 IP 每分钟 90 次，
- *     超限 429 + Retry-After；拿不到客户端 IP 时跳过限流（边缘侧以平台 WAF 为主）
+ *     超限 429 + Retry-After；拿不到客户端 IP 时跳过限流（边缘侧以平台 WAF 为主）；
+ *     POST /api/ai/advice 单独收紧为 10 次/分/IP（独立计数桶，同样"尽力而为"）
  *   - 安全响应头：X-Content-Type-Options: nosniff
  *
  * 路由表（与 server.js 保持一致）：
@@ -28,6 +30,11 @@
  *   GET /api/ipnews/<path>        → https://ipnews.io/<path>?<query>&api-key=IPNEWS_KEY
  *   GET /api/caiyun/<path>        → https://api.caiyunapp.com/<path>，CAIYUN_TOKEN 注入路径段：
  *                                   /api/caiyun/v2.6/<lon>,<lat>/weather → /v2.6/<token>/<lon>,<lat>/weather
+ *   POST /api/ai/advice           → AI 天气生活建议：POST ${AI_BASE_URL}/chat/completions
+ *                                   （Bearer ZHIPU_API_KEY，模型 AI_MODEL）。输出做"接地校验"：
+ *                                   响应文本中的每个数字必须来自请求 data 的数值集合，
+ *                                   失败重试一次；未配置 Key / 校验失败 / 上游异常 →
+ *                                   规则降级（mode:"rule"）。结果按 city+hour 缓存 1 小时
  *
  *   和风天气：配置 QWEATHER_HOST（专属 API Host）后，geo 与天气统一走
  *   https://<QWEATHER_HOST>/...，且 GeoAPI 路径带 /geo 服务前缀。
@@ -102,6 +109,24 @@ const CAIYUN_TOKEN_RE = /^[A-Za-z0-9_-]+$/;
 const RATE_LIMIT_MAX = 90;
 const RATE_LIMIT_WINDOW_MS = 60 * 1000;
 const rateBuckets = new Map();
+
+// ===================== AI 天气生活建议配置 =====================
+// AI 建议端点（POST /api/ai/advice）收紧限流：每 IP 每分钟 10 次（独立计数桶，
+// 与全局 90 次桶隔离，避免互相挤占；沿用"拿不到客户端 IP 则跳过"的尽力而为模式）
+const AI_RATE_LIMIT_MAX = 10;
+const aiRateBuckets = new Map();
+
+// 结果缓存：按 city+hour 维度缓存 LLM 成功结果，TTL 1 小时，条目上限 200（近似 LRU）。
+// 仅用边缘实例内存 Map（与 server.js 各自独立），实例重启/多节点间不共享，属尽力而为
+const AI_CACHE_TTL_MS = 60 * 60 * 1000;
+const AI_CACHE_MAX = 200;
+const aiCache = new Map();
+
+// system prompt：约束 LLM 只能引用输入数值、输出严格 JSON（中文，面向普通市民生活建议）
+const AI_SYSTEM_PROMPT = '你是一个天气生活建议助手。规则：只能使用输入数据中出现的数值，严禁编造或推算任何新数值；不要提及"数据来源"；输出严格的 JSON：{"summary":"一句话总结(≤30字)","tips":["建议1","建议2","建议3"]}，每条建议≤40字、面向普通市民生活（穿衣、出行、晾晒、运动、防护等），语气友好。';
+
+// 数字提取（含小数、负数；"18.5°C" 这类带单位形式取 18.5）
+const NUMBER_RE = /-?\d+(?:\.\d+)?/g;
 
 // 安全响应头
 const SECURITY_HEADERS = {
@@ -178,7 +203,7 @@ function json(status, obj, extraHeaders) {
         'Content-Type': 'application/json; charset=utf-8',
         'Cache-Control': 'no-store',
         'Access-Control-Allow-Origin': '*',
-        'Access-Control-Allow-Methods': 'GET, OPTIONS',
+        'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
         'Access-Control-Allow-Headers': 'Content-Type',
     });
     if (extraHeaders) {
@@ -256,24 +281,28 @@ function getClientIp(request) {
 
 /**
  * 固定窗口限流：返回 { allowed, retryAfter }
+ * opts.max / opts.store 缺省时使用全局 90 次/分配置；
+ * AI 建议端点传入收紧的 10 次/分与独立计数桶
  */
-function checkRateLimit(request) {
+function checkRateLimit(request, opts) {
+    const max = (opts && opts.max) || RATE_LIMIT_MAX;
+    const store = (opts && opts.store) || rateBuckets;
     const ip = normalizeClientIp(getClientIp(request));
     if (!ip) return { allowed: true };
     const now = Date.now();
     // 清理过期计数，防止内存无限增长
-    if (rateBuckets.size > 10000) {
-        for (const [key, bucket] of rateBuckets) {
-            if (now - bucket.windowStart >= RATE_LIMIT_WINDOW_MS * 2) rateBuckets.delete(key);
+    if (store.size > 10000) {
+        for (const [key, bucket] of store) {
+            if (now - bucket.windowStart >= RATE_LIMIT_WINDOW_MS * 2) store.delete(key);
         }
     }
-    let bucket = rateBuckets.get(ip);
+    let bucket = store.get(ip);
     if (!bucket || now - bucket.windowStart >= RATE_LIMIT_WINDOW_MS) {
         bucket = { windowStart: now, count: 0 };
-        rateBuckets.set(ip, bucket);
+        store.set(ip, bucket);
     }
     bucket.count += 1;
-    if (bucket.count <= RATE_LIMIT_MAX) return { allowed: true };
+    if (bucket.count <= max) return { allowed: true };
     const retryAfter = Math.max(1, Math.ceil((bucket.windowStart + RATE_LIMIT_WINDOW_MS - now) / 1000));
     return { allowed: false, retryAfter };
 }
@@ -457,6 +486,223 @@ async function handleGet(context) {
     }
 }
 
+// ===================== AI 建议:校验 / 接地 / 降级(与 server.js 同逻辑)=====================
+
+/** 请求体校验:city 非空字符串(≤20 字符),data 为一层扁平键值(数值或短字符串) */
+function validateAdvicePayload(body) {
+    if (!body || typeof body !== 'object' || Array.isArray(body)) return null;
+    if (typeof body.city !== 'string') return null;
+    const city = body.city.trim();
+    if (!city || city.length > 20) return null;
+    const data = body.data;
+    if (!data || typeof data !== 'object' || Array.isArray(data)) return null;
+    const keys = Object.keys(data);
+    if (keys.length === 0 || keys.length > 30) return null;
+    for (const k of keys) {
+        if (!k || k.length > 32) return null;
+        const v = data[k];
+        if (typeof v === 'number') {
+            if (!Number.isFinite(v)) return null;
+        } else if (typeof v === 'string') {
+            if (v.length > 32) return null;
+        } else {
+            return null;
+        }
+    }
+    return { city, data };
+}
+
+/** 输入数值集合:data 中所有数值 + 字符串值里出现的数字("东北风3级" 里的 3) */
+function collectInputNumbers(data) {
+    const set = new Set();
+    const add = v => set.add(String(Number(v)));
+    for (const v of Object.values(data)) {
+        if (typeof v === 'number') add(v);
+        else if (typeof v === 'string') {
+            const m = v.match(NUMBER_RE);
+            if (m) m.forEach(add);
+        }
+    }
+    return set;
+}
+
+/** 从 LLM 文本解析 JSON:剥离 markdown 围栏,截取首个 { 到最后一个 } */
+function parseAdviceText(text) {
+    if (typeof text !== 'string') return null;
+    let t = text.trim();
+    const fenced = t.match(/^```[a-zA-Z]*\s*([\s\S]*?)\s*```$/);
+    if (fenced) t = fenced[1].trim();
+    const start = t.indexOf('{');
+    const end = t.lastIndexOf('}');
+    if (start === -1 || end <= start) return null;
+    try { return JSON.parse(t.slice(start, end + 1)); } catch { return null; }
+}
+
+/** 接地校验:结构合法 + 响应中每个数字必须来自输入数值集合 */
+function isGroundedAdvice(advice, inputNumbers) {
+    if (!advice || typeof advice !== 'object' || Array.isArray(advice)) return false;
+    if (typeof advice.summary !== 'string' || !advice.summary.trim() || advice.summary.length > 60) return false;
+    if (!Array.isArray(advice.tips) || advice.tips.length === 0 || advice.tips.length > 5) return false;
+    for (const tip of advice.tips) {
+        if (typeof tip !== 'string' || !tip.trim() || tip.length > 80) return false;
+    }
+    const text = advice.summary + '\n' + advice.tips.join('\n');
+    const found = text.match(NUMBER_RE) || [];
+    for (const raw of found) {
+        if (!inputNumbers.has(String(Number(raw)))) return false;
+    }
+    return true;
+}
+
+/** 规则降级:阈值规则生成同结构结果,只引用输入 data 中的原始数值 */
+function buildRuleAdvice(city, data) {
+    const n = k => (typeof data[k] === 'number' && Number.isFinite(data[k]) ? data[k] : null);
+    const temp = n('temp') !== null ? n('temp') : n('feelsLike');
+    const tmax = n('tmax');
+    const tmin = n('tmin');
+    const pop = n('pop');
+    const aqi = n('aqi');
+    const uv = n('uv');
+    const humidity = n('humidity');
+    const weather = typeof data.weather === 'string' ? data.weather.trim() : '';
+
+    const tips = [];
+    if (temp !== null) {
+        if (temp >= 28) tips.push('气温较高，建议穿轻薄透气的浅色衣物，注意补水防暑');
+        else if (temp >= 21) tips.push('温度舒适，短袖或薄长袖即可，适合户外活动');
+        else if (temp >= 14) tips.push('早晚偏凉，建议长袖加薄外套，方便随时增减衣物');
+        else if (temp >= 5) tips.push('气温较低，建议穿夹克或风衣，早晚适当添衣');
+        else tips.push('气温很低，建议厚外套配围巾手套，注意防寒保暖');
+    } else if (tmin !== null && tmax !== null) {
+        tips.push(`今日气温${tmin}~${tmax}°C，建议按最低气温准备衣物`);
+    } else {
+        tips.push('建议根据体感温度灵活增减衣物');
+    }
+    if (pop !== null && pop >= 50) tips.push(`降水概率${pop}%，出门建议随身携带雨伞`);
+    else if (pop !== null) tips.push(`降水概率仅${pop}%，基本无需带伞，适合出行`);
+    if (aqi !== null && aqi >= 100) tips.push(`空气质量指数${aqi}，建议佩戴口罩、减少户外剧烈运动`);
+    else if (aqi !== null && aqi >= 50) tips.push(`空气质量指数${aqi}，一般人群可正常户外活动`);
+    if (uv !== null && uv >= 6) tips.push(`紫外线指数${uv}，外出注意防晒，戴帽子或涂防晒霜`);
+    if (humidity !== null && humidity <= 30) tips.push(`湿度仅${humidity}%，空气干燥，注意补水保湿`);
+    if (tips.length > 4) tips.length = 4;
+    if (tips.length < 3) tips.push('出行前关注最新天气变化，合理安排行程');
+
+    const bits = [];
+    if (weather) bits.push(weather);
+    if (temp !== null) bits.push(`气温${temp}°C`);
+    else if (tmin !== null && tmax !== null) bits.push(`${tmin}~${tmax}°C`);
+    let summary = bits.length ? `${city}：${bits.join('，')}` : `${city}：天气平稳`;
+    if (summary.length > 30) summary = summary.slice(0, 30);
+    return { mode: 'rule', summary, tips };
+}
+
+// city+hour 缓存读写(近似 LRU;仅缓存 LLM 成功结果)
+function adviceCacheGet(key) {
+    const entry = aiCache.get(key);
+    if (!entry) return null;
+    if (Date.now() - entry.at > AI_CACHE_TTL_MS) {
+        aiCache.delete(key);
+        return null;
+    }
+    aiCache.delete(key);
+    aiCache.set(key, entry);
+    return entry.value;
+}
+
+function adviceCacheSet(key, value) {
+    if (aiCache.has(key)) aiCache.delete(key);
+    if (aiCache.size >= AI_CACHE_MAX) {
+        const oldest = aiCache.keys().next();
+        if (!oldest.done) aiCache.delete(oldest.value);
+    }
+    aiCache.set(key, { at: Date.now(), value });
+}
+
+/** 调用 OpenAI 兼容 chat/completions(Web fetch 版),返回首个 choice 文本 */
+async function callLLMOnce(city, data, env) {
+    const base = String((env && env.AI_BASE_URL) || 'https://open.bigmodel.cn/api/paas/v4').replace(/\/+$/, '');
+    const model = String((env && env.AI_MODEL) || 'glm-4-flash');
+    const res = await fetch(base + '/chat/completions', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${env.ZHIPU_API_KEY}`,
+            'User-Agent': 'SkyWeather-Proxy/1.0',
+        },
+        body: JSON.stringify({
+            model,
+            messages: [
+                { role: 'system', content: AI_SYSTEM_PROMPT },
+                { role: 'user', content: `城市：${city}\n天气数据：${JSON.stringify(data)}` },
+            ],
+            temperature: 0.5,
+            max_tokens: 400,
+        }),
+    });
+    if (!res.ok) throw new Error(`LLM upstream HTTP ${res.status}`);
+    const parsed = await res.json().catch(() => null);
+    const content = parsed && parsed.choices && parsed.choices[0] &&
+        parsed.choices[0].message && parsed.choices[0].message.content;
+    if (typeof content !== 'string' || !content.trim()) throw new Error('LLM upstream returned empty content');
+    return content;
+}
+
+/** POST /api/ai/advice 主逻辑:校验 → 查缓存 → LLM(接地校验,重试一次)→ 规则降级 */
+async function handleAiAdvice(context) {
+    const { request, env } = context;
+    let body;
+    try {
+        const text = await request.text();
+        if (text.length > 8192) return json(413, { error: 'request body too large' });
+        body = JSON.parse(text);
+    } catch {
+        return json(400, { error: 'invalid JSON body' });
+    }
+    const payload = validateAdvicePayload(body);
+    if (!payload) {
+        return json(400, { error: 'invalid payload: need {city: string<=20, data: flat object of numbers/short strings}' });
+    }
+    const { city, data } = payload;
+
+    // 缓存 key:city+hour(data.hour 为 0-23 整数则用之,否则用当前小时)
+    const hourRaw = data.hour;
+    const hour = typeof hourRaw === 'number' && Number.isInteger(hourRaw) && hourRaw >= 0 && hourRaw <= 23
+        ? hourRaw
+        : new Date().getHours();
+    const cacheKey = `${city}|${hour}`;
+
+    const hit = adviceCacheGet(cacheKey);
+    if (hit) return json(200, Object.assign({ cached: true }, hit));
+
+    if (env.ZHIPU_API_KEY) {
+        const inputNumbers = collectInputNumbers(data);
+        for (let attempt = 1; attempt <= 2; attempt++) {
+            let content = null;
+            try {
+                content = await callLLMOnce(city, data, env);
+            } catch (e) {
+                console.error(`[ai] LLM 调用失败（第 ${attempt} 次，city=${city}）:`, e && e.message);
+            }
+            if (content) {
+                const advice = parseAdviceText(content);
+                if (advice && isGroundedAdvice(advice, inputNumbers)) {
+                    const value = {
+                        mode: 'ai',
+                        summary: advice.summary.trim(),
+                        tips: advice.tips.map(t => String(t).trim()),
+                    };
+                    adviceCacheSet(cacheKey, value);
+                    return json(200, Object.assign({ cached: false }, value));
+                }
+                console.warn(`[ai] 第 ${attempt} 次输出未通过接地校验（city=${city}）`);
+            }
+        }
+    }
+
+    // 规则降级(无 Key / 校验失败 / 上游异常),不缓存
+    return json(200, Object.assign({ cached: false }, buildRuleAdvice(city, data)));
+}
+
 // ===================== Handler 导出 =====================
 // 统一使用 onRequest（官方推荐写法：export default function onRequest）处理所有方法。
 //
@@ -473,13 +719,13 @@ export default async function onRequest(context) {
         return json(403, { error: 'origin not allowed' });
     }
 
-    // OPTIONS → CORS 预检
+    // OPTIONS → CORS 预检(AI 建议端点为 POST,需放行)
     if (method === 'OPTIONS') {
         return new Response(null, {
             status: 204,
             headers: {
                 'Access-Control-Allow-Origin': '*',
-                'Access-Control-Allow-Methods': 'GET, OPTIONS',
+                'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
                 'Access-Control-Allow-Headers': 'Content-Type',
                 'Access-Control-Max-Age': '86400',
                 'X-Content-Type-Options': 'nosniff',
@@ -496,6 +742,22 @@ export default async function onRequest(context) {
             });
         }
         return handleGet(context);
+    }
+
+    // POST /api/ai/advice → AI 天气生活建议(独立收紧限流:10 次/分/IP)
+    if (method === 'POST' && new URL(request.url).pathname === '/api/ai/advice') {
+        const aiLimit = checkRateLimit(request, { max: AI_RATE_LIMIT_MAX, store: aiRateBuckets });
+        if (!aiLimit.allowed) {
+            return json(429, { error: 'too many requests' }, {
+                'Retry-After': String(aiLimit.retryAfter),
+            });
+        }
+        try {
+            return await handleAiAdvice(context);
+        } catch (err) {
+            console.error('[ai] 处理异常:', err && err.message);
+            return json(500, { error: 'internal error' });
+        }
     }
 
     // 其它方法统一 405
