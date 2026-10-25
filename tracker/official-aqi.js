@@ -182,6 +182,31 @@ async function main() {
     await sleep(600);
   }
 
+  // 同步一份机器可读 JSON(前端 AQI 卡悬停与研究视图消费):维护逐城历史并算滚动统计
+  const histFile = path.join(__dirname, 'data', 'official-check.json');
+  let hist = {};
+  try { hist = JSON.parse(fs.readFileSync(histFile, 'utf-8')).history || {}; } catch { /* 首次生成 */ }
+  for (const r of rows) {
+    if (r.self == null && r.caiyun == null) continue;
+    const arr = hist[r.city] = (hist[r.city] || []).filter(h => h.date !== today); // 同日幂等
+    arr.push({ date: today, self: r.self, caiyun: r.caiyun, qweather: r.qweather });
+    arr.sort((a, b) => (a.date < b.date ? -1 : 1));
+    if (arr.length > 90) arr.splice(0, arr.length - 90); // 滚动窗口 90 天
+  }
+  const stats = {};
+  for (const [city, arr] of Object.entries(hist)) {
+    const pairs = arr.filter(h => h.self != null && h.caiyun != null);
+    if (!pairs.length) continue;
+    const last = pairs[pairs.length - 1];
+    const diffs = pairs.map(h => Math.abs(h.self - h.caiyun));
+    stats[city] = {
+      nDays: pairs.length,
+      meanAbsDiff: round2(diffs.reduce((s, v) => s + v, 0) / diffs.length),
+      lastDiff: round2(Math.abs(last.self - last.caiyun)),
+    };
+  }
+  fs.writeFileSync(histFile, JSON.stringify({ updatedAt: new Date().toISOString(), latestDate: today, rows, stats, history: hist }, null, 1));
+
   // 幂等写入 markdown:替换/追加当日小节
   const qwLine = qwNote ? `> 注:${qwNote}\n\n` : '';
   const section = `## ${today}\n\n${qwLine}| 城市 | 自算AQI(彩云六项→国标) | 彩云上报(chn) | 和风上报 | 中国天气网(人工) | 备注 |\n|---|---|---|---|---|---|\n` +

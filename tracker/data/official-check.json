@@ -1,0 +1,136 @@
+{
+ "updatedAt": "2026-10-25T02:53:47.863Z",
+ "latestDate": "2026-10-25",
+ "rows": [
+  {
+   "city": "北京",
+   "self": 50,
+   "selfPrimary": null,
+   "caiyun": 50,
+   "qweather": null,
+   "note": ""
+  },
+  {
+   "city": "上海",
+   "self": 43,
+   "selfPrimary": null,
+   "caiyun": 27,
+   "qweather": null,
+   "note": "自算vs彩云差16 "
+  },
+  {
+   "city": "广州",
+   "self": 39,
+   "selfPrimary": null,
+   "caiyun": 26,
+   "qweather": null,
+   "note": "自算vs彩云差13 "
+  },
+  {
+   "city": "成都",
+   "self": 69,
+   "selfPrimary": "PM25",
+   "caiyun": 80,
+   "qweather": null,
+   "note": "自算vs彩云差11 "
+  },
+  {
+   "city": "南阳",
+   "self": 95,
+   "selfPrimary": "PM25",
+   "caiyun": 110,
+   "qweather": null,
+   "note": "自算vs彩云差15 "
+  },
+  {
+   "city": "纽约",
+   "self": 0,
+   "selfPrimary": null,
+   "caiyun": 0,
+   "qweather": null,
+   "note": ""
+  }
+ ],
+ "stats": {
+  "北京": {
+   "nDays": 1,
+   "meanAbsDiff": 0,
+   "lastDiff": 0
+  },
+  "上海": {
+   "nDays": 1,
+   "meanAbsDiff": 16,
+   "lastDiff": 16
+  },
+  "广州": {
+   "nDays": 1,
+   "meanAbsDiff": 13,
+   "lastDiff": 13
+  },
+  "成都": {
+   "nDays": 1,
+   "meanAbsDiff": 11,
+   "lastDiff": 11
+  },
+  "南阳": {
+   "nDays": 1,
+   "meanAbsDiff": 15,
+   "lastDiff": 15
+  },
+  "纽约": {
+   "nDays": 1,
+   "meanAbsDiff": 0,
+   "lastDiff": 0
+  }
+ },
+ "history": {
+  "北京": [
+   {
+    "date": "2026-10-25",
+    "self": 50,
+    "caiyun": 50,
+    "qweather": null
+   }
+  ],
+  "上海": [
+   {
+    "date": "2026-10-25",
+    "self": 43,
+    "caiyun": 27,
+    "qweather": null
+   }
+  ],
+  "广州": [
+   {
+    "date": "2026-10-25",
+    "self": 39,
+    "caiyun": 26,
+    "qweather": null
+   }
+  ],
+  "成都": [
+   {
+    "date": "2026-10-25",
+    "self": 69,
+    "caiyun": 80,
+    "qweather": null
+   }
+  ],
+  "南阳": [
+   {
+    "date": "2026-10-25",
+    "self": 95,
+    "caiyun": 110,
+    "qweather": null
+   }
+  ],
+  "纽约": [
+   {
+    "date": "2026-10-25",
+    "self": 0,
+    "caiyun": 0,
+    "qweather": null
+   }
+  ]
+ }
+}

@@ -32,7 +32,8 @@ tracker/
 │   ├── weights.json     # 融·数据驱动权重(report.js 生成,前端加权融合直接消费)
 │   ├── station-map.json # 城市→GHCN 候选站映射(缓存,免重复下载全站清单)
 │   ├── station-check.{json,md} # 站点对照结论(整窗重算,幂等覆盖)
-│   └── official-check.md # 官方值对照记录(AQI 校准证据链,按日幂等)
+│   ├── official-check.md # 官方值对照记录(AQI 校准证据链,按日幂等)
+│   └── official-check.json # 同上的机器可读版(含逐城滚动统计,前端 AQI 悬停/研究视图消费)
 ├── reports/             # 最终产物(图表 PNG + 汇总/逐日 CSV,附件素材)
 └── archive/             # 过程性/临时文件归档(见 archive/README.md,均可由脚本重新生成)
 ```
