@@ -1,5 +1,5 @@
 {
- "generatedAt": "2026-10-24T21:11:03.892Z",
+ "generatedAt": "2026-10-25T18:56:20.339Z",
  "reference": "OM Previous Runs day-0 分析值(项目全部精度指标的实况参照) vs GHCN-Daily 地面站逐日实测",
  "interpretation": "meanDiff 为「参照 − 站点实测」:|meanDiff| 与 MAE 越小,参照越可信,模式检验模式的质疑越弱",
  "window": {
@@ -252,18 +252,18 @@
     {
      "id": "USW00094728",
      "distKm": 8.4,
-     "overlap": 55
+     "overlap": 56
     }
    ],
    "tmax": {
-    "n": 55,
+    "n": 56,
     "meanDiff": 0.89,
     "mae": 1.05,
     "maxAbs": 2.6
    },
    "tmin": {
-    "n": 55,
-    "meanDiff": -0.19,
+    "n": 56,
+    "meanDiff": -0.2,
     "mae": 0.8,
     "maxAbs": 2.7
    },
