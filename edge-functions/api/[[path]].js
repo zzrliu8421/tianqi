@@ -149,7 +149,7 @@ const AI_SYSTEM_PROMPT = [
     '你是天气伙伴，像关心朋友一样，基于给定的真实天气数据给用户写今日提醒。',
     '硬性规则：',
     '1. 只能使用输入数据中出现的数值，严禁编造；也不要做任何推算或换算——不写"比实际高出3度"这类算出来的差值，不把 17:15 说成"下午5点15分"，保留数值原有的单位与写法；',
-    '2. 不要提及"数据来源"；文案里不要出现英文字段名或缩写（uv、aqi、pop、tmax、sunset 之类），一律用中文名词（紫外线指数、空气质量指数、降水概率、最高气温、日落时间）；不要用"建议您""请注意"等公文腔，也不要以"建议"开头，用"你"的自然口吻。',
+    '2. 不要提及"数据来源"；文案里不要出现英文字段名或缩写（uv、aqi、pop、tmax、sunset 之类；PM2.5、PM10 这类标准术语除外）；不要用"建议您""请注意"等公文腔，也不要以"建议"开头，用"你"的自然口吻。',
     '页面已有指数卡片交代穿衣、带伞、防晒这类基础结论。这些话题可以写，但要么讲得更深（结合具体数值说清"为什么"、落到时段或场景说"什么时候该怎么做"），要么带出身体与心情层面的关照；原样复述卡片结论等于没写。',
     '条数与字数不设硬性限制：建议 2~4 条，每条几句话说透就好，长短跟着内容走，不为凑数注水。可以从这些角度找感觉：',
     '- 早高峰、午休、傍晚、夜间等时间节点，出门、通勤、回家路上的具体留意点；',
@@ -597,9 +597,14 @@ function parseAdviceText(text) {
     try { return JSON.parse(t.slice(start, end + 1)); } catch { return null; }
 }
 
-/** 找出文本中不在输入数值集合里的数字（接地校验与失败日志共用） */
+/**
+ * 找出文本中不在输入数值集合里的数字（接地校验与失败日志共用）。
+ * 先剔除 PM2.5 / PM25 / PM10 —— 专有名词而非数值主张，不剔除会把规范
+ * 写法"PM2.5"误判成编造数字 2.5（与 server.js 保持一致）。
+ */
 function findUngroundedNumbers(text, inputNumbers) {
-    const found = text.match(NUMBER_RE) || [];
+    const cleaned = String(text).replace(/PM2\.5|PM25|PM10/gi, '');
+    const found = cleaned.match(NUMBER_RE) || [];
     return found.filter(raw => !inputNumbers.has(String(Number(raw))));
 }
 
@@ -683,15 +688,21 @@ function adviceCacheSet(key, value) {
 }
 
 /** 调用 OpenAI 兼容 chat/completions(Web fetch 版),返回首个 choice 文本 */
-async function callLLMOnce(city, data, provider, group) {
-    const res = await fetch(provider.baseUrl + '/chat/completions', {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${provider.apiKey}`,
-            'User-Agent': 'SkyWeather-Proxy/1.0',
-        },
-        body: JSON.stringify({
+async function callLLMOnce(city, data, provider, group, timeoutMs) {
+    // 每次尝试的中止时限由调用方按剩余预算给出（下限 3s），用 AbortController 硬性兜底
+    const ctrl = new AbortController();
+    const timer = setTimeout(() => ctrl.abort(), Math.max(3000, timeoutMs || 10000));
+    let res;
+    try {
+        res = await fetch(provider.baseUrl + '/chat/completions', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${provider.apiKey}`,
+                'User-Agent': 'SkyWeather-Proxy/1.0',
+            },
+            signal: ctrl.signal,
+            body: JSON.stringify({
             model: provider.model,
             messages: [
                 { role: 'system', content: AI_SYSTEM_PROMPT },
@@ -700,7 +711,10 @@ async function callLLMOnce(city, data, provider, group) {
             temperature: 0.7,
             max_tokens: 800,
         }),
-    });
+        });
+    } finally {
+        clearTimeout(timer);
+    }
     if (!res.ok) throw new Error(`LLM upstream HTTP ${res.status}`);
     const parsed = await res.json().catch(() => null);
     const content = parsed && parsed.choices && parsed.choices[0] &&
@@ -739,19 +753,20 @@ async function handleAiAdvice(context) {
     if (hit) { aiStats.cacheHits++; return json(200, Object.assign({ cached: true }, hit)); }
 
     // 沿模型链依次尝试（供应商内主→备、供应商间首选→次选），全部失败再走规则降级。
-    // 链路总预算 12s（与 server.js 一致）：预算耗尽不再发起新尝试，直接规则降级
+    // 链路总预算 11s（与 server.js 一致）：预算耗尽不再发起新尝试；每次尝试的
+    // 中止时限与剩余预算取小（下限 3s），最坏总耗时 ≈ 14s 内必有响应
     const chain = buildAIProviderChain(env);
     if (chain.length) {
         const inputNumbers = collectInputNumbers(data);
-        const chainDeadline = Date.now() + 12000;
+        const chainDeadline = Date.now() + 11000;
         for (const p of chain) {
             if (Date.now() >= chainDeadline) {
-                console.warn(`[ai] 模型链 12s 预算耗尽（city=${city}），提前转入规则降级`);
+                console.warn(`[ai] 模型链 11s 预算耗尽（city=${city}），提前转入规则降级`);
                 break;
             }
             let content = null;
             try {
-                content = await callLLMOnce(city, data, p, group);
+                content = await callLLMOnce(city, data, p, group, chainDeadline - Date.now());
             } catch (e) {
                 console.error(`[ai] LLM 调用失败（${p.provider}/${p.model}，city=${city}）:`, e && e.message);
                 aiStatProvider(p.provider, p.model, 'upstreamFail');
