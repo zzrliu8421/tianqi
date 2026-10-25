@@ -1215,6 +1215,29 @@
         .ai-group-btn:hover { border-color: var(--border-2); color: var(--text-primary); }
         .ai-group-btn.active { background: linear-gradient(135deg, rgba(125, 211, 252, .22), rgba(129, 140, 248, .22)); color: #c7e9ff; border-color: transparent; }
         .ai-group-btn:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+        /* 融 · 源间点位图:7 天行内联,各源原始值(灰点)+ 融合值(琥珀高亮) */
+        .src-dots { position: relative; display: inline-block; width: 54px; height: 14px; margin-left: 6px; vertical-align: -2px; }
+        .src-dot { position: absolute; top: 50%; width: 6px; height: 6px; border-radius: 50%; transform: translate(-50%, -50%); background: rgba(255, 255, 255, .5); }
+        .src-dot.blend { width: 9px; height: 9px; background: #fbbf24; box-shadow: 0 0 8px rgba(251, 191, 36, .55); z-index: 1; }
+        /* 测 · 数据源面板(主源徽章点击弹出) */
+        #provider-badge-main { cursor: pointer; }
+        .src-popover {
+            position: fixed; z-index: 1200; min-width: 252px; max-width: 300px;
+            padding: 12px 14px; border-radius: var(--r-lg);
+            background: rgba(10, 18, 34, .93); border: 1px solid var(--border-2);
+            box-shadow: 0 18px 40px rgba(0, 0, 0, .45);
+            backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px);
+            font-size: .78rem;
+        }
+        .src-pop-head { font-weight: 600; margin-bottom: 8px; font-size: .8rem; }
+        .src-row { display: flex; align-items: center; gap: 8px; padding: 4px 0; }
+        .src-dot-ind { width: 8px; height: 8px; border-radius: 50%; flex: none; }
+        .src-dot-ind.ok { background: #4ade80; box-shadow: 0 0 6px rgba(74, 222, 128, .5); }
+        .src-dot-ind.fail { background: #fbbf24; }
+        .src-dot-ind.off { background: rgba(255, 255, 255, .3); }
+        .src-name { flex: none; width: 76px; }
+        .src-role { color: var(--text-tertiary); font-size: .72rem; }
+        .src-pop-note { margin-top: 8px; color: var(--text-tertiary); font-size: .68rem; }
         .ai-fallback { align-items: center; gap: 9px; font-size: .78rem; color: #fbbf24; background: rgba(251, 191, 36, .07); border: 1px dashed rgba(251, 191, 36, .35); border-radius: var(--r-md); padding: 11px 13px; }
         .ai-fallback svg { width: 15px; height: 15px; flex: none; }
         .life-tip-card {
@@ -1746,6 +1769,7 @@
     <main class="main-grid" id="weather-display" role="status" aria-live="polite" aria-busy="false"></main>
 
     <footer class="footer">
+        <p><a href="research.html">研究视图 · 数据是怎么来的(测 → 校 → 融 → 示 → 智)</a></p>
         <p>© 2026 <a href="https://sylv.top/" target="_blank" rel="noopener noreferrer" style="font-weight:700">Sylvy</a>. All rights reserved.</p>
         <p><a href="https://beian.miit.gov.cn/" target="_blank" rel="noopener noreferrer">豫ICP备2026013756号-1</a></p>
     </footer>
@@ -4485,6 +4509,12 @@
             }
         } catch (e) { /* 静默:离线/独立部署时用内置默认权重 */ }
     })();
+    // 校 · 官方值对照数据(AQI 卡悬停引用;离线/独立部署时为 null 不影响展示)
+    let OFFICIAL_CHECK = null;
+    (async () => {
+        try { OFFICIAL_CHECK = await fetchJSON('tracker/data/official-check.json', { timeout: 4000 }); }
+        catch (e) { /* 静默 */ }
+    })();
     const FUSION_SOURCE_KEY = { '高德地图': 'amap_qweather', '和风天气': 'amap_qweather', '彩云天气': 'caiyun', 'Open-Meteo': 'openmeteo' };
     function fusionWeight(providerName, lead) {
         const key = FUSION_SOURCE_KEY[providerName];
@@ -4540,8 +4570,16 @@
                     spread: Math.round(spread * 10) / 10,
                     threshold: (FUSION.badge && typeof FUSION.badge[lead] === 'number') ? FUSION.badge[lead] : 2,
                     values: contribs.map(c => `${c.name} ${Math.round(c.tmax)}°`),
+                    // 数值明细(7 天行内"源间点位图"渲染用)
+                    contribs: contribs.map(c => ({ name: c.name, tmax: c.tmax, tmin: c.tmin, w: c.w })),
                 };
             }
+            // 测 · 数据源面板数据(主源徽章点击展开:各源角色与本次参与状态)
+            data._sourcePanel = {
+                main: data._provider,
+                overseas,
+                checks: candidates.slice(0, 2).map(c => ({ name: c.p.name, ok: others.some(o => o.name === c.p.name) })),
+            };
             if (!Object.keys(perLead).length) { data._crossCheck = null; return; }
             for (const l of Object.keys(perLead)) perLead[l].shown = perLead[l].spread > perLead[l].threshold;
             const warned = ['d1', 'd3'].filter(l => perLead[l] && perLead[l].shown);
@@ -4952,7 +4990,7 @@
         const d0 = data.daily?.[0] || {};
         const comfort = getComfort(cur.temp);
         const weatherType = resolveWeatherType(cur);
-        const providerBadge = data._provider ? `<span class="provider-badge" title="${escapeHTML(providerChainLabel(data))}">${ICONS.globe}<span>${escapeHTML(data._provider)}</span></span><span class="provider-badge" style="opacity:.8" title="${escapeHTML(obsKindLabel(data))}">${escapeHTML(obsKindLabel(data))}</span>` : '';
+        const providerBadge = data._provider ? `<span class="provider-badge" id="provider-badge-main" role="button" tabindex="0" aria-haspopup="dialog" aria-expanded="false" title="${escapeHTML(providerChainLabel(data))} · 点击查看数据源面板">${ICONS.globe}<span>${escapeHTML(data._provider)}</span></span><span class="provider-badge" style="opacity:.8" title="${escapeHTML(obsKindLabel(data))}">${escapeHTML(obsKindLabel(data))}</span>` : '';
         // 融 · 交叉验证角标:源间分歧超该提前期历史 p90 才警示;融合正常时以
         // 淡色"加权融合"徽标披露数据加工方式(可信呈现:用户可知道温度来自多源)
         const cc = data._crossCheck;
@@ -5043,8 +5081,8 @@
     }
 
     // 环境卡:AQI + 实况详情(自主信息卡拆出,置右列顶部,构成"数据流"入口)
-    function renderEnvCard(current, daily0) {
-        const aqi = renderAQI(current);
+    function renderEnvCard(current, daily0, loc) {
+        const aqi = renderAQI(current, loc);
         const details = renderDetails(current, daily0);
         if (!aqi && !details) return '';
         return `
@@ -5059,7 +5097,7 @@
         `;
     }
 
-    function renderAQI(current) {
+    function renderAQI(current, loc) {
         if (current.aqi == null) return '';
         const info = getAQIInfo(current.aqi);
         const max = 500;
@@ -5070,8 +5108,18 @@
         if (current.aqiPm10) pollutants.push(`PM10 <strong>${current.aqiPm10}</strong>`);
         if (current.aqiNo2) pollutants.push(`NO₂ <strong>${current.aqiNo2}</strong>`);
         if (current.aqiO3) pollutants.push(`O₃ <strong>${current.aqiO3}</strong>`);
+        // 校 · 官方值对照:追踪城市展示滚动结论,其余城市指向研究视图
+        // (定位结果常为区县级"东城区",用城市名+省名与追踪城市做包含式匹配)
+        const city = loc ? (loc.city || '') : '';
+        const prov = loc ? (loc.province || '') : '';
+        const ocKeys = (OFFICIAL_CHECK && OFFICIAL_CHECK.stats) ? Object.keys(OFFICIAL_CHECK.stats) : [];
+        const ocKey = ocKeys.find(k => [city, prov].some(n => n && (n === k || n.includes(k) || k.includes(n))));
+        const oc = ocKey ? OFFICIAL_CHECK.stats[ocKey] : null;
+        const ocTip = oc
+            ? `官方值对照(近${oc.nDays}天):自算 vs 彩云上报 平均差 ${oc.meanAbsDiff},今日差 ${oc.lastDiff}`
+            : '每日与官方值同屏对照(追踪城市:北京/上海/广州/成都/南阳/纽约,详见页脚研究视图)';
         return `
-            <div class="aqi-card ${info.cls}">
+            <div class="aqi-card ${info.cls}" title="口径:${escapeHTML(current.aqiStandard || '中国国标')} · ${escapeHTML(ocTip)}">
                 <div class="aqi-ring">
                     <svg width="64" height="64" viewBox="0 0 64 64">
                         <circle class="track" cx="32" cy="32" r="28"/>
@@ -5396,9 +5444,9 @@
                 panel.querySelector('.ai-content').innerHTML = `
                     <div class="ai-summary">${escapeHTML(res.summary || '')}</div>
                     <ul class="ai-tips">${res.tips.map(t => `<li>${escapeHTML(t)}</li>`).join('')}</ul>
-                    <div class="ai-note">${aiGroupSelected() && AI_GROUP_LABELS[aiGroupSelected()] ? `面向${AI_GROUP_LABELS[aiGroupSelected()]} · ` : ''}建议由 AI 基于当前实测数据生成,仅供参考</div>
+                    <div class="ai-note">建议由 AI 基于当前实测数据生成,数值已通过接地校验,仅供参考</div>
                 `;
-                setAIPanelState('done', `已生成 · ${secs}s`);
+                setAIPanelState('done', `✓ 已生成 · ${secs}s`);
             } else {
                 // 服务端返回规则版:与页面指数卡重复,不重复渲染,面板降级占位
                 setAIPanelState('fallback', '已降级 · 本地规则');
@@ -5485,7 +5533,7 @@
         return d;
     }
 
-    function renderDaily(daily) {
+    function renderDaily(daily, crossCheck) {
         if (!daily?.length) return '';
         // 示 · 误差带:明日/第三天用「加权融合后」的期望误差(weights.json fusedMae,
         // 融合权重加载失败时回退内置默认);其余天数沿用 8 周回溯(336 城市日)实测 MAE
@@ -5494,6 +5542,20 @@
             if (FUSION.fusedMae.d1 != null) BAND[1] = Math.round(FUSION.fusedMae.d1 * 10) / 10;
             if (FUSION.fusedMae.d3 != null) BAND[3] = Math.round(FUSION.fusedMae.d3 * 10) / 10;
         }
+        // 融 · 源间点位图:明日(d1)/第三天(d3)行内联展示各源原始值(灰点)与融合值(高亮点)
+        const srcDots = (i) => {
+            const lead = i === 1 ? 'd1' : i === 3 ? 'd3' : null;
+            const pl = lead && crossCheck && crossCheck.perLead && crossCheck.perLead[lead];
+            if (!pl || !pl.contribs || pl.contribs.length < 2 || daily[i]?.maxTemp == null) return '';
+            const temps = pl.contribs.map(c => c.tmax).concat(daily[i].maxTemp);
+            const lo = Math.min(...temps), hi = Math.max(...temps);
+            const pos = (t) => (hi === lo ? 50 : Math.round(((t - lo) / (hi - lo)) * 100));
+            const tip = pl.contribs.map(c => `${c.name} ${Math.round(c.tmax)}°(权重${c.w})`).join(' / ')
+                + ` → 融合 ${Math.round(daily[i].maxTemp * 10) / 10}°;源间分歧 ${pl.spread}°(阈值 ${pl.threshold}°)`;
+            return `<span class="src-dots" aria-hidden="true" title="${escapeHTML(tip)}">`
+                + pl.contribs.map(c => `<i class="src-dot" style="left:${pos(c.tmax)}%"></i>`).join('')
+                + `<i class="src-dot blend" style="left:${pos(daily[i].maxTemp)}%"></i></span>`;
+        };
         let minAll = Infinity, maxAll = -Infinity;
         daily.forEach(d => { if (d.minTemp != null) minAll = Math.min(minAll, d.minTemp); if (d.maxTemp != null) maxAll = Math.max(maxAll, d.maxTemp); });
         const range = maxAll - minAll || 1;
@@ -5509,7 +5571,7 @@
                         <div>${escapeHTML(d.weather || '--')}</div>
                         <div class="f-pop">${fmtPop(d.precipProbability)}</div>
                     </div>
-                    <div class="f-temps"><span class="f-temp-low">${Math.round(d.minTemp)}°</span><span class="f-temp-high">${Math.round(d.maxTemp)}°</span>${i >= 1 ? `<small style="opacity:.5;font-size:.64rem" title="预报不确定性:基于实测误差的期望值" aria-label="该日预报不确定性约正负${BAND[Math.min(i, 6)]}摄氏度">±${BAND[Math.min(i, 6)]}°</small>` : ''}</div>
+                    <div class="f-temps"><span class="f-temp-low">${Math.round(d.minTemp)}°</span><span class="f-temp-high">${Math.round(d.maxTemp)}°</span>${i >= 1 ? `<small style="opacity:.5;font-size:.64rem" title="预报不确定性:基于 ${FUSION && FUSION.windowDays ? FUSION.windowDays : 55} 天逐日实测;明日/第三天为加权融合后的期望误差" aria-label="该日预报不确定性约正负${BAND[Math.min(i, 6)]}摄氏度">±${BAND[Math.min(i, 6)]}°</small>` : ''}${srcDots(i)}</div>
                     <div class="f-bar"><div class="f-bar-fill" style="left:${left}%;width:${width}%"></div></div>
                 </div>
             `;
@@ -5570,9 +5632,9 @@
                 ${renderSunArc(daily0)}
             </div>
             <div class="main-right">
-                ${renderEnvCard(cur, daily0)}
+                ${renderEnvCard(cur, daily0, data.location)}
                 ${renderHourly(data.hourly)}
-                ${renderDaily(data.daily)}
+                ${renderDaily(data.daily, data._crossCheck)}
             </div>
         `;
         weatherDisplay.setAttribute('aria-busy', 'false');
@@ -5992,6 +6054,60 @@
         syncAIGroupUI();
         if (_lastWeatherData) loadAIAdvice(_lastWeatherData);
     });
+
+    // ===================== 测 · 数据源面板(主源徽章点击展开) =====================
+    // 各源角色与本次请求实际参与情况:主源 / 对证源(参与融合·拉取失败) / 备用(未配置·不支持地区)
+    let _srcPop = null;
+    function buildSourcePanelRows() {
+        const data = _lastWeatherData;
+        const panel = data && data._sourcePanel;
+        const label = { amap: '高德地图', qweather: '和风天气', caiyun: '彩云天气', openmeteo: 'Open-Meteo' };
+        const rows = [];
+        for (const key of ['amap', 'qweather', 'caiyun', 'openmeteo']) {
+            const p = Providers[key];
+            if (!p) continue;
+            let role, st, cls;
+            const check = panel && panel.checks && panel.checks.find(c => c.name === p.name);
+            if (panel && panel.main === p.name) { role = '主源'; st = '本次数据来源'; cls = 'ok'; }
+            else if (check) { role = '对证源'; st = check.ok ? '已参与融合' : '本次拉取失败'; cls = check.ok ? 'ok' : 'fail'; }
+            else if (!p.available()) { role = '备用源'; st = '未配置 Key'; cls = 'off'; }
+            else if (panel && panel.overseas && !p.overseas) { role = '备用源'; st = '不支持当前地区'; cls = 'off'; }
+            else { role = '备用源'; st = '可用'; cls = 'off'; }
+            rows.push(`<div class="src-row"><span class="src-dot-ind ${cls}" aria-hidden="true"></span><span class="src-name">${label[key]}</span><span class="src-role">${role} · ${st}</span></div>`);
+        }
+        return rows.join('');
+    }
+    function closeSourcePanel() {
+        if (_srcPop) { _srcPop.remove(); _srcPop = null; }
+        const b = document.getElementById('provider-badge-main');
+        if (b) b.setAttribute('aria-expanded', 'false');
+    }
+    function toggleSourcePanel(badge) {
+        if (_srcPop) { closeSourcePanel(); return; }
+        if (!_lastWeatherData) return;
+        _srcPop = document.createElement('div');
+        _srcPop.className = 'src-popover';
+        _srcPop.setAttribute('role', 'dialog');
+        _srcPop.setAttribute('aria-label', '数据源面板');
+        _srcPop.innerHTML = `<div class="src-pop-head">数据源 · 本次请求</div>` + buildSourcePanelRows()
+            + `<div class="src-pop-note">对证源数值按实测误差加权融合明日/第三天气温;高德与和风逐日数值同源,只取其一</div>`;
+        document.body.appendChild(_srcPop);
+        const r = badge.getBoundingClientRect();
+        _srcPop.style.left = Math.max(8, Math.min(r.left, window.innerWidth - 300)) + 'px';
+        _srcPop.style.top = (r.bottom + 8) + 'px';
+        badge.setAttribute('aria-expanded', 'true');
+    }
+    document.addEventListener('click', (e) => {
+        const badge = e.target.closest && e.target.closest('#provider-badge-main');
+        if (badge) { toggleSourcePanel(badge); return; }
+        if (_srcPop && !_srcPop.contains(e.target)) closeSourcePanel();
+    });
+    document.addEventListener('keydown', (e) => {
+        const badge = e.target.closest && e.target.closest('#provider-badge-main');
+        if (badge && (e.key === 'Enter' || e.key === ' ')) { e.preventDefault(); toggleSourcePanel(badge); return; }
+        if (e.key === 'Escape') closeSourcePanel();
+    });
+    window.addEventListener('scroll', () => { if (_srcPop) closeSourcePanel(); }, { passive: true });
 
     (async function init() {
         renderHistory();
