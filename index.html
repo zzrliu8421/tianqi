@@ -6387,5 +6387,28 @@
         catch (e) { console.log('自动定位未成功', e.message); }
     })();
 </script>
+
+<script id="demo-autopilot">
+// 演示自动化辅助(仅本地演示副本):?city=X 自动查询; drawer=1 自动打开研究抽屉
+(function () {
+    const q = new URLSearchParams(location.search);
+    const city = q.get('city');
+    const wantDrawer = q.get('drawer') === '1';
+    if (!city && !wantDrawer) return;
+    function go() {
+        if (city) {
+            const inp = document.getElementById('city');
+            if (inp) {
+                inp.value = city;
+                inp.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true }));
+            }
+        }
+        if (wantDrawer) {
+            setTimeout(() => { const b = document.getElementById('research-btn'); if (b) b.click(); }, 3000);
+        }
+    }
+    setTimeout(go, 600);
+})();
+</script>
 </body>
 </html>
