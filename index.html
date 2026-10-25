@@ -1646,6 +1646,18 @@
         }
 
         /* 响应式 */
+        /* 窄屏(≤767)：右上角徽章群现有 4 枚(定位/更新/播报/研究)，与品牌名同行放不下，
+           整体换行到第二行右对齐；meta 群自身也可换行兜底超窄屏 */
+        @media (max-width: 767px) {
+            .topbar { flex-wrap: wrap; row-gap: var(--space-2); }
+            .topbar-meta {
+                margin-left: auto;
+                flex-wrap: wrap;
+                justify-content: flex-end;
+                row-gap: var(--space-2);
+            }
+        }
+
         @media (max-width: 480px) {
             :root { --fs-display: clamp(3.5rem, 18vw, 4.5rem); }
             .app {
@@ -1653,6 +1665,11 @@
                 gap: var(--space-4);
             }
             .badge .update-text { display: none; }
+            /* 播报/研究是操作按钮而非状态胶囊：恢复图标+文字(特异性高于上面的通用隐藏)，
+               隐藏装饰圆点，与状态徽章统一 32px 触控高度 */
+            .topbar-meta .badge { min-height: 32px; }
+            .badge.speak-btn .dot { display: none; }
+            .badge.speak-btn .update-text { display: inline-flex; align-items: center; gap: 3px; }
             #last-update::after {
                 content: attr(data-time);
                 font-size: var(--fs-xs);
