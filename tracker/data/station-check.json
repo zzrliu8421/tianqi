@@ -1,5 +1,5 @@
 {
- "generatedAt": "2026-10-25T18:56:20.339Z",
+ "generatedAt": "2026-10-26T20:59:55.743Z",
  "reference": "OM Previous Runs day-0 分析值(项目全部精度指标的实况参照) vs GHCN-Daily 地面站逐日实测",
  "interpretation": "meanDiff 为「参照 − 站点实测」:|meanDiff| 与 MAE 越小,参照越可信,模式检验模式的质疑越弱",
  "window": {
