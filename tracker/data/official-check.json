@@ -1,54 +1,54 @@
 {
- "updatedAt": "2026-10-27T20:37:31.508Z",
- "latestDate": "2026-10-28",
+ "updatedAt": "2026-10-28T21:02:21.262Z",
+ "latestDate": "2026-10-29",
  "rows": [
   {
    "city": "北京",
-   "self": 36,
+   "self": null,
    "selfPrimary": null,
-   "caiyun": 27,
+   "caiyun": null,
    "qweather": null,
-   "note": "自算vs彩云差9 "
+   "note": "彩云失败(fetch failed) "
   },
   {
    "city": "上海",
-   "self": 35,
+   "self": null,
    "selfPrimary": null,
-   "caiyun": 32,
+   "caiyun": null,
    "qweather": null,
-   "note": ""
+   "note": "彩云失败(fetch failed) "
   },
   {
    "city": "广州",
-   "self": 43,
+   "self": null,
    "selfPrimary": null,
-   "caiyun": 28,
+   "caiyun": null,
    "qweather": null,
-   "note": "自算vs彩云差15 "
+   "note": "彩云失败(fetch failed) "
   },
   {
    "city": "成都",
-   "self": 40,
+   "self": null,
    "selfPrimary": null,
-   "caiyun": 40,
+   "caiyun": null,
    "qweather": null,
-   "note": ""
+   "note": "彩云失败(fetch failed) "
   },
   {
    "city": "南阳",
-   "self": 48,
+   "self": null,
    "selfPrimary": null,
-   "caiyun": 48,
+   "caiyun": null,
    "qweather": null,
-   "note": ""
+   "note": "彩云失败(fetch failed) "
   },
   {
    "city": "纽约",
-   "self": 0,
+   "self": null,
    "selfPrimary": null,
-   "caiyun": 0,
+   "caiyun": null,
    "qweather": null,
-   "note": ""
+   "note": "彩云失败(fetch failed) "
   }
  ],
  "stats": {
