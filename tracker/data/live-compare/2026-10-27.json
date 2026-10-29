@@ -1,6 +1,6 @@
 {
  "date": "2026-10-27",
- "comparedAt": "2026-10-28T21:01:07.670Z",
+ "comparedAt": "2026-10-29T21:00:59.121Z",
  "reference": "Open-Meteo Previous Runs API day-0(当日分析值,与 backfill.js 一致)",
  "rainThresholdMM": 0.2,
  "note": "errTmax/errTmin 为「预报 − 实况」(°C,正=报高);rainHit 为降水有无命中;某源当天缺失/出错即缺席",
