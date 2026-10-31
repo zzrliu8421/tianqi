@@ -1,0 +1,431 @@
+{
+ "date": "2026-11-01",
+ "fetchedAt": "2026-10-31T19:54:00.417Z",
+ "targetDays": {
+  "d1": "2026-11-02",
+  "d3": "2026-11-04"
+ },
+ "keys": {
+  "amap": true,
+  "caiyun": true,
+  "qweather": true
+ },
+ "note": "各源「当天」对 D+1/D+3 的预报原样存档;温度 °C,precipProb 降水概率(%),precipMM 降水量(mm),无则为 null",
+ "cities": [
+  {
+   "id": "beijing",
+   "city": "北京",
+   "lat": 39.9,
+   "lon": 116.4,
+   "tz": "Asia/Shanghai",
+   "sources": [
+    {
+     "source": "openmeteo",
+     "d1": {
+      "date": "2026-11-02",
+      "tmax": 15.5,
+      "tmin": 3.9,
+      "precipProb": 0,
+      "precipMM": null
+     },
+     "d3": {
+      "date": "2026-11-04",
+      "tmax": 11.7,
+      "tmin": 5.3,
+      "precipProb": 8,
+      "precipMM": null
+     }
+    },
+    {
+     "source": "amap",
+     "d1": {
+      "date": "2026-11-02",
+      "tmax": 17,
+      "tmin": 4,
+      "precipProb": null,
+      "precipMM": null
+     },
+     "d3": {
+      "date": "2026-11-04",
+      "tmax": 14,
+      "tmin": 3,
+      "precipProb": null,
+      "precipMM": null
+     }
+    },
+    {
+     "source": "caiyun",
+     "d1": {
+      "date": "2026-11-02",
+      "tmax": 17.05,
+      "tmin": 4.16,
+      "precipProb": 0,
+      "precipMM": 0
+     },
+     "d3": null,
+     "note": "该源未覆盖 D+3"
+    },
+    {
+     "source": "qweather",
+     "d1": {
+      "date": "2026-11-02",
+      "tmax": 17,
+      "tmin": 4,
+      "precipProb": null,
+      "precipMM": 0
+     },
+     "d3": {
+      "date": "2026-11-04",
+      "tmax": 14,
+      "tmin": 3,
+      "precipProb": null,
+      "precipMM": 0
+     }
+    }
+   ]
+  },
+  {
+   "id": "shanghai",
+   "city": "上海",
+   "lat": 31.23,
+   "lon": 121.47,
+   "tz": "Asia/Shanghai",
+   "sources": [
+    {
+     "source": "openmeteo",
+     "d1": {
+      "date": "2026-11-02",
+      "tmax": 20,
+      "tmin": 13.4,
+      "precipProb": 86,
+      "precipMM": null
+     },
+     "d3": {
+      "date": "2026-11-04",
+      "tmax": 20.6,
+      "tmin": 16.7,
+      "precipProb": 100,
+      "precipMM": null
+     }
+    },
+    {
+     "source": "amap",
+     "d1": {
+      "date": "2026-11-02",
+      "tmax": 22,
+      "tmin": 14,
+      "precipProb": null,
+      "precipMM": null
+     },
+     "d3": {
+      "date": "2026-11-04",
+      "tmax": 20,
+      "tmin": 16,
+      "precipProb": null,
+      "precipMM": null
+     }
+    },
+    {
+     "source": "caiyun",
+     "d1": {
+      "date": "2026-11-02",
+      "tmax": 20.49,
+      "tmin": 13.96,
+      "precipProb": 60,
+      "precipMM": 0.0315
+     },
+     "d3": null,
+     "note": "该源未覆盖 D+3"
+    },
+    {
+     "source": "qweather",
+     "d1": {
+      "date": "2026-11-02",
+      "tmax": 22,
+      "tmin": 14,
+      "precipProb": null,
+      "precipMM": 0
+     },
+     "d3": {
+      "date": "2026-11-04",
+      "tmax": 20,
+      "tmin": 16,
+      "precipProb": null,
+      "precipMM": 15.1
+     }
+    }
+   ]
+  },
+  {
+   "id": "guangzhou",
+   "city": "广州",
+   "lat": 23.13,
+   "lon": 113.26,
+   "tz": "Asia/Shanghai",
+   "sources": [
+    {
+     "source": "openmeteo",
+     "d1": {
+      "date": "2026-11-02",
+      "tmax": 31.6,
+      "tmin": 24.4,
+      "precipProb": 67,
+      "precipMM": null
+     },
+     "d3": {
+      "date": "2026-11-04",
+      "tmax": 30,
+      "tmin": 23.7,
+      "precipProb": 83,
+      "precipMM": null
+     }
+    },
+    {
+     "source": "amap",
+     "d1": {
+      "date": "2026-11-02",
+      "tmax": 29,
+      "tmin": 21,
+      "precipProb": null,
+      "precipMM": null
+     },
+     "d3": {
+      "date": "2026-11-04",
+      "tmax": 29,
+      "tmin": 23,
+      "precipProb": null,
+      "precipMM": null
+     }
+    },
+    {
+     "source": "caiyun",
+     "d1": {
+      "date": "2026-11-02",
+      "tmax": 30.98,
+      "tmin": 24.72,
+      "precipProb": 0,
+      "precipMM": 0.0276
+     },
+     "d3": null,
+     "note": "该源未覆盖 D+3"
+    },
+    {
+     "source": "qweather",
+     "d1": {
+      "date": "2026-11-02",
+      "tmax": 29,
+      "tmin": 21,
+      "precipProb": null,
+      "precipMM": 1.6
+     },
+     "d3": {
+      "date": "2026-11-04",
+      "tmax": 29,
+      "tmin": 23,
+      "precipProb": null,
+      "precipMM": 4.4
+     }
+    }
+   ]
+  },
+  {
+   "id": "chengdu",
+   "city": "成都",
+   "lat": 30.57,
+   "lon": 104.07,
+   "tz": "Asia/Shanghai",
+   "sources": [
+    {
+     "source": "openmeteo",
+     "d1": {
+      "date": "2026-11-02",
+      "tmax": 20.4,
+      "tmin": 12.3,
+      "precipProb": 18,
+      "precipMM": null
+     },
+     "d3": {
+      "date": "2026-11-04",
+      "tmax": 21.4,
+      "tmin": 13.8,
+      "precipProb": 4,
+      "precipMM": null
+     }
+    },
+    {
+     "source": "amap",
+     "d1": {
+      "date": "2026-11-02",
+      "tmax": 20,
+      "tmin": 12,
+      "precipProb": null,
+      "precipMM": null
+     },
+     "d3": {
+      "date": "2026-11-04",
+      "tmax": 20,
+      "tmin": 14,
+      "precipProb": null,
+      "precipMM": null
+     }
+    },
+    {
+     "source": "caiyun",
+     "d1": {
+      "date": "2026-11-02",
+      "tmax": 20.97,
+      "tmin": 15.01,
+      "precipProb": 0,
+      "precipMM": 0
+     },
+     "d3": null,
+     "note": "该源未覆盖 D+3"
+    },
+    {
+     "source": "qweather",
+     "d1": {
+      "date": "2026-11-02",
+      "tmax": 20,
+      "tmin": 12,
+      "precipProb": null,
+      "precipMM": 0
+     },
+     "d3": {
+      "date": "2026-11-04",
+      "tmax": 20,
+      "tmin": 14,
+      "precipProb": null,
+      "precipMM": 0
+     }
+    }
+   ]
+  },
+  {
+   "id": "nanyang",
+   "city": "南阳",
+   "lat": 32.99,
+   "lon": 112.53,
+   "tz": "Asia/Shanghai",
+   "sources": [
+    {
+     "source": "openmeteo",
+     "d1": {
+      "date": "2026-11-02",
+      "tmax": 20.6,
+      "tmin": 6.4,
+      "precipProb": 18,
+      "precipMM": null
+     },
+     "d3": {
+      "date": "2026-11-04",
+      "tmax": 18.5,
+      "tmin": 10.8,
+      "precipProb": 57,
+      "precipMM": null
+     }
+    },
+    {
+     "source": "amap",
+     "d1": {
+      "date": "2026-11-02",
+      "tmax": 20,
+      "tmin": 9,
+      "precipProb": null,
+      "precipMM": null
+     },
+     "d3": {
+      "date": "2026-11-04",
+      "tmax": 17,
+      "tmin": 9,
+      "precipProb": null,
+      "precipMM": null
+     }
+    },
+    {
+     "source": "caiyun",
+     "d1": {
+      "date": "2026-11-02",
+      "tmax": 21.21,
+      "tmin": 9.5,
+      "precipProb": 0,
+      "precipMM": 0
+     },
+     "d3": null,
+     "note": "该源未覆盖 D+3"
+    },
+    {
+     "source": "qweather",
+     "d1": {
+      "date": "2026-11-02",
+      "tmax": 20,
+      "tmin": 9,
+      "precipProb": null,
+      "precipMM": 0
+     },
+     "d3": {
+      "date": "2026-11-04",
+      "tmax": 17,
+      "tmin": 9,
+      "precipProb": null,
+      "precipMM": 0
+     }
+    }
+   ]
+  },
+  {
+   "id": "newyork",
+   "city": "纽约",
+   "lat": 40.71,
+   "lon": -74.01,
+   "tz": "America/New_York",
+   "sources": [
+    {
+     "source": "openmeteo",
+     "d1": {
+      "date": "2026-11-02",
+      "tmax": 17.6,
+      "tmin": 7.5,
+      "precipProb": 2,
+      "precipMM": null
+     },
+     "d3": {
+      "date": "2026-11-04",
+      "tmax": 18,
+      "tmin": 13.4,
+      "precipProb": 1,
+      "precipMM": null
+     }
+    },
+    {
+     "source": "caiyun",
+     "d1": {
+      "date": "2026-11-02",
+      "tmax": 18.29,
+      "tmin": 9.09,
+      "precipProb": 0,
+      "precipMM": 0
+     },
+     "d3": null,
+     "note": "该源未覆盖 D+3"
+    },
+    {
+     "source": "qweather",
+     "d1": {
+      "date": "2026-11-02",
+      "tmax": 20,
+      "tmin": 10,
+      "precipProb": null,
+      "precipMM": 0
+     },
+     "d3": {
+      "date": "2026-11-04",
+      "tmax": 20,
+      "tmin": 13,
+      "precipProb": null,
+      "precipMM": 0
+     }
+    }
+   ]
+  }
+ ]
+}
