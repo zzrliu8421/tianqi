@@ -67,6 +67,7 @@
 | `/api/qweather/dev/<path>` | 和风 API（注入 `QWEATHER_KEY`；配置 `QWEATHER_HOST` 后走专属域名） |
 | `/api/ipnews/<path>`       | ipnews.io（注入 `IPNEWS_KEY`）             |
 | `/api/caiyun/<path>`       | api.caiyunapp.com（`CAIYUN_TOKEN` 注入上游路径段） |
+| `/api/openmeteo/<ep>`      | Open-Meteo 免 Key 三端点（`ep` ∈ forecast / air / geo，查询串透传；大陆直连 `*.open-meteo.com` 常不可达，经代理出网补全日出日落 / 7 天预报 / OM AQI 回退） |
 | `/api/ai/advice`           | 大模型建议生成（Agnes/智谱模型链；数值接地校验 + 城市/小时/人群缓存 + 规则降级） |
 | `/api/ai/stats`            | AI 建议运行统计（调用 / 缓存命中 / 接地拦截计数，聚合并不含请求内容） |
 | `/api/status`              | 返回服务端已配置的 provider 布尔值                 |

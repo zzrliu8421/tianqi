@@ -30,6 +30,9 @@
  *   GET /api/ipnews/<path>        → https://ipnews.io/<path>?<query>&api-key=IPNEWS_KEY
  *   GET /api/caiyun/<path>        → https://api.caiyunapp.com/<path>，CAIYUN_TOKEN 注入路径段：
  *                                   /api/caiyun/v2.6/<lon>,<lat>/weather → /v2.6/<token>/<lon>,<lat>/weather
+ *   GET /api/openmeteo/<ep>       → Open-Meteo 免 Key 三端点（ep ∈ forecast / air / geo，查询串透传）。
+ *                                   大陆网络对 *.open-meteo.com 直连常不可达，经边缘出网补全
+ *                                   日出日落 / 7 天预报 / OM AQI 回退
  *   POST /api/ai/advice           → AI 天气生活建议：按模型链依次 POST <baseUrl>/chat/completions
  *                                   （首选 Agnes：agnes-2.5-flash → agnes-3.0-flash；次选智谱：
  *                                   glm-4.7-flash → glm-4-flash，Bearer 对应供应商 Key）。
@@ -56,6 +59,9 @@ const UPSTREAM = {
     qweather_dev: 'https://devapi.qweather.com',
     ipnews: 'https://ipnews.io',
     caiyun: 'https://api.caiyunapp.com',
+    openmeteo_forecast: 'https://api.open-meteo.com',
+    openmeteo_air: 'https://air-quality-api.open-meteo.com',
+    openmeteo_geo: 'https://geocoding-api.open-meteo.com',
 };
 
 // 上游 API 接收 Key 时的 query 参数名
@@ -399,6 +405,17 @@ function matchRoute(pathname) {
         }
         return { type: 'proxy', upstream: 'caiyun', sub };
     }
+    if (pathname.startsWith('/api/openmeteo/')) {
+        // 免 Key 源：仅放行三个固定端点，查询串透传（buildUpstreamUrl 无 KEY_ENV 项即不注入参数）
+        const ep = pathname.slice('/api/openmeteo/'.length);
+        const om = {
+            forecast: { upstream: 'openmeteo_forecast', sub: 'v1/forecast' },
+            air: { upstream: 'openmeteo_air', sub: 'v1/air-quality' },
+            geo: { upstream: 'openmeteo_geo', sub: 'v1/search' },
+        }[ep];
+        if (!om) return { type: 'forbidden' };
+        return { type: 'proxy', upstream: om.upstream, sub: om.sub };
+    }
     return null;
 }
 
@@ -442,10 +459,10 @@ async function handleGet(context) {
         });
     }
 
-    // 代理转发
+    // 代理转发（Open-Meteo 免 Key：无 KEY_ENV 项则跳过 Key 校验，keyValue 置空）
     const envKey = KEY_ENV[matched.upstream];
-    const keyValue = env[envKey];
-    if (!keyValue) {
+    const keyValue = envKey ? env[envKey] : '';
+    if (envKey && !keyValue) {
         return json(503, { error: `${envKey} not configured on server` });
     }
 
@@ -555,9 +572,13 @@ function validateAdvicePayload(body) {
     if (!data || typeof data !== 'object' || Array.isArray(data)) return null;
     const keys = Object.keys(data);
     if (keys.length === 0 || keys.length > 30) return null;
+    // 缺测字段前端会显式传 null(如大陆 OM 补全不可达时的 uv/pop/aqi/sunrise),
+    // 剔除而不是整包拒绝——否则这些场景的 AI 建议永远 400 打入规则降级
+    const clean = {};
     for (const k of keys) {
         if (!k || k.length > 32) return null;
         const v = data[k];
+        if (v === null || v === undefined) continue;
         if (typeof v === 'number') {
             if (!Number.isFinite(v)) return null;
         } else if (typeof v === 'string') {
@@ -565,10 +586,12 @@ function validateAdvicePayload(body) {
         } else {
             return null;
         }
+        clean[k] = v;
     }
+    if (Object.keys(clean).length === 0) return null;
     // 智 · 人群标签(可选)
     const group = typeof body.group === 'string' && AI_GROUPS[body.group] ? body.group : null;
-    return { city, data, group };
+    return { city, data: clean, group };
 }
 
 /** 输入数值集合:data 中所有数值 + 字符串值里出现的数字("东北风3级" 里的 3) */

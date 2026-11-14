@@ -13,6 +13,9 @@
  *      - GET /api/ipnews/<path>         → https://ipnews.io/<path>?<query>&api-key=IPNEWS_KEY
  *      - GET /api/caiyun/<path>         → https://api.caiyunapp.com/<path>，token 注入路径段：
  *        /api/caiyun/v2.6/<lon>,<lat>/weather → /v2.6/<CAIYUN_TOKEN>/<lon>,<lat>/weather
+ *      - GET /api/openmeteo/<ep>        → Open-Meteo 免 Key 三端点（ep ∈ forecast / air / geo，
+ *        查询串透传）。大陆网络对 *.open-meteo.com 直连常不可达，经代理出网补全
+ *        日出日落 / 7 天预报 / OM AQI 回退
  *      - POST /api/ai/advice            → AI 天气生活建议：按模型链依次 POST <baseUrl>/chat/completions
  *        （首选 Agnes：agnes-2.5-flash → agnes-3.0-flash；次选智谱：glm-4.7-flash → glm-4-flash，
  *        Bearer 对应供应商 Key）。输出做"接地校验"：响应文本中的每个数字必须来自请求 data 的
@@ -182,6 +185,9 @@ const UPSTREAM = {
     qweather_dev: QWEATHER_HOST || 'devapi.qweather.com',
     ipnews: 'ipnews.io',
     caiyun: 'api.caiyunapp.com',
+    openmeteo_forecast: 'api.open-meteo.com',
+    openmeteo_air: 'air-quality-api.open-meteo.com',
+    openmeteo_geo: 'geocoding-api.open-meteo.com',
 };
 
 // 彩云 token 只允许 URL 路径安全字符；不合规视为未配置，防止注入破坏上游路径结构
@@ -510,9 +516,13 @@ function validateAdvicePayload(body) {
     if (!data || typeof data !== 'object' || Array.isArray(data)) return null;
     const keys = Object.keys(data);
     if (keys.length === 0 || keys.length > 30) return null;
+    // 缺测字段前端会显式传 null（如大陆 OM 补全不可达时的 uv/pop/aqi/sunrise），
+    // 剔除而不是整包拒绝——否则这些场景的 AI 建议永远 400 打入规则降级
+    const clean = {};
     for (const k of keys) {
         if (!k || k.length > 32) return null;
         const v = data[k];
+        if (v === null || v === undefined) continue;
         if (typeof v === 'number') {
             if (!Number.isFinite(v)) return null;
         } else if (typeof v === 'string') {
@@ -520,10 +530,12 @@ function validateAdvicePayload(body) {
         } else {
             return null;
         }
+        clean[k] = v;
     }
+    if (Object.keys(clean).length === 0) return null;
     // 智 · 人群标签(可选)
     const group = typeof body.group === 'string' && AI_GROUPS[body.group] ? body.group : null;
-    return { city, data, group };
+    return { city, data: clean, group };
 }
 
 /**
@@ -922,6 +934,20 @@ function handleApi(req, res) {
         return proxyGet(req, res, UPSTREAM.caiyun, `/v2.6/${ENV.CAIYUN_TOKEN}/${m[1]},${m[2]}/weather`);
     }
 
+    // /api/openmeteo/<ep> → Open-Meteo 免 Key 三端点（查询串透传；无 Key 校验）：
+    // forecast → api.open-meteo.com/v1/forecast；air → air-quality-api.open-meteo.com/v1/air-quality；
+    // geo → geocoding-api.open-meteo.com/v1/search
+    if (pathname.startsWith('/api/openmeteo/')) {
+        const ep = pathname.slice('/api/openmeteo/'.length);
+        const om = {
+            forecast: ['openmeteo_forecast', '/v1/forecast'],
+            air: ['openmeteo_air', '/v1/air-quality'],
+            geo: ['openmeteo_geo', '/v1/search'],
+        }[ep];
+        if (!om) return pathNotAllowed(res);
+        return proxyGet(req, res, UPSTREAM[om[0]], om[1]);
+    }
+
     // /api/ipnews/<path> → https://ipnews.io/<path>（path 形如 api/v1/json/<ip>）
     if (pathname.startsWith('/api/ipnews/')) {
         const sub = pathname.slice('/api/ipnews/'.length);
@@ -1101,6 +1127,7 @@ function main() {
         console.log(`    /api/qweather/dev/*   → ${UPSTREAM.qweather_dev}`);
         console.log('    /api/ipnews/*         → ipnews.io');
         console.log('    /api/caiyun/*         → api.caiyunapp.com（token 注入路径段）');
+    console.log('    /api/openmeteo/*      → api.open-meteo.com / air-quality-api / geocoding-api（免 Key）');
         console.log('    POST /api/ai/advice   → AI 天气生活建议（LLM，失败降级规则）');
         console.log('    /api/status           → 服务端已配置的 provider');
         console.log('------------------------------------------------------');

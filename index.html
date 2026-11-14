@@ -3930,19 +3930,29 @@
     }
 
     // ===================== Open-Meteo 数据解析（供多源复用）=====================
+    // 大陆网络对 *.open-meteo.com 直连常不可达（浏览器直连超时/被墙）：
+    // 统一先走同源 /api/openmeteo/* 代理（server.js / EdgeOne 边缘函数出网），失败回退直连。
+    // 代理尝试超时收紧到 6s，避免"代理悬挂 + 直连再超时"把补全拖到 20s 以上。
     async function fetchOpenMeteoForecast(lat, lon, signal) {
-        const url = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}` +
+        const query = `latitude=${lat}&longitude=${lon}` +
             `&current=temperature_2m,relative_humidity_2m,apparent_temperature,weather_code,pressure_msl,wind_speed_10m,wind_direction_10m,visibility` +
             `&hourly=temperature_2m,weather_code,precipitation_probability,wind_speed_10m` +
             `&daily=weather_code,temperature_2m_max,temperature_2m_min,precipitation_probability_max,sunrise,sunset,uv_index_max` +
             `&timezone=auto&forecast_days=7`;
-        return fetchJSON(url, { signal });
+        try {
+            return await fetchJSON(`${CONFIG.API_BASE}/api/openmeteo/forecast?${query}`, { signal, timeout: 6000 });
+        } catch (e) {
+            if (signal?.aborted) throw e;
+            return fetchJSON(`https://api.open-meteo.com/v1/forecast?${query}`, { signal });
+        }
     }
 
     async function fetchOpenMeteoAQI(lat, lon, signal) {
         // 取六项污染物浓度,中国 AQI 由前端按 HJ 633-2012 自算,不再使用 us_aqi
-        const url = `https://air-quality-api.open-meteo.com/v1/air-quality?latitude=${lat}&longitude=${lon}&current=pm10,pm2_5,nitrogen_dioxide,sulphur_dioxide,ozone,carbon_monoxide`;
-        return fetchJSON(url, { signal }).catch(() => null);
+        const query = `latitude=${lat}&longitude=${lon}&current=pm10,pm2_5,nitrogen_dioxide,sulphur_dioxide,ozone,carbon_monoxide`;
+        const proxied = await fetchJSON(`${CONFIG.API_BASE}/api/openmeteo/air?${query}`, { signal, timeout: 6000 }).catch(() => null);
+        if (proxied) return proxied;
+        return fetchJSON(`https://air-quality-api.open-meteo.com/v1/air-quality?${query}`, { signal }).catch(() => null);
     }
 
     function parseOpenMeteoWeather(data, loc, source = 'Open-Meteo') {
@@ -4340,14 +4350,29 @@
 
                 // 用 Open-Meteo 补全气压、UV、能见度、逐小时、AQI、日出日落、7 天预报等字段
                 let enriched = null;
+                let enrichedBy = '';
                 if (omForecast) {
                     try {
                         enriched = parseOpenMeteoWeather(omForecast, loc, '高德地图 + Open-Meteo');
+                        enrichedBy = '高德地图 + Open-Meteo';
                     } catch (e) { console.warn('[amap] Open-Meteo 解析失败', e.message); }
+                }
+                // OM 补全不可达时（大陆直连被墙、代理出网也失败），回退彩云同源代理补全
+                // 逐小时 / 7 天 / 日出日落 / 国标 AQI——否则大陆用户只剩高德实况，
+                // 日出日落、未来 7 天、24 小时曲线三块整体缺失
+                if (!enriched && Providers.caiyun?.available?.() && loc.lat && loc.lon) {
+                    try {
+                        const cUrl = `${CONFIG.API_BASE}/api/caiyun/v2.6/${Number(loc.lon)},${Number(loc.lat)}/weather?dailysteps=7&hourlysteps=24&lang=zh_CN`;
+                        const cData = await fetchJSON(cUrl, { signal });
+                        if (cData && cData.status === 'ok' && cData.result) {
+                            enriched = parseCaiyunWeather(cData.result, loc, cData);
+                            enrichedBy = '高德地图 + 彩云天气';
+                        }
+                    } catch (e) { console.warn('[amap] 彩云补全失败', e.message); }
                 }
                 if (enriched) mergeAQI(enriched, omAQI);
 
-                // 使用 Open-Meteo 的 7 天预报（含日出日落、降水概率）
+                // 使用 Open-Meteo 的 7 天预报（含日出日落、降水概率）；彩云补全时同结构
                 const daily = enriched?.daily || [];
                 return {
                     location: {
@@ -4383,7 +4408,7 @@
                     },
                     hourly: enriched?.hourly || [],
                     daily,
-                    source: enriched ? '高德地图 + Open-Meteo' : '高德地图',
+                    source: enrichedBy || '高德地图',
                     updatedAt: liveBase.reporttime || new Date().toISOString(),
                 };
             }
@@ -4512,7 +4537,10 @@
                 // 非中文查询使用英文地名，避免 "New York" 被翻译为 "约克"
                 const isChinese = /[\u4e00-\u9fa5]/.test(city);
                 const lang = isChinese ? 'zh' : 'en';
-                const data = await fetchJSON(`https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(city)}&count=1&language=${lang}&format=json`);
+                const query = `name=${encodeURIComponent(city)}&count=1&language=${lang}&format=json`;
+                // 代理优先（大陆直连 geocoding-api 常不可达），失败回退直连
+                const data = await fetchJSON(`${CONFIG.API_BASE}/api/openmeteo/geo?${query}`, { timeout: 6000 })
+                    .catch(() => fetchJSON(`https://geocoding-api.open-meteo.com/v1/search?${query}`));
                 if (!data.results?.length) throw new Error('Open-Meteo 地理编码失败');
                 const g = data.results[0];
                 return {
@@ -5571,25 +5599,28 @@
         if (!panel || !data?.current) return;
         const myToken = ++_aiToken;
         const np = locNowParts();
+        // 缺测字段直接省略而不是传 null：服务端校验只收"数值/短字符串"，null 整包被拒 →
+        // 大陆等 OM 补全不可达场景（uv/pop/aqi/sunrise/sunset 全 null）AI 建议永远 400 打入降级
+        const cur = data.current || {};
+        const d0 = data.daily?.[0] || null;
+        const d = { temp: Math.round(cur.temp * 10) / 10 };
+        if (cur.feelsLike != null) d.feelsLike = Math.round(cur.feelsLike);
+        if (cur.weather) d.weather = cur.weather;
+        if (cur.humidity != null) d.humidity = cur.humidity;
+        if (cur.windSpeed != null) d.windSpeed = Math.round(cur.windSpeed);
+        if (cur.uv != null) d.uv = cur.uv;
+        if (cur.precipProbability != null) d.pop = cur.precipProbability;
+        if (cur.aqi != null) d.aqi = cur.aqi;
+        if (cur.aqiPm25 != null) d.pm25 = Math.round(cur.aqiPm25);
+        if (d0?.maxTemp != null) d.tmax = Math.round(d0.maxTemp);
+        if (d0?.minTemp != null) d.tmin = Math.round(d0.minTemp);
+        if (d0?.sunrise) d.sunrise = d0.sunrise;
+        if (d0?.sunset) d.sunset = d0.sunset;
+        d.month = new Date().getMonth() + 1;
+        d.hour = np.h;
         const payload = {
             city: data.location?.city || '',
-            data: {
-                temp: Math.round(data.current.temp * 10) / 10,
-                feelsLike: data.current.feelsLike != null ? Math.round(data.current.feelsLike) : null,
-                weather: data.current.weather || '',
-                humidity: data.current.humidity ?? null,
-                windSpeed: data.current.windSpeed != null ? Math.round(data.current.windSpeed) : null,
-                uv: data.current.uv ?? null,
-                pop: data.current.precipProbability ?? null,
-                aqi: data.current.aqi ?? null,
-                pm25: data.current.aqiPm25 != null ? Math.round(data.current.aqiPm25) : null,
-                tmax: data.daily?.[0]?.maxTemp != null ? Math.round(data.daily[0].maxTemp) : null,
-                tmin: data.daily?.[0]?.minTemp != null ? Math.round(data.daily[0].minTemp) : null,
-                sunrise: data.daily?.[0]?.sunrise || null,
-                sunset: data.daily?.[0]?.sunset || null,
-                month: new Date().getMonth() + 1,
-                hour: np.h,
-            },
+            data: d,
             group: aiGroupSelected() || null,
         };
         const t0 = performance.now();
