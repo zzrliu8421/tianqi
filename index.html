@@ -3930,20 +3930,30 @@
     }
 
     // ===================== Open-Meteo 数据解析（供多源复用）=====================
-    // 大陆网络对 *.open-meteo.com 直连常不可达（浏览器直连超时/被墙）：
-    // 统一先走同源 /api/openmeteo/* 代理（server.js / EdgeOne 边缘函数出网），失败回退直连。
-    // 代理尝试超时收紧到 6s，避免"代理悬挂 + 直连再超时"把补全拖到 20s 以上。
+    // 大陆网络对 *.open-meteo.com 的可达性因主机而异且不可预测(实测:边缘出网 air/geo 通、
+    // forecast 恒 504;用户直连则间歇被墙):forecast 直连与同源代理并行竞速,先返回者胜,
+    // 另一个立即取消;双双失败由调用方兜底(高德路径回退彩云补全)。air/geo 边缘实测可达,代理优先。
     async function fetchOpenMeteoForecast(lat, lon, signal) {
         const query = `latitude=${lat}&longitude=${lon}` +
             `&current=temperature_2m,relative_humidity_2m,apparent_temperature,weather_code,pressure_msl,wind_speed_10m,wind_direction_10m,visibility` +
             `&hourly=temperature_2m,weather_code,precipitation_probability,wind_speed_10m` +
             `&daily=weather_code,temperature_2m_max,temperature_2m_min,precipitation_probability_max,sunrise,sunset,uv_index_max` +
             `&timezone=auto&forecast_days=7`;
+        const ctrl = new AbortController();
+        const onAbort = () => ctrl.abort();
+        if (signal) {
+            if (signal.aborted) ctrl.abort();
+            else signal.addEventListener('abort', onAbort, { once: true });
+        }
+        const opts = { signal: ctrl.signal, timeout: 8000 };
         try {
-            return await fetchJSON(`${CONFIG.API_BASE}/api/openmeteo/forecast?${query}`, { signal, timeout: 6000 });
-        } catch (e) {
-            if (signal?.aborted) throw e;
-            return fetchJSON(`https://api.open-meteo.com/v1/forecast?${query}`, { signal });
+            return await Promise.any([
+                fetchJSON(`https://api.open-meteo.com/v1/forecast?${query}`, opts),
+                fetchJSON(`${CONFIG.API_BASE}/api/openmeteo/forecast?${query}`, opts),
+            ]);
+        } finally {
+            ctrl.abort(); // 胜者已定,取消败者的悬挂请求
+            if (signal) signal.removeEventListener('abort', onAbort);
         }
     }
 
