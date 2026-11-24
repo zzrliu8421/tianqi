@@ -1,7 +1,7 @@
 {
- "generatedAt": "2026-11-22T21:42:18.792Z",
+ "generatedAt": "2026-11-24T02:52:36.767Z",
  "source": "tracker/data/live-compare(各源预报 vs Open-Meteo day-0 分析值)",
- "windowDays": 83,
+ "windowDays": 85,
  "minCityDays": 30,
  "weightsRule": "逆 MAE 归一化,按提前期分列;badge = 同日各源最高温极差 p90",
  "providerMap": {
@@ -19,21 +19,21 @@
  "sources": {
   "openmeteo": {
    "d1": {
-    "mae": 0.82,
-    "bias": -0.07,
-    "n": 476
+    "mae": 0.83,
+    "bias": -0.09,
+    "n": 487
    },
    "d3": {
     "mae": 1.14,
     "bias": 0.05,
-    "n": 458
+    "n": 464
    }
   },
   "caiyun": {
    "d1": {
     "mae": 0.86,
     "bias": 0.1,
-    "n": 492
+    "n": 504
    },
    "d3": {
     "mae": 1.33,
@@ -55,26 +55,26 @@
   },
   "amap": {
    "d1": {
-    "mae": 1.23,
-    "bias": 0.08,
-    "n": 115
+    "mae": 1.24,
+    "bias": 0.05,
+    "n": 120
    },
    "d3": {
-    "mae": 1.34,
+    "mae": 1.33,
     "bias": 0.16,
-    "n": 105
+    "n": 115
    }
   },
   "qweather": {
    "d1": {
-    "mae": 1.22,
-    "bias": -0.02,
-    "n": 168
+    "mae": 1.24,
+    "bias": -0.06,
+    "n": 180
    },
    "d3": {
     "mae": 1.36,
-    "bias": 0.06,
-    "n": 156
+    "bias": 0.04,
+    "n": 168
    }
   }
  },
@@ -111,11 +111,11 @@
   }
  },
  "fusedMae": {
-  "d1": 0.97,
+  "d1": 0.98,
   "d3": 1.24
  },
  "badge": {
-  "d1": 2.26,
+  "d1": 2.32,
   "d3": 2.6
  }
 }
