@@ -1,6 +1,6 @@
 {
  "date": "2026-11-26",
- "comparedAt": "2026-11-27T00:30:28.472Z",
+ "comparedAt": "2026-11-27T23:59:57.900Z",
  "reference": "Open-Meteo Previous Runs API day-0(当日分析值,与 backfill.js 一致)",
  "rainThresholdMM": 0.2,
  "note": "errTmax/errTmin 为「预报 − 实况」(°C,正=报高);rainHit 为降水有无命中;某源当天缺失/出错即缺席",
@@ -495,9 +495,9 @@
    "city": "纽约",
    "timezone": "America/New_York",
    "actual": {
-    "tmax": 12.2,
+    "tmax": 11.3,
     "tmin": 5.7,
-    "precip": 54.2
+    "precip": 40.8
    },
    "sources": [
     {
@@ -511,7 +511,7 @@
        "precipProb": 99,
        "precipMM": null
       },
-      "errTmax": 1.5,
+      "errTmax": 2.4,
       "errTmin": -0.7,
       "forecastRain": true,
       "actualRain": true,
@@ -526,7 +526,7 @@
        "precipProb": 82,
        "precipMM": null
       },
-      "errTmax": 0.9,
+      "errTmax": 1.8,
       "errTmin": 1.5,
       "forecastRain": true,
       "actualRain": true,
@@ -544,7 +544,7 @@
        "precipProb": 80,
        "precipMM": 2.1531
       },
-      "errTmax": -2.88,
+      "errTmax": -1.98,
       "errTmin": -0.52,
       "forecastRain": true,
       "actualRain": true,
@@ -563,7 +563,7 @@
        "precipProb": null,
        "precipMM": 18.4
       },
-      "errTmax": -1.2,
+      "errTmax": -0.3,
       "errTmin": 2.3,
       "forecastRain": true,
       "actualRain": true,
@@ -578,7 +578,7 @@
        "precipProb": null,
        "precipMM": 19.4
       },
-      "errTmax": -3.2,
+      "errTmax": -2.3,
       "errTmin": 2.3,
       "forecastRain": true,
       "actualRain": true,

@@ -1,5 +1,5 @@
 {
- "generatedAt": "2026-11-27T00:30:36.537Z",
+ "generatedAt": "2026-11-28T00:00:06.138Z",
  "source": "tracker/data/live-compare(各源预报 vs Open-Meteo day-0 分析值)",
  "windowDays": 88,
  "minCityDays": 30,
@@ -20,7 +20,7 @@
   "openmeteo": {
    "d1": {
     "mae": 0.85,
-    "bias": -0.09,
+    "bias": -0.08,
     "n": 505
    },
    "d3": {
@@ -68,12 +68,12 @@
   "qweather": {
    "d1": {
     "mae": 1.26,
-    "bias": -0.01,
+    "bias": 0,
     "n": 198
    },
    "d3": {
-    "mae": 1.37,
-    "bias": 0.07,
+    "mae": 1.36,
+    "bias": 0.08,
     "n": 186
    }
   }

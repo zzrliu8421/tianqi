@@ -1,46 +1,46 @@
 {
- "updatedAt": "2026-11-27T00:30:55.462Z",
- "latestDate": "2026-11-27",
+ "updatedAt": "2026-11-28T00:00:25.924Z",
+ "latestDate": "2026-11-28",
  "rows": [
   {
    "city": "北京",
-   "self": 22,
+   "self": 21,
    "selfPrimary": null,
-   "caiyun": 14,
+   "caiyun": 13,
    "qweather": null,
    "note": "自算vs彩云差8 "
   },
   {
    "city": "上海",
-   "self": 86,
+   "self": 70,
    "selfPrimary": "NO2",
-   "caiyun": 78,
+   "caiyun": 77,
    "qweather": null,
-   "note": "自算vs彩云差8 "
+   "note": "自算vs彩云差7 "
   },
   {
    "city": "广州",
-   "self": 60,
-   "selfPrimary": "PM10",
-   "caiyun": 64,
+   "self": 70,
+   "selfPrimary": "NO2",
+   "caiyun": 42,
    "qweather": null,
-   "note": ""
+   "note": "自算vs彩云差28 "
   },
   {
    "city": "成都",
-   "self": 74,
+   "self": 66,
    "selfPrimary": "PM25",
-   "caiyun": 88,
+   "caiyun": 76,
    "qweather": null,
-   "note": "自算vs彩云差14 "
+   "note": "自算vs彩云差10 "
   },
   {
    "city": "南阳",
    "self": 75,
-   "selfPrimary": "PM25",
-   "caiyun": 90,
+   "selfPrimary": "PM10",
+   "caiyun": 85,
    "qweather": null,
-   "note": "自算vs彩云差15 "
+   "note": "自算vs彩云差10 "
   },
   {
    "city": "纽约",
@@ -53,32 +53,32 @@
  ],
  "stats": {
   "北京": {
-   "nDays": 33,
-   "meanAbsDiff": 12.24,
+   "nDays": 34,
+   "meanAbsDiff": 12.12,
    "lastDiff": 8
   },
   "上海": {
-   "nDays": 33,
-   "meanAbsDiff": 14.73,
-   "lastDiff": 8
+   "nDays": 34,
+   "meanAbsDiff": 14.5,
+   "lastDiff": 7
   },
   "广州": {
-   "nDays": 33,
-   "meanAbsDiff": 10.91,
-   "lastDiff": 4
+   "nDays": 34,
+   "meanAbsDiff": 11.41,
+   "lastDiff": 28
   },
   "成都": {
-   "nDays": 33,
-   "meanAbsDiff": 10.85,
-   "lastDiff": 14
+   "nDays": 34,
+   "meanAbsDiff": 10.82,
+   "lastDiff": 10
   },
   "南阳": {
-   "nDays": 33,
-   "meanAbsDiff": 5.24,
-   "lastDiff": 15
+   "nDays": 34,
+   "meanAbsDiff": 5.38,
+   "lastDiff": 10
   },
   "纽约": {
-   "nDays": 33,
+   "nDays": 34,
    "meanAbsDiff": 0,
    "lastDiff": 0
   }
@@ -282,6 +282,12 @@
     "self": 22,
     "caiyun": 14,
     "qweather": null
+   },
+   {
+    "date": "2026-11-28",
+    "self": 21,
+    "caiyun": 13,
+    "qweather": null
    }
   ],
   "上海": [
@@ -481,6 +487,12 @@
     "date": "2026-11-27",
     "self": 86,
     "caiyun": 78,
+    "qweather": null
+   },
+   {
+    "date": "2026-11-28",
+    "self": 70,
+    "caiyun": 77,
     "qweather": null
    }
   ],
@@ -682,6 +694,12 @@
     "self": 60,
     "caiyun": 64,
     "qweather": null
+   },
+   {
+    "date": "2026-11-28",
+    "self": 70,
+    "caiyun": 42,
+    "qweather": null
    }
   ],
   "成都": [
@@ -881,6 +899,12 @@
     "date": "2026-11-27",
     "self": 74,
     "caiyun": 88,
+    "qweather": null
+   },
+   {
+    "date": "2026-11-28",
+    "self": 66,
+    "caiyun": 76,
     "qweather": null
    }
   ],
@@ -1082,6 +1106,12 @@
     "self": 75,
     "caiyun": 90,
     "qweather": null
+   },
+   {
+    "date": "2026-11-28",
+    "self": 75,
+    "caiyun": 85,
+    "qweather": null
    }
   ],
   "纽约": [
@@ -1279,6 +1309,12 @@
    },
    {
     "date": "2026-11-27",
+    "self": 0,
+    "caiyun": 0,
+    "qweather": null
+   },
+   {
+    "date": "2026-11-28",
     "self": 0,
     "caiyun": 0,
     "qweather": null
